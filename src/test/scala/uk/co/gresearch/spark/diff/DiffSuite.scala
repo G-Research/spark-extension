@@ -600,7 +600,7 @@ class DiffSuite extends FunSuite with SparkTestSession {
       (DiffOptions.default.insertDiffValue, "new"),
       (DiffOptions.default.changeDiffValue, "change"),
       (DiffOptions.default.deleteDiffValue, "del"),
-      (DiffOptions.default.nochangeDiffValue, "eq"),
+      (DiffOptions.default.nochangeDiffValue, "eq")
     ).toDF("diff", "action")
 
     val expected = expectedDiffAs.toDS()
