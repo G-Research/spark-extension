@@ -1,9 +1,9 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>uk.co.gresearch.spark</groupId>
-  <artifactId>spark-extension</artifactId>
+  <artifactId>spark-extension_${scala.binary.version}</artifactId>
   <version>1.0.0-SNAPSHOT</version>
-  <name>${project.artifactId}</name>
+  <name>Spark Extension</name>
   <description>A library that provides useful extensions to Apache Spark.</description>
   <inceptionYear>2020</inceptionYear>
   <url>https://github.com/G-Research</url>
@@ -32,11 +32,12 @@
   </issueManagement>
 
   <properties>
-    <maven.compiler.source>1.5</maven.compiler.source>
-    <maven.compiler.target>1.5</maven.compiler.target>
+    <java.version>1.8</java.version>
+    <maven.compiler.source>${java.version}</maven.compiler.source>
+    <maven.compiler.target>${java.version}</maven.compiler.target>
     <encoding>UTF-8</encoding>
-    <scala.version.major>2.12</scala.version.major>
-    <scala.version>${scala.version.major}.10</scala.version>
+    <scala.version>2.12.10</scala.version>
+    <scala.binary.version>2.12</scala.binary.version>
     <spark.version>2.4.5</spark.version>
   </properties>
 
@@ -49,14 +50,14 @@
 
     <dependency>
       <groupId>org.apache.spark</groupId>
-      <artifactId>spark-core_${scala.version.major}</artifactId>
+      <artifactId>spark-core_${scala.binary.version}</artifactId>
       <version>${spark.version}</version>
       <scope>provided</scope>
     </dependency>
 
     <dependency>
       <groupId>org.apache.spark</groupId>
-      <artifactId>spark-sql_${scala.version.major}</artifactId>
+      <artifactId>spark-sql_${scala.binary.version}</artifactId>
       <version>${spark.version}</version>
       <scope>provided</scope>
     </dependency>
@@ -64,7 +65,7 @@
     <!-- Test -->
     <dependency>
       <groupId>org.apache.spark</groupId>
-      <artifactId>spark-catalyst_${scala.version.major}</artifactId>
+      <artifactId>spark-catalyst_${scala.binary.version}</artifactId>
       <version>${spark.version}</version>
       <classifier>tests</classifier>
       <scope>test</scope>
@@ -72,7 +73,7 @@
 
     <dependency>
       <groupId>org.scalatest</groupId>
-      <artifactId>scalatest_${scala.version.major}</artifactId>
+      <artifactId>scalatest_${scala.binary.version}</artifactId>
       <version>3.0.8</version>
       <scope>test</scope>
     </dependency>
