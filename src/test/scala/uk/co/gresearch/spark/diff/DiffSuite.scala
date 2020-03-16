@@ -20,7 +20,7 @@ package uk.co.gresearch.spark.diff
 import org.apache.spark.sql.{Dataset, Encoders, Row}
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.StructType
-import org.scalatest.{FunSuite, WordSpec}
+import org.scalatest.FunSuite
 
 case class Empty()
 case class Value(id: Int, value: Option[String])
@@ -464,8 +464,8 @@ class DiffSuite extends FunSuite with SparkTestSession {
   test("diff options with empty diff column name") {
     // test the copy method (constructor), not the fluent methods
     val default = DiffOptions.default
-    doTestRequirement(default.copy(diffColumn = ""),
-      "Diff column name must not be empty")
+    val options = default.copy(diffColumn = "")
+    assert(options.diffColumn.isEmpty)
   }
 
   test("diff options left and right prefixes") {
@@ -484,28 +484,29 @@ class DiffSuite extends FunSuite with SparkTestSession {
     // test the copy method (constructor), not the fluent methods
     val default = DiffOptions.default
 
-    doTestRequirement(default.copy(insertDiffValue = ""),
-      s"Insert diff value must not be empty")
-    doTestRequirement(default.copy(changeDiffValue = ""),
-      s"Change diff value must not be empty")
-    doTestRequirement(default.copy(deleteDiffValue = ""),
-      s"Delete diff value must not be empty")
-    doTestRequirement(default.copy(nochangeDiffValue = ""),
-      s"No-change diff value must not be empty")
+    val emptyInsertDiffValueOpts = default.copy(insertDiffValue = "")
+    assert(emptyInsertDiffValueOpts.insertDiffValue.isEmpty)
+    val emptyChangeDiffValueOpts = default.copy(changeDiffValue = "")
+    assert(emptyChangeDiffValueOpts.changeDiffValue.isEmpty)
+    val emptyDeleteDiffValueOpts = default.copy(deleteDiffValue = "")
+    assert(emptyDeleteDiffValueOpts.deleteDiffValue.isEmpty)
+    val emptyNochangeDiffValueOpts = default.copy(nochangeDiffValue = "")
+    assert(emptyNochangeDiffValueOpts.nochangeDiffValue.isEmpty)
 
-    val value = "value"
-    doTestRequirement(default.copy(insertDiffValue = value, changeDiffValue = value),
-      s"Diff values must be distinct: List($value, $value, D, N)")
-    doTestRequirement(default.copy(insertDiffValue = value, deleteDiffValue = value),
-      s"Diff values must be distinct: List($value, C, $value, N)")
-    doTestRequirement(default.copy(insertDiffValue = value, nochangeDiffValue = value),
-      s"Diff values must be distinct: List($value, C, D, $value)")
-    doTestRequirement(default.copy(changeDiffValue = value, deleteDiffValue = value),
-      s"Diff values must be distinct: List(I, $value, $value, N)")
-    doTestRequirement(default.copy(changeDiffValue = value, nochangeDiffValue = value),
-      s"Diff values must be distinct: List(I, $value, D, $value)")
-    doTestRequirement(default.copy(deleteDiffValue = value, nochangeDiffValue = value),
-      s"Diff values must be distinct: List(I, C, $value, $value)")
+    Seq("value", "").foreach{ value =>
+      doTestRequirement(default.copy(insertDiffValue = value, changeDiffValue = value),
+        s"Diff values must be distinct: List($value, $value, D, N)")
+      doTestRequirement(default.copy(insertDiffValue = value, deleteDiffValue = value),
+        s"Diff values must be distinct: List($value, C, $value, N)")
+      doTestRequirement(default.copy(insertDiffValue = value, nochangeDiffValue = value),
+        s"Diff values must be distinct: List($value, C, D, $value)")
+      doTestRequirement(default.copy(changeDiffValue = value, deleteDiffValue = value),
+        s"Diff values must be distinct: List(I, $value, $value, N)")
+      doTestRequirement(default.copy(changeDiffValue = value, nochangeDiffValue = value),
+        s"Diff values must be distinct: List(I, $value, D, $value)")
+      doTestRequirement(default.copy(deleteDiffValue = value, nochangeDiffValue = value),
+        s"Diff values must be distinct: List(I, C, $value, $value)")
+    }
   }
 
   test("diff of empty schema") {
