@@ -97,7 +97,7 @@ class DiffSuite extends FunSuite with SparkTestSession {
       .withLeftColumnPrefix("l")
       .withRightColumnPrefix("r")
       .withInsertDiffValue("i")
-      .withChangetDiffValue("c")
+      .withChangeDiffValue("c")
       .withDeleteDiffValue("d")
       .withNochangeDiffValue("n")
     val expected = DiffOptions("d", "l", "r", "i", "c", "d", "n")

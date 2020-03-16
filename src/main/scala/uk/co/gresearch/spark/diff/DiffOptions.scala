@@ -91,7 +91,7 @@ case class DiffOptions(diffColumn: String,
    * @param changeDiffValue new diff value
    * @return new immutable DiffOptions instance
    */
-  def withChangetDiffValue(changeDiffValue: String): DiffOptions = {
+  def withChangeDiffValue(changeDiffValue: String): DiffOptions = {
     this.copy(changeDiffValue = changeDiffValue)
   }
 
