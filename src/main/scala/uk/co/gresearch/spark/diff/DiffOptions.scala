@@ -25,17 +25,10 @@ case class DiffOptions(diffColumn: String,
                        deleteDiffValue: String,
                        nochangeDiffValue: String) {
 
-  require(diffColumn.nonEmpty, "Diff column name must not be empty")
-
   require(leftColumnPrefix.nonEmpty, "Left column prefix must not be empty")
   require(rightColumnPrefix.nonEmpty, "Right column prefix must not be empty")
   require(leftColumnPrefix != rightColumnPrefix,
     s"Left and right column prefix must be distinct: $leftColumnPrefix")
-
-  require(insertDiffValue.nonEmpty, "Insert diff value must not be empty")
-  require(changeDiffValue.nonEmpty, "Change diff value must not be empty")
-  require(deleteDiffValue.nonEmpty, "Delete diff value must not be empty")
-  require(nochangeDiffValue.nonEmpty, "No-change diff value must not be empty")
 
   val diffValues = Seq(insertDiffValue, changeDiffValue, deleteDiffValue, nochangeDiffValue)
   require(diffValues.distinct.length == diffValues.length,
