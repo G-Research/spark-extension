@@ -91,6 +91,19 @@ class DiffSuite extends FunSuite with SparkTestSession {
     assert(Diff.distinctStringNameFor(Seq("a", "bc", "def")) === "____")
   }
 
+  test("fluent methods of diff options") {
+    val options = DiffOptions.default
+      .withDiffColumn("d")
+      .withLeftColumnPrefix("l")
+      .withRightColumnPrefix("r")
+      .withInsertDiffValue("i")
+      .withChangetDiffValue("c")
+      .withDeleteDiffValue("d")
+      .withNochangeDiffValue("n")
+    val expected = DiffOptions("d", "l", "r", "i", "c", "d", "n")
+    assert(options === expected)
+  }
+
   test("diff with no id column") {
     val expected = Seq(
       Row("N", 1, "one"),
@@ -405,7 +418,10 @@ class DiffSuite extends FunSuite with SparkTestSession {
   }
 
   test("diff where non-id column produces diff column name") {
-    val options = DiffOptions.default.copy(diffColumn = "a_label", leftColumnPrefix = "a", rightColumnPrefix = "b")
+    val options = DiffOptions.default
+      .withDiffColumn("a_label")
+      .withLeftColumnPrefix("a")
+      .withRightColumnPrefix("b")
 
     val left = Seq(Value6(1, "label")).toDS()
     val right = Seq(Value6(1, "Label")).toDS()
@@ -416,7 +432,9 @@ class DiffSuite extends FunSuite with SparkTestSession {
   }
 
   test("diff where non-id column produces id column name") {
-    val options = DiffOptions.default.copy(leftColumnPrefix = "first", rightColumnPrefix = "second")
+    val options = DiffOptions.default
+      .withLeftColumnPrefix("first")
+      .withRightColumnPrefix("second")
 
     val left = Seq(Value5(1, "value")).toDS()
     val right = Seq(Value5(1, "Value")).toDS()
@@ -444,12 +462,14 @@ class DiffSuite extends FunSuite with SparkTestSession {
   }
 
   test("diff options with empty diff column name") {
+    // test the copy method (constructor), not the fluent methods
     val default = DiffOptions.default
     doTestRequirement(default.copy(diffColumn = ""),
       "Diff column name must not be empty")
   }
 
   test("diff options left and right prefixes") {
+    // test the copy method (constructor), not the fluent methods
     val default = DiffOptions.default
     doTestRequirement(default.copy(leftColumnPrefix = ""),
       "Left column prefix must not be empty")
@@ -461,6 +481,7 @@ class DiffSuite extends FunSuite with SparkTestSession {
   }
 
   test("diff options diff value") {
+    // test the copy method (constructor), not the fluent methods
     val default = DiffOptions.default
 
     doTestRequirement(default.copy(insertDiffValue = ""),
@@ -634,4 +655,3 @@ class DiffSuite extends FunSuite with SparkTestSession {
   }
 
 }
-
