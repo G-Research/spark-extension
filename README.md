@@ -1,8 +1,8 @@
 # Spark Extension
 
 This project provides extensions to the [Apache Spark project](https://spark.apache.org/):
-- [Diff](DIFF.md): A `diff` transformation for `Dataset`s that computes the differences betweentwo datasets,
-i.e. which rows to _add_, _delete_ or _change_ to get from one dataset to the other.
+- [Diff](DIFF.md): A `diff` transformation for `Dataset`s that computes the differences between
+two datasets, i.e. which rows to _add_, _delete_ or _change_ to get from one dataset to the other.
 
 ## Using Spark Extension
 
