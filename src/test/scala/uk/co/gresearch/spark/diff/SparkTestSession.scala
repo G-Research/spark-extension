@@ -23,7 +23,8 @@ import org.apache.spark.sql.catalyst.plans.SQLHelper
 
 trait SparkTestSession extends SQLHelper {
 
-  lazy val spark: SparkSession = {
+  lazy val spark:
+    SparkSession = {
     SparkSession
       .builder()
       .master("local[1]")
@@ -45,5 +46,30 @@ trait SparkTestSession extends SQLHelper {
     SparkSession.setActiveSession(spark)
     super.withSQLConf(pairs:_*)(f)
   }
-
 }
+
+
+case class Empty()
+case class Value(id: Int, value: Option[String])
+case class Value2(id: Int, seq: Option[Int], value: Option[String])
+case class Value3(id: Int, left_value: String, right_value: String, value: String)
+case class Value4(id: Int, diff: String)
+case class Value5(first_id: Int, id: String)
+case class Value6(id: Int, label: String)
+
+case class DiffAs(diff: String,
+                  id: Int,
+                  left_value: Option[String],
+                  right_value: Option[String])
+case class DiffAsCustom(action: String,
+                        id: Int,
+                        before_value: Option[String],
+                        after_value: Option[String])
+case class DiffAsSubset(diff: String,
+                        id: Int,
+                        left_value: Option[String])
+case class DiffAsExtra(diff: String,
+                       id: Int,
+                       left_value: Option[String],
+                       right_value: Option[String],
+                       extra: String)

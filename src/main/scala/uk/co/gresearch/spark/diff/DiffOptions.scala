@@ -27,19 +27,29 @@ package uk.co.gresearch.spark.diff
  * @param changeDiffValue value in diff column for changed rows
  * @param deleteDiffValue value in diff column for deleted rows
  * @param nochangeDiffValue value in diff column for un-changed rows
+ * @param specialComparators an optional map of column names with the applicable comparator, overwriting the default '<=>' comparator
  */
-case class DiffOptions(diffColumn: String,
-                       leftColumnPrefix: String,
-                       rightColumnPrefix: String,
-                       insertDiffValue: String,
-                       changeDiffValue: String,
-                       deleteDiffValue: String,
-                       nochangeDiffValue: String) {
+case class DiffOptions(
+  diffColumn: String,
+  leftColumnPrefix: String,
+  rightColumnPrefix: String,
+  insertDiffValue: String,
+  changeDiffValue: String,
+  deleteDiffValue: String,
+  nochangeDiffValue: String,
+  specialComparators: Map[String, DiffComparator] = Map()
+) {
 
   require(leftColumnPrefix.nonEmpty, "Left column prefix must not be empty")
   require(rightColumnPrefix.nonEmpty, "Right column prefix must not be empty")
+
   require(leftColumnPrefix != rightColumnPrefix,
     s"Left and right column prefix must be distinct: $leftColumnPrefix")
+
+  /**
+   * Returns the applicable comparator for the given column
+   */
+  def getDiffComparator(columnName: String): DiffComparator = specialComparators.getOrElse(columnName, DiffComparator.EqualNullSafeComparator)
 
   val diffValues = Seq(insertDiffValue, changeDiffValue, deleteDiffValue, nochangeDiffValue)
   require(diffValues.distinct.length == diffValues.length,

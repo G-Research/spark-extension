@@ -91,8 +91,9 @@ class Diff(options: DiffOptions) {
     val existsColumnName = Diff.distinctStringNameFor(left.columns)
     val l = left.withColumn(existsColumnName, lit(1))
     val r = right.withColumn(existsColumnName, lit(1))
-    val joinCondition = pkColumns.map(c => l(c) <=> r(c)).reduce(_ && _)
-    val unChanged = otherColumns.map(c => l(c) <=> r(c)).reduceOption(_ && _)
+
+    val joinCondition = pkColumns.map(c => options.getDiffComparator(c).compareColumns(l(c), r(c))).reduce(_ && _)
+    val unChanged = otherColumns.map(c => options.getDiffComparator(c).compareColumns(l(c), r(c))).reduceOption(_ && _)
     val changeCondition = not(unChanged.getOrElse(lit(true)))
 
     val diffCondition =

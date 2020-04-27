@@ -17,38 +17,12 @@
 
 package uk.co.gresearch.spark.diff
 
-import org.apache.spark.sql.{Dataset, Encoders, Row}
+import org.apache.spark.sql.{Dataset, Encoders, Row, SparkSession}
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.StructType
 import org.scalatest.FunSuite
 
-case class Empty()
-case class Value(id: Int, value: Option[String])
-case class Value2(id: Int, seq: Option[Int], value: Option[String])
-case class Value3(id: Int, left_value: String, right_value: String, value: String)
-case class Value4(id: Int, diff: String)
-case class Value5(first_id: Int, id: String)
-case class Value6(id: Int, label: String)
-
-case class DiffAs(diff: String,
-                  id: Int,
-                  left_value: Option[String],
-                  right_value: Option[String])
-case class DiffAsCustom(action: String,
-                        id: Int,
-                        before_value: Option[String],
-                        after_value: Option[String])
-case class DiffAsSubset(diff: String,
-                        id: Int,
-                        left_value: Option[String])
-case class DiffAsExtra(diff: String,
-                       id: Int,
-                       left_value: Option[String],
-                       right_value: Option[String],
-                       extra: String)
-
 class DiffSuite extends FunSuite with SparkTestSession {
-
   import spark.implicits._
 
   lazy val left: Dataset[Value] = Seq(

@@ -1,0 +1,5 @@
+---
+include:
+  - project: 'BI/bdap-2.0/common-libraries/cicd-commons'
+    ref: live
+    file: 'nexusDeployTemplates/mavenDeployTemplates/maven-deploy-template.yml'
