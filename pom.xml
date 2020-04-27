@@ -144,4 +144,19 @@
       </plugin>
     </plugins>
   </build>
+
+  <distributionManagement>
+    <repository>
+      <id>datalake-releases-gcp-deploy</id>
+      <name>Tchibo GmbH (BI) Internal Repository</name>
+      <url>${repo.host}/repository/maven-releases/</url>
+    </repository>
+
+    <snapshotRepository>
+      <id>datalake-snapshots-gcp-deploy</id>
+      <name>Tchibo GmbH (BI) Internal Snapshot Repository</name>
+      <url>${repo.host}/repository/maven-snapshots/</url>
+    </snapshotRepository>
+  </distributionManagement>
+
 </project>
