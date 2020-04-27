@@ -3,6 +3,7 @@
   <groupId>uk.co.gresearch.spark</groupId>
   <artifactId>spark-extension_${scala.binary.version}</artifactId>
   <version>1.1.0-SNAPSHOT</version>
+
   <name>Spark Extension</name>
   <description>A library that provides useful extensions to Apache Spark.</description>
   <inceptionYear>2020</inceptionYear>
@@ -78,13 +79,6 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
-
-  <distributionManagement>
-    <snapshotRepository>
-      <id>ossrh</id>
-      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-    </snapshotRepository>
-  </distributionManagement>
 
   <build>
     <sourceDirectory>src/main/scala</sourceDirectory>
