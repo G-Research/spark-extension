@@ -20,7 +20,7 @@ package uk.co.gresearch.spark.diff
 import java.util.Locale
 
 import org.apache.spark.sql.{DataFrame, Dataset, Encoder}
-import org.apache.spark.sql.functions.{coalesce, lit, not, when}
+import org.apache.spark.sql.functions.{coalesce, lit, when}
 import org.apache.spark.sql.internal.SQLConf
 
 /**
@@ -82,37 +82,39 @@ class Diff(options: DiffOptions) {
       .flatMap(prefix => nonIdColumns.map(column => s"${prefix}_$column"))
 
   def of[T](left: Dataset[T], right: Dataset[T], idColumns: String*): DataFrame = {
-    checkSchema(left, right, idColumns: _*)
+    val leftIgnored = left.drop(options.ignoreColumns:_*)
+    val rightIgnored = right.drop(options.ignoreColumns:_*)
+    checkSchema(leftIgnored, rightIgnored, idColumns: _*)
 
-    val pkColumns = if (idColumns.isEmpty) left.columns.toList else idColumns
+    val pkColumns = if (idColumns.isEmpty) leftIgnored.columns.toList else idColumns
     val pkColumnsCs = pkColumns.map(columnName).toSet
-    val otherColumns = left.columns.filter(col => !pkColumnsCs.contains(columnName(col)))
+    val otherColumns = leftIgnored.columns.filter(col => !pkColumnsCs.contains(columnName(col)))
 
-    val existsColumnName = Diff.distinctStringNameFor(left.columns)
-    val l = left.withColumn(existsColumnName, lit(1))
-    val r = right.withColumn(existsColumnName, lit(1))
+    val existsColumnName = Diff.distinctStringNameFor(leftIgnored.columns)
+    val l = leftIgnored.withColumn(existsColumnName, lit(1))
+    val r = rightIgnored.withColumn(existsColumnName, lit(1))
 
     val joinCondition = pkColumns.map(c => options.getDiffComparator(c).compareColumns(l(c), r(c))).reduce(_ && _)
-    val unChanged = otherColumns.map(c => options.getDiffComparator(c).compareColumns(l(c), r(c))).reduceOption(_ && _)
-    val changeCondition = not(unChanged.getOrElse(lit(true)))
+    val unChanged = otherColumns.map(c => when(options.getDiffComparator(c).compareColumns(l(c), r(c)), lit(null)).otherwise(c)).reduceOption((a, b) => coalesce(a, b))
+    val changedColumnIndicator = unChanged.getOrElse(lit(null))
 
     val diffCondition =
       when(l(existsColumnName).isNull, lit(options.insertDiffValue)).
         when(r(existsColumnName).isNull, lit(options.deleteDiffValue)).
-        when(changeCondition, lit(options.changeDiffValue)).
+        when(changedColumnIndicator.isNotNull, lit(options.changeDiffValue)).
         otherwise(lit(options.nochangeDiffValue))
 
     val diffColumns =
       pkColumns.map(c => coalesce(l(c), r(c)).as(c)) ++
         otherColumns.flatMap(c =>
           Seq(
-            left(c).as(s"${options.leftColumnPrefix}_$c"),
-            right(c).as(s"${options.rightColumnPrefix}_$c")
+            l(c).as(s"${options.leftColumnPrefix}_$c"),
+            r(c).as(s"${options.rightColumnPrefix}_$c")
           )
         )
 
-    l.join(r, joinCondition, "fullouter")
-      .select(diffCondition.as(options.diffColumn) +: diffColumns: _*)
+    val select = Seq(diffCondition.as(options.diffColumn)) ++ options.changedColumnIndicator.map(cc => changedColumnIndicator.as(cc)).toSeq ++ diffColumns
+    l.join(r, joinCondition, "fullouter").select(select: _*)
   }
 
   def ofAs[T, U](left: Dataset[T], right: Dataset[T], idColumns: String*)

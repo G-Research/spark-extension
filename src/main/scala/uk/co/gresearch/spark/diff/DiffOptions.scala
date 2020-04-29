@@ -37,6 +37,8 @@ case class DiffOptions(
   changeDiffValue: String,
   deleteDiffValue: String,
   nochangeDiffValue: String,
+  changedColumnIndicator: Option[String] = Some("changedColumn"),
+  ignoreColumns: Seq[String] = Seq(),
   specialComparators: Map[String, DiffComparator] = Map()
 ) {
 
@@ -130,5 +132,5 @@ object DiffOptions {
   /**
    * Default diffing options.
    */
-  val default: DiffOptions = DiffOptions("diff", "left", "right", "I", "C", "D", "N")
+  val default: DiffOptions = DiffOptions("diff", "left", "right", "I", "C", "D", "N", None)
 }

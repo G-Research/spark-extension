@@ -73,14 +73,14 @@ class DiffSuiteWithComparators extends FunSuite with SparkTestSession with MustM
 
     test("FloatFuzzyComparator with divergence: " + divergence) {
       val expected = Seq(
-        Seq(if(divergence >= 0.1) "Equal" else "Changed", 1, 9.9f, 9.8f),
-        Seq(if(divergence >= 0.1) "Equal" else "Changed", 2, 9.9f, 10.0f),
-        Seq("Changed", 3, 9.9f, 11.0f)
+        Seq(if(divergence >= 0.1) "Equal" else "Changed", if(divergence >= 0.1) null else "float", 1, 9.9f, 9.8f),
+        Seq(if(divergence >= 0.1) "Equal" else "Changed", if(divergence >= 0.1) null else "float", 2, 9.9f, 10.0f),
+        Seq("Changed", "float", 3, 9.9f, 11.0f)
       )
 
       val actual = diffWithOptions.of(leftFloats, rightFloats, "id").orderBy("id", "diff")
 
-      assert(actual.columns === Seq("diff", "id", "left_float", "right_float"))
+      assert(actual.columns === Seq("diff", "changedColumn", "id", "left_float", "right_float"))
       actual.collect().map(row => row.toSeq).zip(expected).foreach(x => x._1 mustBe x._2)
     }
   }
@@ -119,15 +119,15 @@ class DiffSuiteWithComparators extends FunSuite with SparkTestSession with MustM
 
     test("FuzzyDateComparator with duration: " + duration) {
       val expected = Seq(
-        Seq("Equal", 1, Timestamp.valueOf("2020-01-01 12:12:12.0"), Timestamp.valueOf("2020-01-01 12:12:02.0")),
-        Seq("Equal", 2, Timestamp.valueOf("2020-01-01 12:12:12.0"), Timestamp.valueOf("2020-01-01 12:12:22.0")),
-        Seq(if(duration >= 20) "Equal" else "Changed", 3, Timestamp.valueOf("2020-01-01 12:12:12.0"), Timestamp.valueOf("2020-01-01 12:12:32.0")),
-        Seq("Changed", 4, Timestamp.valueOf("2020-01-01 13:12:12.0"), Timestamp.valueOf("2020-01-01 12:12:13.0"))
+        Seq("Equal", null, 1, Timestamp.valueOf("2020-01-01 12:12:12.0"), Timestamp.valueOf("2020-01-01 12:12:02.0")),
+        Seq("Equal", null, 2, Timestamp.valueOf("2020-01-01 12:12:12.0"), Timestamp.valueOf("2020-01-01 12:12:22.0")),
+        Seq(if(duration >= 20) "Equal" else "Changed", if(duration >= 20) null else "timestamp", 3, Timestamp.valueOf("2020-01-01 12:12:12.0"), Timestamp.valueOf("2020-01-01 12:12:32.0")),
+        Seq("Changed", "timestamp", 4, Timestamp.valueOf("2020-01-01 13:12:12.0"), Timestamp.valueOf("2020-01-01 12:12:13.0"))
       )
 
       val actual = diffWithOptions.of(leftTimeStamps, rightTimeStamps, "id").orderBy("id", "diff")
 
-      assert(actual.columns === Seq("diff", "id", "left_timestamp", "right_timestamp"))
+      assert(actual.columns === Seq("diff", "changedColumn", "id", "left_timestamp", "right_timestamp"))
       actual.collect().map(row => row.toSeq).zip(expected).foreach(x => x._1 mustBe x._2)
     }
   }
@@ -149,15 +149,15 @@ class DiffSuiteWithComparators extends FunSuite with SparkTestSession with MustM
 
     test("FuzzyDateComparator with time zone: " + tz) {
       val expected = Seq(
-        Seq(if(tz == "UTC") "Equal" else "Changed", 1, Timestamp.valueOf("2020-01-01 12:12:12.0"), Timestamp.valueOf("2020-01-01 12:12:02.0")),
-        Seq(if(tz == "UTC") "Equal" else "Changed", 2, Timestamp.valueOf("2020-01-01 12:12:12.0"), Timestamp.valueOf("2020-01-01 12:12:22.0")),
-        Seq("Changed", 3, Timestamp.valueOf("2020-01-01 12:12:12.0"), Timestamp.valueOf("2020-01-01 12:12:32.0")),
-        Seq(if(tz == "CET") "Equal" else "Changed", 4, Timestamp.valueOf("2020-01-01 13:12:12.0"), Timestamp.valueOf("2020-01-01 12:12:13.0"))
+        Seq(if(tz == "UTC") "Equal" else "Changed", if(tz == "UTC") null else "timestamp", 1, Timestamp.valueOf("2020-01-01 12:12:12.0"), Timestamp.valueOf("2020-01-01 12:12:02.0")),
+        Seq(if(tz == "UTC") "Equal" else "Changed", if(tz == "UTC") null else "timestamp", 2, Timestamp.valueOf("2020-01-01 12:12:12.0"), Timestamp.valueOf("2020-01-01 12:12:22.0")),
+        Seq("Changed", "timestamp", 3, Timestamp.valueOf("2020-01-01 12:12:12.0"), Timestamp.valueOf("2020-01-01 12:12:32.0")),
+        Seq(if(tz == "CET") "Equal" else "Changed", if(tz == "CET") null else "timestamp", 4, Timestamp.valueOf("2020-01-01 13:12:12.0"), Timestamp.valueOf("2020-01-01 12:12:13.0"))
       )
 
       val actual = diffWithTimezones.of(leftTimeStamps, rightTimeStamps, "id").orderBy("id", "diff")
 
-      assert(actual.columns === Seq("diff", "id", "left_timestamp", "right_timestamp"))
+      assert(actual.columns === Seq("diff", "changedColumn", "id", "left_timestamp", "right_timestamp"))
       actual.collect().map(row => row.toSeq).zip(expected).foreach(x => x._1 mustBe x._2)
     }
   }

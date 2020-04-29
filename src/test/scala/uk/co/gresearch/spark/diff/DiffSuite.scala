@@ -74,7 +74,7 @@ class DiffSuite extends FunSuite with SparkTestSession {
       .withChangeDiffValue("c")
       .withDeleteDiffValue("d")
       .withNochangeDiffValue("n")
-    val expected = DiffOptions("d", "l", "r", "i", "c", "d", "n")
+    val expected = DiffOptions("d", "l", "r", "i", "c", "d", "n", None)
     assert(options === expected)
   }
 
@@ -419,7 +419,7 @@ class DiffSuite extends FunSuite with SparkTestSession {
   }
 
   test("diff with custom diff options") {
-    val options = DiffOptions("action", "before", "after", "new", "change", "del", "eq")
+    val options = DiffOptions("action", "before", "after", "new", "change", "del", "eq", None)
 
     val expected = Seq(
       Row("eq", 1, "one", "one"),
@@ -589,7 +589,7 @@ class DiffSuite extends FunSuite with SparkTestSession {
   }
 
   test("diff as U with encoder and custom options") {
-    val options = DiffOptions("action", "before", "after", "new", "change", "del", "eq")
+    val options = DiffOptions("action", "before", "after", "new", "change", "del", "eq", None)
     val encoder = Encoders.product[DiffAsCustom]
 
     val actions = Seq(
