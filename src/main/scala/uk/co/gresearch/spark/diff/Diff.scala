@@ -17,11 +17,13 @@
 
 package uk.co.gresearch.spark.diff
 
-import java.util.Locale
+import org.apache.spark.sql.catalyst.encoders.RowEncoder
+import org.apache.spark.sql.functions._
+import org.apache.spark.sql.types.StructField
+import org.apache.spark.sql.{DataFrame, Dataset, Encoder, Row}
+import uk.co.gresearch.spark.diff.DiffOptions.columnName
 
-import org.apache.spark.sql.{DataFrame, Dataset, Encoder}
-import org.apache.spark.sql.functions.{coalesce, lit, when}
-import org.apache.spark.sql.internal.SQLConf
+import scala.collection.JavaConverters._
 
 /**
  * Differ class to diff two Datasets.
@@ -29,15 +31,9 @@ import org.apache.spark.sql.internal.SQLConf
  */
 class Diff(options: DiffOptions) {
 
-  // column names case-sensitivity can be configured
-  private def columnName(columnName: String): String =
-    if (SQLConf.get.caseSensitiveAnalysis) columnName else columnName.toLowerCase(Locale.ROOT)
+  private val changed: String = "_changed_columns_"
 
   def checkSchema[T](left: Dataset[T], right: Dataset[T], idColumns: String*): Unit = {
-    require(left.columns.length == right.columns.length,
-      "The number of columns doesn't match.\n" +
-        s"Left column names (${left.columns.length}): ${left.columns.mkString(", ")}\n" +
-        s"Right column names (${right.columns.length}): ${right.columns.mkString(", ")}")
 
     require(left.columns.length > 0, "The schema must not be empty")
 
@@ -48,8 +44,8 @@ class Diff(options: DiffOptions) {
     val rightExtraSchema = rightFields.diff(leftFields)
     require(leftExtraSchema.isEmpty && rightExtraSchema.isEmpty,
       "The datasets do not have the same schema.\n" +
-        s"Left extra columns: ${leftExtraSchema.map(t => s"${t._1} (${t._2})").mkString(", ")}\n" +
-        s"Right extra columns: ${rightExtraSchema.map(t => s"${t._1} (${t._2})").mkString(", ")}")
+        s"${options.leftColumnPrefix} extra columns: ${leftExtraSchema.map(t => s"${t._1} (${t._2})").mkString(", ")}\n" +
+        s"${options.rightColumnPrefix} extra columns: ${rightExtraSchema.map(t => s"${t._1} (${t._2})").mkString(", ")}")
 
     val columns = left.columns.map(columnName)
     val pkColumns = if (idColumns.isEmpty) columns.toList else idColumns.map(columnName)
@@ -86,35 +82,70 @@ class Diff(options: DiffOptions) {
     val rightIgnored = right.drop(options.ignoreColumns:_*)
     checkSchema(leftIgnored, rightIgnored, idColumns: _*)
 
-    val pkColumns = if (idColumns.isEmpty) leftIgnored.columns.toList else idColumns
-    val pkColumnsCs = pkColumns.map(columnName).toSet
-    val otherColumns = leftIgnored.columns.filter(col => !pkColumnsCs.contains(columnName(col)))
+    val caseSensitiveMap = idColumns.map(id => columnName(id) -> id).toMap
+    val pkColumns = if(idColumns.isEmpty){
+      leftIgnored.schema.fields.toIndexedSeq
+    }
+    else{
+      idColumns.toIndexedSeq.map(id => leftIgnored.schema.fields.find(sf => columnName(id) == columnName(sf.name))
+        .getOrElse(throw new IllegalArgumentException(s"Could not resolve column name $id against ${leftIgnored.columns.mkString(", ")}.")))
+    }
+    val pkColumnsCs = pkColumns.map(sf => columnName(sf.name)).toSet
+    val otherColumns = leftIgnored.schema.fields.filter(sf => !pkColumnsCs.contains(columnName(sf.name)))
 
     val existsColumnName = Diff.distinctStringNameFor(leftIgnored.columns)
     val l = leftIgnored.withColumn(existsColumnName, lit(1))
     val r = rightIgnored.withColumn(existsColumnName, lit(1))
 
-    val joinCondition = pkColumns.map(c => options.getDiffComparator(c).compareColumns(l(c), r(c))).reduce(_ && _)
-    val unChanged = otherColumns.map(c => when(options.getDiffComparator(c).compareColumns(l(c), r(c)), lit(null)).otherwise(c)).reduceOption((a, b) => coalesce(a, b))
-    val changedColumnIndicator = unChanged.getOrElse(lit(null))
+    val joinCondition = pkColumns.map(c => options.getDiffComparator(c).compareColumns(l(c.name), r(c.name))).reduce(_ && _)
+    val unChanged = otherColumns.map(c => {
+      when(options.getDiffComparator(c).compareColumns(l(c.name), r(c.name)), typedLit(Array.empty[String]))
+      .otherwise(typedLit(Array(c.name)))
+    }).reduceOption((a, b) => concat(a, b))
+    val changedColumnIndicator = unChanged.getOrElse(typedLit(Array.empty[String]))
 
     val diffCondition =
       when(l(existsColumnName).isNull, lit(options.insertDiffValue)).
         when(r(existsColumnName).isNull, lit(options.deleteDiffValue)).
-        when(changedColumnIndicator.isNotNull, lit(options.changeDiffValue)).
+        when(size(changedColumnIndicator) =!= 0, lit(options.changeDiffValue)).
         otherwise(lit(options.nochangeDiffValue))
 
-    val diffColumns =
-      pkColumns.map(c => coalesce(l(c), r(c)).as(c)) ++
-        otherColumns.flatMap(c =>
-          Seq(
-            l(c).as(s"${options.leftColumnPrefix}_$c"),
-            r(c).as(s"${options.rightColumnPrefix}_$c")
-          )
-        )
+    val diffColumns = pkColumns.map(c => coalesce(l(c.name), r(c.name)).as(caseSensitiveMap.getOrElse(columnName(c.name), c.name))) ++
+      otherColumns.flatMap(c => Seq(l(c.name).as(s"${options.leftColumnPrefix}_${c.name}"), r(c.name).as(s"${options.rightColumnPrefix}_${c.name}")))
 
-    val select = Seq(diffCondition.as(options.diffColumn)) ++ options.changedColumnIndicator.map(cc => changedColumnIndicator.as(cc)).toSeq ++ diffColumns
-    l.join(r, joinCondition, "fullouter").select(select: _*)
+    val select = List(diffCondition.as(options.diffColumn)) ++ (if(options.nullOutValidData) Seq(changedColumnIndicator.as(changed)) else Seq()) ++ diffColumns
+    val joined = l.join(r, joinCondition, "fullouter").select(select: _*)
+
+    if(options.nullOutValidData){   // finally we null out each valid cell if required
+      replaceValidCellsWithNull(joined, pkColumnsCs)
+    }
+    else{
+      joined
+    }
+  }
+
+  /**
+   * Will replace cell objects with null if they satisfy the allocated comparator.
+   * This will adhance visibility of erroneous data, especially for tables with many columns
+   * @param joined - the result of the diff join operation
+   * @param primaryColumns - list of all primary keys of this table
+   */
+  private def replaceValidCellsWithNull(joined: DataFrame, primaryColumns: Set[String]): DataFrame ={
+    assert(joined.schema.fields.exists(f => f.name == changed), "Prerequisites for this function call are not satisfied.")
+    // we need to single out those attributes, otherwise we would run in TaskNotSerializableExceptions
+    val leftPrefix = options.leftColumnPrefix
+    val rightPrefix = options.rightColumnPrefix
+    val diffColumn = options.diffColumn
+    val nullReplaced = joined.map(row => {
+      val changedColumns = row.getList[String](1).asScala.flatMap(c => Seq(s"${leftPrefix}_$c", s"${rightPrefix}_$c"))
+      val keepTheseColumns = Set(diffColumn) ++ primaryColumns ++ changedColumns
+      val newRowSeq = row.toSeq.zip(row.schema.fields).map{
+      case (cell: Any, StructField(name, _, nullable, _)) if ! nullable || keepTheseColumns.contains(name) => cell
+      case (_, _) => null
+    }
+      Row.fromSeq(newRowSeq)
+    })(RowEncoder(joined.schema))
+    nullReplaced.drop(changed)
   }
 
   def ofAs[T, U](left: Dataset[T], right: Dataset[T], idColumns: String*)
@@ -135,7 +166,6 @@ class Diff(options: DiffOptions) {
 
     of(left, right, idColumns: _*).as[U](diffEncoder)
   }
-
 }
 
 /**
@@ -153,15 +183,11 @@ object Diff {
     "_" * (existing.map(_.length).reduceOption(_ max _).getOrElse(0) + 1)
   }
 
-  def of[T](left: Dataset[T], right: Dataset[T], idColumns: String*): DataFrame =
-    default.of(left, right, idColumns: _*)
+  def of[T](left: Dataset[T], right: Dataset[T], idColumns: String*)(implicit diff: Diff = default): DataFrame =
+    diff.of(left, right, idColumns: _*)
 
   def ofAs[T, U](left: Dataset[T], right: Dataset[T], idColumns: String*)
-                (implicit diffEncoder: Encoder[U]): Dataset[U] =
-    default.ofAs(left, right, idColumns: _*)
-
-  def ofAs[T, U](left: Dataset[T], right: Dataset[T],
-                 diffEncoder: Encoder[U], idColumns: String*): Dataset[U] =
-    default.ofAs(left, right, diffEncoder, idColumns: _*)
+                (implicit diffEncoder: Encoder[U], diff: Diff = default): Dataset[U] =
+    diff.ofAs(left, right, idColumns: _*)
 
 }

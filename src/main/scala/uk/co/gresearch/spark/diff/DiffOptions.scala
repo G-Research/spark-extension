@@ -17,6 +17,11 @@
 
 package uk.co.gresearch.spark.diff
 
+import java.util.Locale
+
+import org.apache.spark.sql.internal.SQLConf
+import org.apache.spark.sql.types.{DataType, StructField}
+
 /**
  * Configuration class for diffing Datasets.
  *
@@ -27,7 +32,10 @@ package uk.co.gresearch.spark.diff
  * @param changeDiffValue value in diff column for changed rows
  * @param deleteDiffValue value in diff column for deleted rows
  * @param nochangeDiffValue value in diff column for un-changed rows
- * @param specialComparators an optional map of column names with the applicable comparator, overwriting the default '<=>' comparator
+ * @param nullOutValidData if true, all cells which are equal (or in a given tolerance range) are replaced with null to increase visibility of erroneous data
+ * @param ignoreColumns an optional list of columns which are dropped from both sides before comparing
+ * @param datatypeComparators an optional map of datatypes with the applicable comparator, overwriting the default '<=>' comparator
+ * @param columnComparators an optional map of column names with the applicable comparator, overwriting the datatype comparators
  */
 case class DiffOptions(
   diffColumn: String,
@@ -37,21 +45,24 @@ case class DiffOptions(
   changeDiffValue: String,
   deleteDiffValue: String,
   nochangeDiffValue: String,
-  changedColumnIndicator: Option[String] = Some("changedColumn"),
+  nullOutValidData: Boolean = false,
   ignoreColumns: Seq[String] = Seq(),
-  specialComparators: Map[String, DiffComparator] = Map()
+  datatypeComparators: Map[DataType, DiffComparator] = Map(),
+  columnComparators: Map[String, DiffComparator] = Map()
 ) {
 
   require(leftColumnPrefix.nonEmpty, "Left column prefix must not be empty")
   require(rightColumnPrefix.nonEmpty, "Right column prefix must not be empty")
 
-  require(leftColumnPrefix != rightColumnPrefix,
-    s"Left and right column prefix must be distinct: $leftColumnPrefix")
+  require(leftColumnPrefix != rightColumnPrefix, s"Left and right column prefix must be distinct: $leftColumnPrefix")
 
   /**
    * Returns the applicable comparator for the given column
    */
-  def getDiffComparator(columnName: String): DiffComparator = specialComparators.getOrElse(columnName, DiffComparator.EqualNullSafeComparator)
+  def getDiffComparator(sf: StructField): DiffComparator = columnComparators.get(sf.name) match {
+    case Some(comp) => comp
+    case None => datatypeComparators.getOrElse(sf.dataType, DiffComparator.EqualNullSafeComparator)
+  }
 
   val diffValues = Seq(insertDiffValue, changeDiffValue, deleteDiffValue, nochangeDiffValue)
   require(diffValues.distinct.length == diffValues.length,
@@ -126,11 +137,49 @@ case class DiffOptions(
   def withNochangeDiffValue(nochangeDiffValue: String): DiffOptions = {
     this.copy(nochangeDiffValue = nochangeDiffValue)
   }
+
+  /**
+   * Fluent method to change the returned cell data, determined to be equal, to null.
+   * Returns a new immutable DiffOptions instance with the new diff value.
+   * @param nullOutValidData - by default this is false
+   * @return new immutable DiffOptions instance
+   */
+  def withNullOutValidData(nullOutValidData: Boolean): DiffOptions = this.copy(nullOutValidData = nullOutValidData)
+
+  /**
+   * Fluent method to change the list of columns which shall be ignored from comparison (and thereby dropped from the result).
+   * Returns a new immutable DiffOptions instance with the new diff value.
+   * @param ignoreColumns - by default this is empty
+   * @return new immutable DiffOptions instance
+   */
+  def withIgnoredColumns(ignoreColumns: Seq[String]): DiffOptions = this.copy(ignoreColumns = ignoreColumns)
+
+  /**
+   * Fluent method to change the map of [[DiffComparator]] to be used by default for all columns of a given Spark [[DataType]].
+   * Thereby, the default comparator (<=>) is replaced by these comparators for all columns matching the specified datatype.
+   * Returns a new immutable DiffOptions instance with the new diff value.
+   * @param datatypeComparators - by default this is empty
+   * @return new immutable DiffOptions instance
+   */
+  def withDatatypeComparators(datatypeComparators: Map[DataType, DiffComparator]): DiffOptions = this.copy(datatypeComparators = datatypeComparators)
+
+  /**
+   * Fluent method to change the map of [[DiffComparator]] to be used for the specified column (column names are the map keys).
+   * Thereby, the default comparator (<=>), as well as possible datatype based comparators, are replaced by these comparators for all columns listed here.
+   * Returns a new immutable DiffOptions instance with the new diff value.
+   * @param columnComparators - by default this is empty
+   * @return new immutable DiffOptions instance
+   */
+  def withColumnComparators(columnComparators: Map[String, DiffComparator]): DiffOptions = this.copy(columnComparators = columnComparators)
 }
 
 object DiffOptions {
   /**
    * Default diffing options.
    */
-  val default: DiffOptions = DiffOptions("diff", "left", "right", "I", "C", "D", "N", None)
+  val default: DiffOptions = DiffOptions("diff", "left", "right", "I", "C", "D", "N")
+
+  // column names case-sensitivity can be configured
+  private[diff] def columnName(columnName: String): String =
+    if (SQLConf.get.caseSensitiveAnalysis) columnName else columnName.toLowerCase(Locale.ROOT)
 }

@@ -17,7 +17,7 @@
 
 package uk.co.gresearch.spark.diff
 
-import org.apache.spark.sql.{Dataset, Encoders, Row, SparkSession}
+import org.apache.spark.sql.{Dataset, Encoders, Row}
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.StructType
 import org.scalatest.FunSuite
@@ -74,7 +74,7 @@ class DiffSuite extends FunSuite with SparkTestSession {
       .withChangeDiffValue("c")
       .withDeleteDiffValue("d")
       .withNochangeDiffValue("n")
-    val expected = DiffOptions("d", "l", "r", "i", "c", "d", "n", None)
+    val expected = DiffOptions("d", "l", "r", "i", "c", "d", "n")
     assert(options === expected)
   }
 
@@ -419,7 +419,7 @@ class DiffSuite extends FunSuite with SparkTestSession {
   }
 
   test("diff with custom diff options") {
-    val options = DiffOptions("action", "before", "after", "new", "change", "del", "eq", None)
+    val options = DiffOptions("action", "before", "after", "new", "change", "del", "eq")
 
     val expected = Seq(
       Row("eq", 1, "one", "one"),
@@ -497,8 +497,8 @@ class DiffSuite extends FunSuite with SparkTestSession {
 
     doTestRequirement(left.diff(right),
       "The datasets do not have the same schema.\n" +
-        "Left extra columns: value (StringType)\n" +
-        "Right extra columns: value (IntegerType)")
+        "left extra columns: value (StringType)\n" +
+        "right extra columns: value (IntegerType)")
   }
 
   test("diff with different nullability") {
@@ -525,8 +525,8 @@ class DiffSuite extends FunSuite with SparkTestSession {
 
     doTestRequirement(left.diff(right, "id"),
       "The datasets do not have the same schema.\n" +
-        "Left extra columns: value (StringType)\n" +
-        "Right extra columns: comment (StringType)")
+        "left extra columns: value (StringType)\n" +
+        "right extra columns: comment (StringType)")
   }
 
   test("diff with case-insensitive column names") {
@@ -551,8 +551,8 @@ class DiffSuite extends FunSuite with SparkTestSession {
     withSQLConf(SQLConf.CASE_SENSITIVE.key -> "true") {
       doTestRequirement(left.diff(right, "id"),
         "The datasets do not have the same schema.\n" +
-          "Left extra columns: id (IntegerType), value (StringType)\n" +
-          "Right extra columns: ID (IntegerType), VaLuE (StringType)")
+          "left extra columns: id (IntegerType), value (StringType)\n" +
+          "right extra columns: ID (IntegerType), VaLuE (StringType)")
     }
   }
 
@@ -567,9 +567,9 @@ class DiffSuite extends FunSuite with SparkTestSession {
     val right = Seq((1, 1, "str")).toDF("id", "seq", "value")
 
     doTestRequirement(left.diff(right, "id"),
-      "The number of columns doesn't match.\n" +
-        "Left column names (2): id, value\n" +
-        "Right column names (3): id, seq, value")
+      "The datasets do not have the same schema.\n" +
+        "left extra columns: \n" +
+        "right extra columns: seq (IntegerType)")
   }
 
   test("diff as U") {
@@ -589,7 +589,7 @@ class DiffSuite extends FunSuite with SparkTestSession {
   }
 
   test("diff as U with encoder and custom options") {
-    val options = DiffOptions("action", "before", "after", "new", "change", "del", "eq", None)
+    val options = DiffOptions("action", "before", "after", "new", "change", "del", "eq")
     val encoder = Encoders.product[DiffAsCustom]
 
     val actions = Seq(

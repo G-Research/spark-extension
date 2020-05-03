@@ -147,7 +147,7 @@ package object diff {
      */
     @scala.annotation.varargs
     def diffAs[U](other: Dataset[T], diffEncoder: Encoder[U], idColumns: String*): Dataset[U] = {
-      Diff.ofAs(this.ds, other, diffEncoder, idColumns: _*)
+      Diff.ofAs(this.ds, other, idColumns: _*)(diffEncoder)
     }
 
     /**
