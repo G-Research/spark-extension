@@ -41,7 +41,8 @@ object DiffComparator{
     assert(divergence >= significantDigitAddon, "The divergence parameter hast to be greater or equal to " + significantDigitAddon + " for datatype " + datatype)
     override def description: String = "Compares two numbers and considers them equal as long as their difference is below the given divergence."
     override def compare(left: Column, right: Column): Expression = {
-      LessThanOrEqual(abs(left - right).expr, lit(divergence + significantDigitAddon).expr)
+      Or(And(IsNull(left.expr), IsNull(right.expr)),
+      LessThanOrEqual(abs(left - right).expr, lit(divergence + significantDigitAddon).expr))
     }
   }
 
@@ -79,7 +80,8 @@ object DiffComparator{
         UnixTimestamp(rightTimestamp.expr, defaultUnixFormat, Some(rightTz.getID))
       ))
 
-      (diffInSeconds > lit(0) && diffInSeconds <= lit(leftBeforeRight) ||
+      ( leftTimestamp.isNull && rightTimestamp.isNull ||
+        diffInSeconds > lit(0) && diffInSeconds <= lit(leftBeforeRight) ||
         diffInSeconds <= lit(0) && abs(diffInSeconds) <= lit(leftAfterRight)).expr
     }
 }

@@ -36,6 +36,9 @@ import org.apache.spark.sql.types.{DataType, StructField}
  * @param ignoreColumns an optional list of columns which are dropped from both sides before comparing
  * @param datatypeComparators an optional map of datatypes with the applicable comparator, overwriting the default '<=>' comparator
  * @param columnComparators an optional map of column names with the applicable comparator, overwriting the datatype comparators
+ * @param joinType  Type of the join to perform. Default `full_outer`, should usually not be changed.
+ *                  Only in some cases advisable, such as for testing purposes to avoid OOM exceptions or to zero in on a specific section of the diff.
+ *                  Must be one of: `inner`, `cross`, `outer`, `full`, `full_outer`, `left`, `left_outer`, `right`, `right_outer`, `left_semi`, `left_anti`.
  */
 case class DiffOptions(
   diffColumn: String,
@@ -48,7 +51,8 @@ case class DiffOptions(
   nullOutValidData: Boolean = false,
   ignoreColumns: Seq[String] = Seq(),
   datatypeComparators: Map[DataType, DiffComparator] = Map(),
-  columnComparators: Map[String, DiffComparator] = Map()
+  columnComparators: Map[String, DiffComparator] = Map(),
+  joinType: String = "full_outer"
 ) {
 
   require(leftColumnPrefix.nonEmpty, "Left column prefix must not be empty")

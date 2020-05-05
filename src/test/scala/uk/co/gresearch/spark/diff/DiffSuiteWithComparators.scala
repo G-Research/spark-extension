@@ -76,7 +76,8 @@ class DiffSuiteWithComparators extends FunSuite with SparkTestSession with MustM
       Row(1, Timestamp.valueOf("2020-01-01 12:12:12.000"), Timestamp.valueOf("2020-01-01 12:12:12.000")),
       Row(2, Timestamp.valueOf("2020-01-01 12:12:12.000"), Timestamp.valueOf("2020-01-01 12:12:12.000")),
       Row(3, Timestamp.valueOf("2020-01-01 12:12:12.000"), Timestamp.valueOf("2020-01-01 12:12:12.000")),
-      Row(4, Timestamp.valueOf("2020-01-01 13:12:12.000"), Timestamp.valueOf("2020-01-01 12:12:12.000"))
+      Row(4, Timestamp.valueOf("2020-01-01 13:12:12.000"), Timestamp.valueOf("2020-01-01 12:12:12.000")),
+      Row(5, Timestamp.valueOf("2020-01-01 12:12:12.000"), null)
     ).asJava, timestampStruct
   )
 
@@ -85,7 +86,8 @@ class DiffSuiteWithComparators extends FunSuite with SparkTestSession with MustM
       Row(1, Timestamp.valueOf("2020-01-01 12:12:02.000"), Timestamp.valueOf("2020-01-01 12:12:18.000")),
       Row(2, Timestamp.valueOf("2020-01-01 12:12:22.000"), Timestamp.valueOf("2020-01-01 12:12:16.000")),
       Row(3, Timestamp.valueOf("2020-01-01 12:12:32.000"), Timestamp.valueOf("2020-01-01 12:12:12.000")),
-      Row(4, Timestamp.valueOf("2020-01-01 12:12:13.000"), Timestamp.valueOf("2020-01-01 12:12:12.000"))
+      Row(4, Timestamp.valueOf("2020-01-01 12:12:13.000"), Timestamp.valueOf("2020-01-01 12:12:12.000")),
+      Row(5, Timestamp.valueOf("2020-01-01 12:12:12.000"), null)
     ).asJava, timestampStruct
   )
 
@@ -113,7 +115,8 @@ class DiffSuiteWithComparators extends FunSuite with SparkTestSession with MustM
         Seq("Equal", 2, null, null, null, null),
         Seq(if(duration >= 20) "Equal" else "Changed", 3, if(duration >= 20) null else Timestamp.valueOf("2020-01-01 12:12:12.0"),
           if(duration >= 20) null else Timestamp.valueOf("2020-01-01 12:12:32.0"), null, null),
-        Seq("Changed", 4, Timestamp.valueOf("2020-01-01 13:12:12.0"), Timestamp.valueOf("2020-01-01 12:12:13.0"), null, null)
+        Seq("Changed", 4, Timestamp.valueOf("2020-01-01 13:12:12.0"), Timestamp.valueOf("2020-01-01 12:12:13.0"), null, null),
+        Seq("Equal", 5, null, null, null, null)
       )
 
       val actual = diffWithOptions.of(leftTimeStamps, rightTimeStamps, "id").orderBy("id", "diff")
@@ -145,7 +148,8 @@ class DiffSuiteWithComparators extends FunSuite with SparkTestSession with MustM
         Seq(if(tz == "UTC") "Equal" else "Changed", 1, if(tz == "UTC") null else Timestamp.valueOf("2020-01-01 12:12:12.0"), if(tz == "UTC") null else Timestamp.valueOf("2020-01-01 12:12:02.0")),
         Seq(if(tz == "UTC") "Equal" else "Changed", 2, if(tz == "UTC") null else Timestamp.valueOf("2020-01-01 12:12:12.0"), if(tz == "UTC") null else Timestamp.valueOf("2020-01-01 12:12:22.0")),
         Seq("Changed", 3, Timestamp.valueOf("2020-01-01 12:12:12.0"), Timestamp.valueOf("2020-01-01 12:12:32.0")),
-        Seq(if(tz == "CET") "Equal" else "Changed", 4, if(tz == "CET") null else Timestamp.valueOf("2020-01-01 13:12:12.0"), if(tz == "CET") null else Timestamp.valueOf("2020-01-01 12:12:13.0"))
+        Seq(if(tz == "CET") "Equal" else "Changed", 4, if(tz == "CET") null else Timestamp.valueOf("2020-01-01 13:12:12.0"), if(tz == "CET") null else Timestamp.valueOf("2020-01-01 12:12:13.0")),
+        Seq(if(tz == "UTC") "Equal" else "Changed", 5, if(tz == "UTC") null else Timestamp.valueOf("2020-01-01 12:12:12.000") , if(tz == "UTC") null else Timestamp.valueOf("2020-01-01 12:12:12.000"))
       )
 
       val actual = diffWithTimezones.of(leftTimeStamps, rightTimeStamps, "id").orderBy("id", "diff")

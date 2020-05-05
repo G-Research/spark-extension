@@ -19,7 +19,7 @@ package uk.co.gresearch.spark.diff
 
 import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.types.StructField
+import org.apache.spark.sql.types.{StructField, StructType}
 import org.apache.spark.sql.{DataFrame, Dataset, Encoder, Row}
 import uk.co.gresearch.spark.diff.DiffOptions.columnName
 
@@ -33,6 +33,9 @@ class Diff(options: DiffOptions) {
 
   private val changed: String = "_changed_columns_"
 
+  /**
+   * Validates the StructTypes of both datasets.
+   */
   def checkSchema[T](left: Dataset[T], right: Dataset[T], idColumns: String*): Unit = {
 
     require(left.columns.length > 0, "The schema must not be empty")
@@ -77,6 +80,14 @@ class Diff(options: DiffOptions) {
     Seq(options.leftColumnPrefix, options.rightColumnPrefix)
       .flatMap(prefix => nonIdColumns.map(column => s"${prefix}_$column"))
 
+  /**
+   * Function calculating the diff of two datasets.
+   * Note: By default the right dataset is broadcasted by Spark.
+   * @param left - the left dataset
+   * @param right - the right dataset
+   * @param idColumns - the primary keys over which the join is performed
+   * @tparam T - Entity type of the datasets
+   */
   def of[T](left: Dataset[T], right: Dataset[T], idColumns: String*): DataFrame = {
     val leftIgnored = left.drop(options.ignoreColumns:_*)
     val rightIgnored = right.drop(options.ignoreColumns:_*)
@@ -114,7 +125,7 @@ class Diff(options: DiffOptions) {
       otherColumns.flatMap(c => Seq(l(c.name).as(s"${options.leftColumnPrefix}_${c.name}"), r(c.name).as(s"${options.rightColumnPrefix}_${c.name}")))
 
     val select = List(diffCondition.as(options.diffColumn)) ++ (if(options.nullOutValidData) Seq(changedColumnIndicator.as(changed)) else Seq()) ++ diffColumns
-    val joined = l.join(r, joinCondition, "fullouter").select(select: _*)
+    val joined = l.join(broadcast(r), joinCondition, options.joinType).select(select: _*)
 
     if(options.nullOutValidData){   // finally we null out each valid cell if required
       replaceValidCellsWithNull(joined, pkColumnsCs)
@@ -136,6 +147,7 @@ class Diff(options: DiffOptions) {
     val leftPrefix = options.leftColumnPrefix
     val rightPrefix = options.rightColumnPrefix
     val diffColumn = options.diffColumn
+    val nullColumnsSchema = StructType(joined.schema.fields.map(f => if(primaryColumns.contains(f.name)) f else f.copy(nullable = true)))
     val nullReplaced = joined.map(row => {
       val changedColumns = row.getList[String](1).asScala.flatMap(c => Seq(s"${leftPrefix}_$c", s"${rightPrefix}_$c"))
       val keepTheseColumns = Set(diffColumn) ++ primaryColumns ++ changedColumns
@@ -144,7 +156,7 @@ class Diff(options: DiffOptions) {
       case (_, _) => null
     }
       Row.fromSeq(newRowSeq)
-    })(RowEncoder(joined.schema))
+    })(RowEncoder(nullColumnsSchema))
     nullReplaced.drop(changed)
   }
 
