@@ -16,9 +16,9 @@
 
 package uk.co.gresearch.spark.diff
 
-import org.apache.spark.sql.{Dataset, Encoders, Row}
 import org.apache.spark.sql.internal.SQLConf
-import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.types.{ArrayType, IntegerType, StringType, StructField, StructType}
+import org.apache.spark.sql.{Dataset, Encoders, Row}
 import org.scalatest.FunSuite
 
 case class Empty()
@@ -28,6 +28,7 @@ case class Value3(id: Int, left_value: String, right_value: String, value: Strin
 case class Value4(id: Int, diff: String)
 case class Value5(first_id: Int, id: String)
 case class Value6(id: Int, label: String)
+case class Value7(id: Int, value: Option[String], label: Option[String])
 
 case class DiffAs(diff: String,
                   id: Int,
@@ -62,8 +63,29 @@ class DiffSuite extends FunSuite with SparkTestSession {
     Value(4, Some("four"))
   ).toDS()
 
-  lazy val expectedDiffColumns: Seq[String] =
-    Seq("diff", "id", "left_value", "right_value")
+  lazy val left7: Dataset[Value7] = Seq(
+    Value7(1, Some("one"), Some("one label")),
+    Value7(2, Some("two"), Some("two labels")),
+    Value7(3, Some("three"), Some("three labels")),
+    Value7(4, Some("four"), Some("four labels")),
+    Value7(5, None, None),
+    Value7(6, Some("six"), Some("six labels")),
+    Value7(7, Some("seven"), Some("seven labels")),
+    Value7(9, None, None),
+  ).toDS()
+
+  lazy val right7: Dataset[Value7] = Seq(
+    Value7(1, Some("One"), Some("one label")),
+    Value7(2, Some("two"), Some("two Labels")),
+    Value7(3, Some("Three"), Some("Three Labels")),
+    Value7(4, None, None),
+    Value7(5, Some("five"), Some("five labels")),
+    Value7(6, Some("six"), Some("six labels")),
+    Value7(8, Some("eight"), Some("eight labels")),
+    Value7(10, None, None),
+  ).toDS()
+
+  lazy val expectedDiffColumns: Seq[String] = Seq("diff", "id", "left_value", "right_value")
 
   lazy val expectedDiff: Seq[Row] = Seq(
     Row("N", 1, "one", "one"),
@@ -79,8 +101,21 @@ class DiffSuite extends FunSuite with SparkTestSession {
     Row("D", 4, "four", null)
   )
 
-  lazy val expectedDiffAs: Seq[DiffAs] = expectedDiff.map( r =>
+  lazy val expectedDiffAs: Seq[DiffAs] = expectedDiff.map(r =>
     DiffAs(r.getString(0), r.getInt(1), Option(r.getString(2)), Option(r.getString(3)))
+  )
+
+  lazy val expectedDiff7: Seq[Row] = Seq(
+    Row("C", Seq("value"), 1, "one", "One", "one label", "one label"),
+    Row("C", Seq("label"), 2, "two", "two", "two labels", "two Labels"),
+    Row("C", Seq("value", "label"), 3, "three", "Three", "three labels", "Three Labels"),
+    Row("C", Seq("value", "label"), 4, "four", null, "four labels", null),
+    Row("C", Seq("value", "label"), 5, null, "five", null, "five labels"),
+    Row("N", Seq.empty[String], 6, "six", "six", "six labels", "six labels"),
+    Row("D", null, 7, "seven", null, "seven labels", null),
+    Row("I", null, 8, null, "eight", null, "eight labels"),
+    Row("D", null, 9, null, null, null, null),
+    Row("I", null, 10, null, null, null, null),
   )
 
   test("distinct string for") {
@@ -173,8 +208,7 @@ class DiffSuite extends FunSuite with SparkTestSession {
       Row("I", 4, 1, null, "four")
     )
 
-    val actual = left.diff(right, "id", "seq")
-      .orderBy("id", "seq")
+    val actual = left.diff(right, "id", "seq").orderBy("id", "seq")
 
     assert(actual.columns === Seq("diff", "id", "seq", "left_value", "right_value"))
     assert(actual.collect() === expected)
@@ -189,8 +223,7 @@ class DiffSuite extends FunSuite with SparkTestSession {
       Row("I", 4, "four")
     )
 
-    val actual = left.diff(right, "id", "value")
-      .orderBy("id", "diff")
+    val actual = left.diff(right, "id", "value").orderBy("id", "diff")
 
     assert(actual.columns === Seq("diff", "id", "value"))
     assert(actual.collect() === expected)
@@ -248,8 +281,7 @@ class DiffSuite extends FunSuite with SparkTestSession {
       Row("I", 4, None.orNull, None.orNull, "four")
     )
 
-    val actual = left.diff(right, "id", "seq")
-      .orderBy("id", "seq")
+    val actual = left.diff(right, "id", "seq").orderBy("id", "seq")
 
     assert(actual.columns === Seq("diff", "id", "seq", "left_value", "right_value"))
     assert(actual.collect() === expected)
@@ -453,8 +485,7 @@ class DiffSuite extends FunSuite with SparkTestSession {
       Row("new", 4, null, "four")
     )
 
-    val actual = left.diff(right, options, "id")
-      .orderBy("id", "action")
+    val actual = left.diff(right, options, "id").orderBy("id", "action")
 
     assert(actual.columns === Seq("action", "id", "before_value", "after_value"))
     assert(actual.collect() === expected)
@@ -492,7 +523,7 @@ class DiffSuite extends FunSuite with SparkTestSession {
     val emptyNochangeDiffValueOpts = default.copy(nochangeDiffValue = "")
     assert(emptyNochangeDiffValueOpts.nochangeDiffValue.isEmpty)
 
-    Seq("value", "").foreach{ value =>
+    Seq("value", "").foreach { value =>
       doTestRequirement(default.copy(insertDiffValue = value, changeDiffValue = value),
         s"Diff values must be distinct: List($value, $value, D, N)")
       doTestRequirement(default.copy(insertDiffValue = value, deleteDiffValue = value),
@@ -650,7 +681,66 @@ class DiffSuite extends FunSuite with SparkTestSession {
       "Diff encoder's columns must be part of the diff result schema, these columns are unexpected: extra")
   }
 
-  def doTestRequirement(f : => Any, expected: String): Unit = {
+  test("diff with change column") {
+    val options = DiffOptions.default.withChangeColumn("changes")
+    val actual = left7.diff(right7, options, "id").orderBy("id")
+
+    assert(actual.columns === Seq("diff", "changes", "id", "left_value", "right_value", "left_label", "right_label"))
+    assert(actual.schema === StructType(Seq(
+      StructField("diff", StringType, nullable = false),
+      StructField("changes", ArrayType(StringType, containsNull = false), nullable = true),
+      StructField("id", IntegerType, nullable = true),
+      StructField("left_value", StringType, nullable = true),
+      StructField("right_value", StringType, nullable = true),
+      StructField("left_label", StringType, nullable = true),
+      StructField("right_label", StringType, nullable = true),
+    )))
+    assert(actual.collect() === expectedDiff7)
+  }
+
+  test("diff with change column without id columns") {
+    val options = DiffOptions.default.withChangeColumn("changes")
+    val actual = left7.diff(right7, options)
+
+    assert(actual.columns === Seq("diff", "changes", "id", "value", "label"))
+    assert(actual.schema === StructType(Seq(
+      StructField("diff", StringType, nullable = false),
+      StructField("changes", ArrayType(StringType, containsNull = false), nullable = true),
+      StructField("id", IntegerType, nullable = true),
+      StructField("value", StringType, nullable = true),
+      StructField("label", StringType, nullable = true),
+    )))
+    assert(actual.select($"diff", $"changes").distinct().orderBy($"diff").collect() ===
+      Seq(Row("D", null), Row("I", null), Row("N", Seq.empty[String])))
+  }
+
+  test("diff with change column name in non-id columns") {
+    val options = DiffOptions.default.withChangeColumn("value")
+    val actual = left7.diff(right7, options, "id").orderBy("id")
+
+    assert(actual.columns === Seq("diff", "value", "id", "left_value", "right_value", "left_label", "right_label"))
+    assert(actual.collect() === expectedDiff7)
+  }
+
+  test("diff with change column name in id columns") {
+    val options = DiffOptions.default.withChangeColumn("value")
+    doTestRequirement(left.diff(right, options, "id", "value"),
+      "The id columns must not contain the change column name 'value': id, value")
+  }
+
+  test("diff options with change column name same as diff column") {
+    doTestRequirement(
+      DiffOptions.default.withDiffColumn("same").withChangeColumn("same"),
+      "Change column name must be different to diff column: same"
+    )
+
+    doTestRequirement(
+      DiffOptions.default.withChangeColumn("same").withDiffColumn("same"),
+      "Change column name must be different to diff column: same"
+    )
+  }
+
+  def doTestRequirement(f: => Any, expected: String): Unit = {
     assert(intercept[IllegalArgumentException](f).getMessage === s"requirement failed: $expected")
   }
 
