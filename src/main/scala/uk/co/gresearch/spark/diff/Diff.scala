@@ -18,9 +18,10 @@ package uk.co.gresearch.spark.diff
 
 import java.util.Locale
 
-import org.apache.spark.sql.{DataFrame, Dataset, Encoder}
-import org.apache.spark.sql.functions.{coalesce, lit, not, when}
+import org.apache.spark.sql.{Column, DataFrame, Dataset, Encoder}
+import org.apache.spark.sql.functions.{array, coalesce, col, concat, lit, not, when}
 import org.apache.spark.sql.internal.SQLConf
+import org.apache.spark.sql.types.{ArrayType, StringType}
 
 /**
  * Differ class to diff two Datasets.
@@ -87,6 +88,9 @@ class Diff(options: DiffOptions) {
     val pkColumnsCs = pkColumns.map(columnName).toSet
     val otherColumns = left.columns.filter(col => !pkColumnsCs.contains(columnName(col)))
 
+    require(!options.changeColumn.exists(pkColumns.contains),
+      s"The id columns must not contain the change column name '${options.changeColumn.get}': ${pkColumns.mkString((", "))}")
+
     val existsColumnName = Diff.distinctStringNameFor(left.columns)
     val l = left.withColumn(existsColumnName, lit(1))
     val r = right.withColumn(existsColumnName, lit(1))
@@ -98,7 +102,8 @@ class Diff(options: DiffOptions) {
       when(l(existsColumnName).isNull, lit(options.insertDiffValue)).
         when(r(existsColumnName).isNull, lit(options.deleteDiffValue)).
         when(changeCondition, lit(options.changeDiffValue)).
-        otherwise(lit(options.nochangeDiffValue))
+        otherwise(lit(options.nochangeDiffValue)).
+        as(options.diffColumn)
 
     val diffColumns =
       pkColumns.map(c => coalesce(l(c), r(c)).as(c)) ++
@@ -109,8 +114,30 @@ class Diff(options: DiffOptions) {
           )
         )
 
+    val changeColumn =
+      options.changeColumn
+        .map(changeColumn =>
+          when(l(existsColumnName).isNull || r(existsColumnName).isNull, lit(null)).
+            otherwise(
+              Some(otherColumns.toSeq)
+                .filter(_.nonEmpty)
+                .map(columns =>
+                  concat(
+                    columns.map(c =>
+                      when(l(c) <=> r(c), array()).otherwise(array(lit(c)))
+                    ): _*
+                  )
+                ).getOrElse(
+                  array().cast(ArrayType(StringType, containsNull = false))
+                )
+            ).
+            as(changeColumn)
+        )
+        .map(Seq(_))
+        .getOrElse(Seq.empty[Column])
+
     l.join(r, joinCondition, "fullouter")
-      .select(diffCondition.as(options.diffColumn) +: diffColumns: _*)
+      .select((diffCondition +: changeColumn) ++ diffColumns: _*)
   }
 
   def ofAs[T, U](left: Dataset[T], right: Dataset[T], idColumns: String*)

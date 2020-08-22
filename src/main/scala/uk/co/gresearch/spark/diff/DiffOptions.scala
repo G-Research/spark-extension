@@ -26,6 +26,7 @@ package uk.co.gresearch.spark.diff
  * @param changeDiffValue value in diff column for changed rows
  * @param deleteDiffValue value in diff column for deleted rows
  * @param nochangeDiffValue value in diff column for un-changed rows
+ * @param changeColumn name of change column
  */
 case class DiffOptions(diffColumn: String,
                        leftColumnPrefix: String,
@@ -33,7 +34,8 @@ case class DiffOptions(diffColumn: String,
                        insertDiffValue: String,
                        changeDiffValue: String,
                        deleteDiffValue: String,
-                       nochangeDiffValue: String) {
+                       nochangeDiffValue: String,
+                       changeColumn: Option[String] = None) {
 
   require(leftColumnPrefix.nonEmpty, "Left column prefix must not be empty")
   require(rightColumnPrefix.nonEmpty, "Right column prefix must not be empty")
@@ -44,10 +46,12 @@ case class DiffOptions(diffColumn: String,
   require(diffValues.distinct.length == diffValues.length,
     s"Diff values must be distinct: $diffValues")
 
+  require(!changeColumn.contains(diffColumn), s"Change column name must be different to diff column: $diffColumn")
+
   /**
    * Fluent method to change the diff column name.
-   * Returns a new immutable DiffOptions instance with the new column name.
-   * @param diffColumn new column name
+   * Returns a new immutable DiffOptions instance with the new diff column name.
+   * @param diffColumn new diff column name
    * @return new immutable DiffOptions instance
    */
   def withDiffColumn(diffColumn: String): DiffOptions = {
@@ -113,11 +117,31 @@ case class DiffOptions(diffColumn: String,
   def withNochangeDiffValue(nochangeDiffValue: String): DiffOptions = {
     this.copy(nochangeDiffValue = nochangeDiffValue)
   }
+
+  /**
+   * Fluent method to change the change column name.
+   * Returns a new immutable DiffOptions instance with the new change column name.
+   * @param changeColumn new change column name
+   * @return new immutable DiffOptions instance
+   */
+  def withChangeColumn(changeColumn: String): DiffOptions = {
+    this.copy(changeColumn = Some(changeColumn))
+  }
+
+  /**
+   * Fluent method to remove change column.
+   * Returns a new immutable DiffOptions instance without a change column.
+   * @return new immutable DiffOptions instance
+   */
+  def withoutChangeColumn(): DiffOptions = {
+    this.copy(changeColumn = None)
+  }
+
 }
 
 object DiffOptions {
   /**
    * Default diffing options.
    */
-  val default: DiffOptions = DiffOptions("diff", "left", "right", "I", "C", "D", "N")
+  val default: DiffOptions = DiffOptions("diff", "left", "right", "I", "C", "D", "N", None)
 }
