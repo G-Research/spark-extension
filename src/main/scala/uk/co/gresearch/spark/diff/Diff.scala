@@ -18,13 +18,13 @@ package uk.co.gresearch.spark.diff
 
 import java.util.Locale
 
-import org.apache.spark.sql.{Column, DataFrame, Dataset, Encoder}
-import org.apache.spark.sql.functions.{array, coalesce, col, concat, lit, not, when}
+import org.apache.spark.sql.functions._
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.{ArrayType, StringType}
+import org.apache.spark.sql.{Column, DataFrame, Dataset, Encoder}
 
 /**
- * Differ class to diff two Datasets.
+ * Differ class to diff two Datasets. See Diff.of(…) for details.
  * @param options options for the diffing process
  */
 class Diff(options: DiffOptions) {
@@ -33,6 +33,7 @@ class Diff(options: DiffOptions) {
   private def columnName(columnName: String): String =
     if (SQLConf.get.caseSensitiveAnalysis) columnName else columnName.toLowerCase(Locale.ROOT)
 
+  @scala.annotation.varargs
   def checkSchema[T](left: Dataset[T], right: Dataset[T], idColumns: String*): Unit = {
     require(left.columns.length == right.columns.length,
       "The number of columns doesn't match.\n" +
@@ -81,6 +82,60 @@ class Diff(options: DiffOptions) {
     Seq(options.leftColumnPrefix, options.rightColumnPrefix)
       .flatMap(prefix => nonIdColumns.map(column => s"${prefix}_$column"))
 
+  /**
+   * Returns a new DataFrame that contains the differences between the two Datasets
+   * of the same type `T`. Both Datasets must contain the same set of column names and data types.
+   * The order of columns in the two Datasets is not important as columns are compared based on the
+   * name, not the the position.
+   *
+   * Optional id columns are used to uniquely identify rows to compare. If values in any non-id
+   * column are differing between the two Datasets, then that row is marked as `"C"`hange
+   * and `"N"`o-change otherwise. Rows of the right Dataset, that do not exist in the left Dataset
+   * (w.r.t. the values in the id columns) are marked as `"I"`nsert. And rows of the left Dataset,
+   * that do not exist in the right Dataset are marked as `"D"`elete.
+   *
+   * If no id columns are given, all columns are considered id columns. Then, no `"C"`hange rows
+   * will appear, as all changes will exists as respective `"D"`elete and `"I"`nsert.
+   *
+   * The returned DataFrame has the `diff` column as the first column. This holds the `"N"`, `"C"`,
+   * `"I"` or `"D"` strings. The id columns follow, then the non-id columns (all remaining columns).
+   *
+   * {{{
+   *   val df1 = Seq((1, "one"), (2, "two"), (3, "three")).toDF("id", "value")
+   *   val df2 = Seq((1, "one"), (2, "Two"), (4, "four")).toDF("id", "value")
+   *
+   *   df1.diff(df2).show()
+   *
+   *   // output:
+   *   // +----+---+-----+
+   *   // |diff| id|value|
+   *   // +----+---+-----+
+   *   // |   N|  1|  one|
+   *   // |   D|  2|  two|
+   *   // |   I|  2|  Two|
+   *   // |   D|  3|three|
+   *   // |   I|  4| four|
+   *   // +----+---+-----+
+   *
+   *   df1.diff(df2, "id").show()
+   *
+   *   // output:
+   *   // +----+---+----------+-----------+
+   *   // |diff| id|left_value|right_value|
+   *   // +----+---+----------+-----------+
+   *   // |   N|  1|       one|        one|
+   *   // |   C|  2|       two|        Two|
+   *   // |   D|  3|     three|       null|
+   *   // |   I|  4|      null|       four|
+   *   // +----+---+----------+-----------+
+   *
+   * }}}
+   *
+   * The id columns are in order as given to the method. If no id columns are given then all
+   * columns of this Dataset are id columns and appear in the same order. The remaining non-id
+   * columns are in the order of this Dataset.
+   */
+  @scala.annotation.varargs
   def of[T](left: Dataset[T], right: Dataset[T], idColumns: String*): DataFrame = {
     checkSchema(left, right, idColumns: _*)
 
@@ -140,11 +195,27 @@ class Diff(options: DiffOptions) {
       .select((diffCondition +: changeColumn) ++ diffColumns: _*)
   }
 
+  /**
+   * Returns a new Dataset that contains the differences between the two Datasets of the same type `T`.
+   *
+   * See `of(Dataset[T], Dataset[T], String*`.
+   *
+   * This requires an additional implicit `Encoder[U]` for the return type `Dataset[U]`.
+   */
+  @scala.annotation.varargs
   def ofAs[T, U](left: Dataset[T], right: Dataset[T], idColumns: String*)
                (implicit diffEncoder: Encoder[U]): Dataset[U] = {
     ofAs(left, right, diffEncoder, idColumns: _*)
   }
 
+  /**
+   * Returns a new Dataset that contains the differences between the two Datasets of the same type `T`.
+   *
+   * See `of(Dataset[T], Dataset[T], String*`.
+   *
+   * This requires an additional explicit `Encoder[U]` for the return type `Dataset[U]`.
+   */
+  @scala.annotation.varargs
   def ofAs[T, U](left: Dataset[T], right: Dataset[T],
                  diffEncoder: Encoder[U], idColumns: String*): Dataset[U] = {
     val nonIdColumns = left.columns.diff(if (idColumns.isEmpty) left.columns.toList else idColumns)
@@ -176,13 +247,83 @@ object Diff {
     "_" * (existing.map(_.length).reduceOption(_ max _).getOrElse(0) + 1)
   }
 
+  /**
+   * Returns a new DataFrame that contains the differences between the two Datasets
+   * of the same type `T`. Both Datasets must contain the same set of column names and data types.
+   * The order of columns in the two Datasets is not important as columns are compared based on the
+   * name, not the the position.
+   *
+   * Optional id columns are used to uniquely identify rows to compare. If values in any non-id
+   * column are differing between the two Datasets, then that row is marked as `"C"`hange
+   * and `"N"`o-change otherwise. Rows of the right Dataset, that do not exist in the left Dataset
+   * (w.r.t. the values in the id columns) are marked as `"I"`nsert. And rows of the left Dataset,
+   * that do not exist in the right Dataset are marked as `"D"`elete.
+   *
+   * If no id columns are given, all columns are considered id columns. Then, no `"C"`hange rows
+   * will appear, as all changes will exists as respective `"D"`elete and `"I"`nsert.
+   *
+   * The returned DataFrame has the `diff` column as the first column. This holds the `"N"`, `"C"`,
+   * `"I"` or `"D"` strings. The id columns follow, then the non-id columns (all remaining columns).
+   *
+   * {{{
+   *   val df1 = Seq((1, "one"), (2, "two"), (3, "three")).toDF("id", "value")
+   *   val df2 = Seq((1, "one"), (2, "Two"), (4, "four")).toDF("id", "value")
+   *
+   *   df1.diff(df2).show()
+   *
+   *   // output:
+   *   // +----+---+-----+
+   *   // |diff| id|value|
+   *   // +----+---+-----+
+   *   // |   N|  1|  one|
+   *   // |   D|  2|  two|
+   *   // |   I|  2|  Two|
+   *   // |   D|  3|three|
+   *   // |   I|  4| four|
+   *   // +----+---+-----+
+   *
+   *   df1.diff(df2, "id").show()
+   *
+   *   // output:
+   *   // +----+---+----------+-----------+
+   *   // |diff| id|left_value|right_value|
+   *   // +----+---+----------+-----------+
+   *   // |   N|  1|       one|        one|
+   *   // |   C|  2|       two|        Two|
+   *   // |   D|  3|     three|       null|
+   *   // |   I|  4|      null|       four|
+   *   // +----+---+----------+-----------+
+   *
+   * }}}
+   *
+   * The id columns are in order as given to the method. If no id columns are given then all
+   * columns of this Dataset are id columns and appear in the same order. The remaining non-id
+   * columns are in the order of this Dataset.
+   */
+  @scala.annotation.varargs
   def of[T](left: Dataset[T], right: Dataset[T], idColumns: String*): DataFrame =
     default.of(left, right, idColumns: _*)
 
+  /**
+   * Returns a new Dataset that contains the differences between the two Datasets of the same type `T`.
+   *
+   * See `of(Dataset[T], Dataset[T], String*`.
+   *
+   * This requires an additional implicit `Encoder[U]` for the return type `Dataset[U]`.
+   */
+  @scala.annotation.varargs
   def ofAs[T, U](left: Dataset[T], right: Dataset[T], idColumns: String*)
                 (implicit diffEncoder: Encoder[U]): Dataset[U] =
     default.ofAs(left, right, idColumns: _*)
 
+  /**
+   * Returns a new Dataset that contains the differences between the two Datasets of the same type `T`.
+   *
+   * See `of(Dataset[T], Dataset[T], String*`.
+   *
+   * This requires an additional explicit `Encoder[U]` for the return type `Dataset[U]`.
+   */
+  @scala.annotation.varargs
   def ofAs[T, U](left: Dataset[T], right: Dataset[T],
                  diffEncoder: Encoder[U], idColumns: String*): Dataset[U] =
     default.ofAs(left, right, diffEncoder, idColumns: _*)

@@ -1,22 +1,40 @@
 # Spark Diff
 
-Add the following `import` to your code:
+Add the following `import` to your Scala code:
+
 ```scala
 import uk.co.gresearch.spark.diff._
 ```
 
-This adds a `diff` transformation to `Dataset` that computes the differences between two datasets,
-i.e. which rows of `this` dataset to _add_, _delete_ or _change_ to get to the given dataset.
+or this `import` to your Python code:
 
-For example, with
+```python
+from gresearch.spark.diff import *
+```
+
+This adds a `diff` transformation to `Dataset` and `DataFrame` that computes the differences between two datasets / dataframes,
+i.e. which rows of one dataset / dataframes to _add_, _delete_ or _change_ to get to the other dataset / dataframes.
+
+For example, in Scala
+
 ```scala
 val left = Seq((1, "one"), (2, "two"), (3, "three")).toDF("id", "value")
 val right = Seq((1, "one"), (2, "Two"), (4, "four")).toDF("id", "value")
 ```
+
+or in Python:
+
+```python
+left = spark.createDataFrame([(1, "one"), (2, "two"), (3, "three")], ["id", "value"])
+right = spark.createDataFrame([(1, "one"), (2, "Two"), (4, "four")], ["id", "value"])
+```
+
 diffing becomes as easy as:
+
 ```scala
 left.diff(right).show()
 ```
+
 |diff |id   |value  |
 |:---:|:---:|:-----:|
 |    N|    1|    one|
@@ -26,9 +44,11 @@ left.diff(right).show()
 |    I|    4|   four|
 
 With columns that provide unique identifiers per row (here `id`), the diff looks like:
+
 ```scala
 left.diff(right, "id").show()
 ```
+
 |diff |id   |left_value|right_value|
 |:---:|:---:|:--------:|:---------:|
 |    N|    1|       one|        one|
@@ -37,7 +57,8 @@ left.diff(right, "id").show()
 |    I|    4|    *null*|       four|
 
 
-Equivalent alternative is this hand-crafted transformation
+Equivalent alternative is this hand-crafted transformation (Scala)
+
 ```scala
 left.withColumn("exists", lit(1)).as("l")
   .join(right.withColumn("exists", lit(1)).as("r"),
@@ -52,6 +73,7 @@ left.withColumn("exists", lit(1)).as("l")
 ```
 
 Statistics on the differences can be obtained by
+
 ```scala
 left.diff(right, "id").groupBy("diff").count().show()
 ```
@@ -124,7 +146,7 @@ val options = DiffOptions.default
   .withChangeColumn("changes")
 ```
 
-## Methods
+## Methods (Scala)
 
 * `def diff(other: Dataset[T], idColumns: String*): DataFrame`
 * `def diff(other: Dataset[T], options: DiffOptions, idColumns: String*): DataFrame`
@@ -134,3 +156,9 @@ val options = DiffOptions.default
 * `def diffAs[U](other: Dataset[T], options: DiffOptions, idColumns: String*)(implicit diffEncoder: Encoder[U]): Dataset[U]`
 * `def diffAs[U](other: Dataset[T], diffEncoder: Encoder[U], idColumns: String*): Dataset[U]`
 * `def diffAs[U](other: Dataset[T], options: DiffOptions, diffEncoder: Encoder[U], idColumns: String*): Dataset[U]`
+
+
+## Methods (Python)
+
+* `def diff(self, other: DataFrame, *idColumns: str) -> DataFrame`
+* `def diff(self, other: DataFrame, options: DiffOptions, *idColumns: str) -> DataFrame`
