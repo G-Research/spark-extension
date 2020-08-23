@@ -1,0 +1,3 @@
+py4j
+# keep in-sync with pom.xml
+pyspark==3.0.0

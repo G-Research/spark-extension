@@ -71,7 +71,7 @@ class DiffSuite extends FunSuite with SparkTestSession {
     Value7(5, None, None),
     Value7(6, Some("six"), Some("six labels")),
     Value7(7, Some("seven"), Some("seven labels")),
-    Value7(9, None, None),
+    Value7(9, None, None)
   ).toDS()
 
   lazy val right7: Dataset[Value7] = Seq(
@@ -82,7 +82,7 @@ class DiffSuite extends FunSuite with SparkTestSession {
     Value7(5, Some("five"), Some("five labels")),
     Value7(6, Some("six"), Some("six labels")),
     Value7(8, Some("eight"), Some("eight labels")),
-    Value7(10, None, None),
+    Value7(10, None, None)
   ).toDS()
 
   lazy val expectedDiffColumns: Seq[String] = Seq("diff", "id", "left_value", "right_value")
@@ -115,7 +115,7 @@ class DiffSuite extends FunSuite with SparkTestSession {
     Row("D", null, 7, "seven", null, "seven labels", null),
     Row("I", null, 8, null, "eight", null, "eight labels"),
     Row("D", null, 9, null, null, null, null),
-    Row("I", null, 10, null, null, null, null),
+    Row("I", null, 10, null, null, null, null)
   )
 
   test("distinct string for") {
@@ -693,7 +693,7 @@ class DiffSuite extends FunSuite with SparkTestSession {
       StructField("left_value", StringType, nullable = true),
       StructField("right_value", StringType, nullable = true),
       StructField("left_label", StringType, nullable = true),
-      StructField("right_label", StringType, nullable = true),
+      StructField("right_label", StringType, nullable = true)
     )))
     assert(actual.collect() === expectedDiff7)
   }
@@ -708,7 +708,7 @@ class DiffSuite extends FunSuite with SparkTestSession {
       StructField("changes", ArrayType(StringType, containsNull = false), nullable = true),
       StructField("id", IntegerType, nullable = true),
       StructField("value", StringType, nullable = true),
-      StructField("label", StringType, nullable = true),
+      StructField("label", StringType, nullable = true)
     )))
     assert(actual.select($"diff", $"changes").distinct().orderBy($"diff").collect() ===
       Seq(Row("D", null), Row("I", null), Row("N", Seq.empty[String])))
