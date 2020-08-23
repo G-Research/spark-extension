@@ -39,3 +39,8 @@ build.log
 
 #SHITTY output not in target directory
 build.log
+
+# project specific
+python/**/__pycache__
+python/requirements.txt
+spark-*

@@ -1,12 +1,27 @@
 # Releasing Spark Extension
 
-This provides instructions on how to release a version of `spark-extension`.
+This provides instructions on how to release a version of `spark-extension`. We release this libarary
+for a number of Spark and Scala environments, but all from the same git tag. Release for the environment
+that is set in the `pom.xml` and create a tag. On success, release from that tag for all other environments
+as described below.
+
+## Testing master for all  environments
+
+The following steps release a snapshot and test it. Test all versions listed under [further down](#releasing-master-for-other-environments).
+
+- Set the version with `sh set-version.sh`, e.g. `sh set-version.sh 2.4.6 2.11.12`
+- Release a snapshot (make sure the version in the `pom.xml` file ends with `SNAPSHOT`): `mvn clean deploy`
+- Test the released snapshot: `sh test-release.sh`
 
 ## Releasing from master
 
 Follow this procedure to release a new version:
 
+- Add a new entry to `CHANGELOG.md` listing all notable changes of this release.
+  Use the heading `## [VERSION] - YYYY-MM-dd`, e.g. `## [1.0.0] - 2020-03-12`.
 - Remove the `-SNAPSHOT` suffix from `<version>` in the [`pom.xml`](pom.xml) file, e.g. `1.1.0-SNAPSHOT` → `1.1.0`.
+- Update the versions in the `README.md` file to the version of your `pom.xml` to reflect the latest version,
+  e.g. replace all `1.0.0-3.0` with `1.1.0-3.0`.
 - Commit the change to your local git repository, use a commit message like `Releasing 1.1.0`. Do not push to github yet.
 - Tag that commit with a version tag like `v1.1.0` and message like `Release v1.1.0`. Do not push to github yet.
 - Release the version with `mvn clean deploy`. This will be put into a staging repository and not automatically released (due to `<autoReleaseAfterClose>false</autoReleaseAfterClose>` in your [`pom.xml`](pom.xml) file).
@@ -17,6 +32,24 @@ Follow this procedure to release a new version:
   - Commit this change to your local git repository, use a commit message like `Post-release version bump to 1.2.0`.
   - Push all local commits to origin.
 - Otherwise drop it with `mvn nexus-staging:drop`. Remove the last two commits from your local history.
+
+## Releasing master for other environments
+
+Once you have released the new version, release from the same tag for all other Spark and Scala environments as well:
+- Release for these environments:
+  - Spark 2.4 with Scala 2.11 and 2.12
+  - Spark 3.0 with 2.12 (already released above, should be the tagged version)
+- Always use the latest Spark version per Spark minor version
+- Use Scala 2.11.12 and 2.12.10 specifically
+- Release process:
+  - Checkout the release tag, e.g. `git checkout v1.0.0`
+  - Set the version in the `pom.xml` file via `set-version.sh`, e.g. `sh set-version.sh 2.4.6 2.11.12`
+  - Review the `pom.xml` file changes: `git diff pom.xml`
+  - Release the version with `mvn clean deploy`
+  - Inspect and test the staged version. Use `spark-examples` for that.
+    - If you are happy with everything, release the package with `mvn nexus-staging:release`.
+    - Otherwise drop it with `mvn nexus-staging:drop`.
+- Revert the changes done to the `pom.xml` file: `git checkout pom.xml`
 
 ## Releasing a bug-fix version
 
@@ -38,7 +71,11 @@ Merge your bug fixes into this branch as you would normally do for master, use P
 This is very similar to [releasing from master](#releasing-from-master),
 but the version increment occurs on [patch level](https://semver.org/):
 
+- Add a new entry to `CHANGELOG.md` listing all notable changes of this release.
+  Use the heading `## [VERSION] - YYYY-MM-dd`, e.g. `## [1.0.0] - 2020-03-12`.
 - Remove the `-SNAPSHOT` suffix from `<version>` in the [`pom.xml`](pom.xml) file, e.g. `1.1.1-SNAPSHOT` → `1.1.1`.
+- Update the versions in the `README.md` file to the version of your `pom.xml` to reflect the latest version,
+  e.g. replace all `1.0.0-3.0` with `1.1.0-3.0`.
 - Commit the change to your local git repository, use a commit message like `Releasing 1.1.1`. Do not push to github yet.
 - Tag that commit with a version tag like `v1.1.0` and message like `Release v1.1.1`. Do not push to github yet.
 - Release the version with `mvn clean deploy`. This will be put into a staging repository and not automatically released (due to `<autoReleaseAfterClose>false</autoReleaseAfterClose>` in your [`pom.xml`](pom.xml) file).
@@ -49,3 +86,5 @@ but the version increment occurs on [patch level](https://semver.org/):
   - Commit this change to your local git repository, use a commit message like `Post-release version bump to 1.1.2`.
   - Push all local commits to origin.
 - Otherwise drop it with `mvn nexus-staging:drop`. Remove the last two commits from your local history.
+
+Consider releasing the bug-fix version for other environments as well. See [above](#releasing-master-for-other-environments) section for details.
