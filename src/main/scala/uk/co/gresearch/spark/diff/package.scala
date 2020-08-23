@@ -74,8 +74,6 @@ package object diff {
      * The id columns are in order as given to the method. If no id columns are given then all
      * columns of this Dataset are id columns and appear in the same order. The remaining non-id
      * columns are in the order of this Dataset.
-     *
-     * @group untypedrel
      */
     @scala.annotation.varargs
     def diff(other: Dataset[T], idColumns: String*): DataFrame = {
@@ -89,9 +87,6 @@ package object diff {
      * See `diff(Dataset[T], String*`.
      *
      * The schema of the returned DataFrame can be configured by the given `DiffOptions`.
-     *
-     * @group untypedrel
-     * @since 3.0.0
      */
     @scala.annotation.varargs
     def diff(other: Dataset[T], options: DiffOptions, idColumns: String*): DataFrame = {
@@ -105,9 +100,6 @@ package object diff {
      * See `diff(Dataset[T], String*`.
      *
      * This requires an additional implicit `Encoder[U]` for the return type `Dataset[U]`.
-     *
-     * @group typedrel
-     * @since 3.0.0
      */
     @scala.annotation.varargs
     def diffAs[U](other: Dataset[T], idColumns: String*)
@@ -123,9 +115,6 @@ package object diff {
      *
      * This requires an additional implicit `Encoder[U]` for the return type `Dataset[U]`.
      * The schema of the returned Dataset can be configured by the given `DiffOptions`.
-     *
-     * @group typedrel
-     * @since 3.0.0
      */
     @scala.annotation.varargs
     def diffAs[U](other: Dataset[T], options: DiffOptions, idColumns: String*)
@@ -140,9 +129,6 @@ package object diff {
      * See `diff(Dataset[T], String*`.
      *
      * This requires an additional explicit `Encoder[U]` for the return type `Dataset[U]`.
-     *
-     * @group typedrel
-     * @since 3.0.0
      */
     @scala.annotation.varargs
     def diffAs[U](other: Dataset[T], diffEncoder: Encoder[U], idColumns: String*): Dataset[U] = {
@@ -157,9 +143,6 @@ package object diff {
      *
      * This requires an additional explicit `Encoder[U]` for the return type `Dataset[U]`.
      * The schema of the returned Dataset can be configured by the given `DiffOptions`.
-     *
-     * @group typedrel
-     * @since 3.0.0
      */
     @scala.annotation.varargs
     def diffAs[U](other: Dataset[T],
