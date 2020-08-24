@@ -25,7 +25,7 @@ Follow this procedure to release a new version:
 - Commit the change to your local git repository, use a commit message like `Releasing 1.1.0`. Do not push to github yet.
 - Tag that commit with a version tag like `v1.1.0` and message like `Release v1.1.0`. Do not push to github yet.
 - Release the version with `mvn clean deploy`. This will be put into a staging repository and not automatically released (due to `<autoReleaseAfterClose>false</autoReleaseAfterClose>` in your [`pom.xml`](pom.xml) file).
-- Inspect and test the staged version. Use `spark-examples` for that. If you are happy with everything:
+- Inspect and test the staged version. Use `sh test-release.sh` or the `spark-examples` project for that. If you are happy with everything:
   - Push the commit and tag to origin.
   - Release the package with `mvn nexus-staging:release`.
   - Bump the version to the next [minor version](https://semver.org/) in `pom.xml` and append the `-SNAPSHOT` suffix again, e.g. `1.1.0` → `1.2.0-SNAPSHOT`.
@@ -46,7 +46,7 @@ Once you have released the new version, release from the same tag for all other 
   - Set the version in the `pom.xml` file via `set-version.sh`, e.g. `sh set-version.sh 2.4.6 2.11.12`
   - Review the `pom.xml` file changes: `git diff pom.xml`
   - Release the version with `mvn clean deploy`
-  - Inspect and test the staged version. Use `spark-examples` for that.
+  - Inspect and test the staged version. Use `sh test-release.sh` or the `spark-examples` project for that.
     - If you are happy with everything, release the package with `mvn nexus-staging:release`.
     - Otherwise drop it with `mvn nexus-staging:drop`.
 - Revert the changes done to the `pom.xml` file: `git checkout pom.xml`

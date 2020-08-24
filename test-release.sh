@@ -8,7 +8,7 @@ spark=$(grep --max-count=1 spark.version pom.xml | sed -E -e "s/\s*<[^>]+>//g" -
 scala_compat=$(grep --max-count=1 scala.compat.version pom.xml | sed -E -e "s/\s*<[^>]+>//g")
 
 echo
-echo "Testing Spark $spark and Scala $scala"
+echo "Testing Spark $spark and Scala $scala_compat"
 echo
 
 if [ ! -e "spark-$spark" ]
@@ -18,6 +18,17 @@ then
 fi
 
 spark-$spark/bin/spark-shell --packages uk.co.gresearch.spark:spark-extension_$scala_compat:$version < test-release.scala
+
+if [ ! -e "venv" ]
+then
+	virtualenv -p python3 venv
+	source venv/bin/activate
+	pip install python/requirements-${spark_compat}_${scala_compat}.txt
+	deactivate
+fi
+
+source venv/bin/activate
 spark-$spark/bin/spark-submit --packages uk.co.gresearch.spark:spark-extension_$scala_compat:$version test-release.py
+deactivate
 
 echo -e "\u001b[32;1mSUCCESS\u001b[0m"
