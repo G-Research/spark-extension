@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-package uk.co.gresearch.spark.diff
+package uk.co.gresearch.spark
 
 import org.apache.spark.SparkContext
-import org.apache.spark.sql.{SQLContext, SparkSession}
 import org.apache.spark.sql.catalyst.plans.SQLHelper
+import org.apache.spark.sql.{SQLContext, SparkSession}
 
 trait SparkTestSession extends SQLHelper {
 
@@ -42,7 +42,7 @@ trait SparkTestSession extends SQLHelper {
    */
   protected override def withSQLConf(pairs: (String, String)*)(f: => Unit): Unit = {
     SparkSession.setActiveSession(spark)
-    super.withSQLConf(pairs:_*)(f)
+    super.withSQLConf(pairs: _*)(f)
   }
 
 }

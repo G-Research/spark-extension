@@ -16,6 +16,9 @@
 
 package uk.co.gresearch.spark
 
+import java.util.Locale
+
+import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.{DataFrame, Dataset, Encoder}
 
 package object diff {
@@ -152,5 +155,15 @@ package object diff {
       new Diff(options).ofAs(this.ds, other, diffEncoder, idColumns: _*)
     }
   }
+
+  /**
+   * Produces a column name that considers configured case-sensitivity of column names.
+   * When case sensitivity is deactivated, it lower-cases the given column name and no-ops otherwise.
+   *
+   * @param columnName column name
+   * @return case sensitive or insensitive column name
+   */
+  private[diff] def handleConfiguredCaseSensitivity(columnName: String): String =
+    if (SQLConf.get.caseSensitiveAnalysis) columnName else columnName.toLowerCase(Locale.ROOT)
 
 }

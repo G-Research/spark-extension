@@ -39,14 +39,15 @@ case class DiffOptions(diffColumn: String,
 
   require(leftColumnPrefix.nonEmpty, "Left column prefix must not be empty")
   require(rightColumnPrefix.nonEmpty, "Right column prefix must not be empty")
-  require(leftColumnPrefix != rightColumnPrefix,
+  require(handleConfiguredCaseSensitivity(leftColumnPrefix) != handleConfiguredCaseSensitivity(rightColumnPrefix),
     s"Left and right column prefix must be distinct: $leftColumnPrefix")
 
   val diffValues = Seq(insertDiffValue, changeDiffValue, deleteDiffValue, nochangeDiffValue)
   require(diffValues.distinct.length == diffValues.length,
     s"Diff values must be distinct: $diffValues")
 
-  require(!changeColumn.contains(diffColumn), s"Change column name must be different to diff column: $diffColumn")
+  require(!changeColumn.map(handleConfiguredCaseSensitivity).contains(handleConfiguredCaseSensitivity(diffColumn)),
+    s"Change column name must be different to diff column: $diffColumn")
 
   /**
    * Fluent method to change the diff column name.

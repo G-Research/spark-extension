@@ -107,6 +107,7 @@ This `diff` transformation provides the following features:
   * diff action labels (defaults: `"N"`, `"I"`, `"D"`, `"C"`), allows custom diff notation,
 e.g. Unix diff left-right notation (<, >) or git before-after format (+, -, -+)
 * optionally provides a *change column* that lists all non-id column names that have changed (only for `"D"` action rows)
+* guarantees that no duplicate columns exist in the result, throws a readable exception otherwise
 
 ## Configuring Diff
 
@@ -160,5 +161,5 @@ val options = DiffOptions.default
 
 ## Methods (Python)
 
-* `def diff(self, other: DataFrame, *idColumns: str) -> DataFrame`
-* `def diff(self, other: DataFrame, options: DiffOptions, *idColumns: str) -> DataFrame`
+* `def diff(self: DataFrame, other: DataFrame, *idColumns: str) -> DataFrame`
+* `def diff_with_options(self: DataFrame, other: DataFrame, options: DiffOptions, *id_columns: str) -> DataFrame:`

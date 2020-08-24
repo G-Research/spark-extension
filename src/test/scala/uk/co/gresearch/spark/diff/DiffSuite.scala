@@ -17,9 +17,10 @@
 package uk.co.gresearch.spark.diff
 
 import org.apache.spark.sql.internal.SQLConf
-import org.apache.spark.sql.types.{ArrayType, IntegerType, StringType, StructField, StructType}
+import org.apache.spark.sql.types._
 import org.apache.spark.sql.{Dataset, Encoders, Row}
 import org.scalatest.FunSuite
+import uk.co.gresearch.spark.SparkTestSession
 
 case class Empty()
 case class Value(id: Int, value: Option[String])
@@ -125,17 +126,12 @@ class DiffSuite extends FunSuite with SparkTestSession {
     assert(Diff.distinctStringNameFor(Seq("a", "bc", "def")) === "____")
   }
 
-  test("fluent methods of diff options") {
-    val options = DiffOptions.default
-      .withDiffColumn("d")
-      .withLeftColumnPrefix("l")
-      .withRightColumnPrefix("r")
-      .withInsertDiffValue("i")
-      .withChangeDiffValue("c")
-      .withDeleteDiffValue("d")
-      .withNochangeDiffValue("n")
-    val expected = DiffOptions("d", "l", "r", "i", "c", "d", "n")
-    assert(options === expected)
+  test("diff dataframe with duplicate columns") {
+    val df = Seq((1)).toDF("id").select($"id", $"id")
+
+    doTestRequirement(df.diff(df, "id"),
+      "The datasets have duplicate columns.\n" +
+        "Left column names: id, id\nRight column names: id, id")
   }
 
   test("diff with no id column") {
@@ -164,17 +160,22 @@ class DiffSuite extends FunSuite with SparkTestSession {
   }
 
   test("diff with one ID column case-insensitive") {
-    val actual = left.diff(right, "ID").orderBy("ID")
-    val reverse = right.diff(left, "ID").orderBy("ID")
+    withSQLConf(SQLConf.CASE_SENSITIVE.key -> "false") {
+      val actual = left.diff(right, "ID").orderBy("ID")
+      val reverse = right.diff(left, "ID").orderBy("ID")
 
-    assert(actual.columns === Seq("diff", "ID", "left_value", "right_value"))
-    assert(actual.collect() === expectedDiff)
-    assert(reverse.columns === Seq("diff", "ID", "left_value", "right_value"))
-    assert(reverse.collect() === expectedReverseDiff)
+      assert(actual.columns === Seq("diff", "ID", "left_value", "right_value"))
+      assert(actual.collect() === expectedDiff)
+      assert(reverse.columns === Seq("diff", "ID", "left_value", "right_value"))
+      assert(reverse.collect() === expectedReverseDiff)
+    }
   }
 
   test("diff with one id column case-sensitive") {
     withSQLConf(SQLConf.CASE_SENSITIVE.key -> "true") {
+      doTestRequirement(left.diff(right, "ID"),
+        "Some id columns do not exist: ID missing among id, value")
+
       val actual = left.diff(right, "id").orderBy("id")
       val reverse = right.diff(left, "id").orderBy("id")
 
@@ -450,16 +451,84 @@ class DiffSuite extends FunSuite with SparkTestSession {
 
   test("diff where non-id column produces diff column name") {
     val options = DiffOptions.default
-      .withDiffColumn("a_label")
+      .withDiffColumn("a_value")
       .withLeftColumnPrefix("a")
       .withRightColumnPrefix("b")
 
-    val left = Seq(Value6(1, "label")).toDS()
-    val right = Seq(Value6(1, "Label")).toDS()
+    doTestRequirement(left.diff(right, options, "id"),
+      "The column prefixes 'a' and 'b', together with these non-id columns " +
+        "must not produce the diff column name 'a_value': value")
+  }
+
+  test("diff where case-insensitive non-id column produces diff column name") {
+    withSQLConf(SQLConf.CASE_SENSITIVE.key -> "false") {
+      val options = DiffOptions.default
+        .withDiffColumn("a_value")
+        .withLeftColumnPrefix("A")
+        .withRightColumnPrefix("B")
+
+      doTestRequirement(left.diff(right, options, "id"),
+        "The column prefixes 'A' and 'B', together with these non-id columns " +
+          "must not produce the diff column name 'a_value': value")
+    }
+  }
+
+  test("diff where case-sensitive non-id column produces non-conflicting diff column name") {
+    withSQLConf(SQLConf.CASE_SENSITIVE.key -> "true") {
+      val options = DiffOptions.default
+        .withDiffColumn("a_value")
+        .withLeftColumnPrefix("A")
+        .withRightColumnPrefix("B")
+
+      val actual = left.diff(right, options, "id").orderBy("id")
+      val expectedColumns = Seq(
+        "a_value", "id", "A_value", "B_value"
+      )
+
+      assert(actual.columns === expectedColumns)
+      assert(actual.collect() === expectedDiff)
+    }
+  }
+
+  test("diff where non-id column produces change column name") {
+    val options = DiffOptions.default
+      .withChangeColumn("a_value")
+      .withLeftColumnPrefix("a")
+      .withRightColumnPrefix("b")
 
     doTestRequirement(left.diff(right, options, "id"),
       "The column prefixes 'a' and 'b', together with these non-id columns " +
-        "must not produce the diff column name 'a_label': label")
+        "must not produce the change column name 'a_value': value")
+  }
+
+  test("diff where case-insensitive non-id column produces change column name") {
+    withSQLConf(SQLConf.CASE_SENSITIVE.key -> "false") {
+      val options = DiffOptions.default
+        .withChangeColumn("a_value")
+        .withLeftColumnPrefix("A")
+        .withRightColumnPrefix("B")
+
+      doTestRequirement(left.diff(right, options, "id"),
+        "The column prefixes 'A' and 'B', together with these non-id columns " +
+          "must not produce the change column name 'a_value': value")
+    }
+  }
+
+  test("diff where case-sensitive non-id column produces non-conflicting change column name") {
+    withSQLConf(SQLConf.CASE_SENSITIVE.key -> "true") {
+      val options = DiffOptions.default
+        .withChangeColumn("a_value")
+        .withLeftColumnPrefix("A")
+        .withRightColumnPrefix("B")
+
+      val actual = left7.diff(right7, options, "id").orderBy("id")
+      val expectedColumns = Seq(
+        "diff", "a_value", "id", "A_value", "B_value", "A_label", "B_label"
+      )
+
+      assert(actual.columns === expectedColumns)
+      assert(actual.collect() === expectedDiff7)
+    }
   }
 
   test("diff where non-id column produces id column name") {
@@ -473,6 +542,40 @@ class DiffSuite extends FunSuite with SparkTestSession {
     doTestRequirement(left.diff(right, options, "first_id"),
       "The column prefixes 'first' and 'second', together with these non-id columns " +
         "must not produce any id column name 'first_id': id")
+  }
+
+  test("diff where case-insensitive non-id column produces id column name") {
+    withSQLConf(SQLConf.CASE_SENSITIVE.key -> "false") {
+      val options = DiffOptions.default
+        .withLeftColumnPrefix("FIRST")
+        .withRightColumnPrefix("SECOND")
+
+      val left = Seq(Value5(1, "value")).toDS()
+      val right = Seq(Value5(1, "Value")).toDS()
+
+      doTestRequirement(left.diff(right, options, "first_id"),
+        "The column prefixes 'FIRST' and 'SECOND', together with these non-id columns " +
+          "must not produce any id column name 'first_id': id")
+    }
+  }
+
+  test("diff where case-sensitive non-id column produces non-conflicting id column name") {
+    withSQLConf(SQLConf.CASE_SENSITIVE.key -> "true") {
+      val options = DiffOptions.default
+        .withLeftColumnPrefix("FIRST")
+        .withRightColumnPrefix("SECOND")
+
+      val left = Seq(Value5(1, "value")).toDS()
+      val right = Seq(Value5(1, "Value")).toDS()
+
+      val actual = left.diff(right, options, "first_id")
+      val expectedColumns = Seq(
+        "diff", "first_id", "FIRST_id", "SECOND_id"
+      )
+
+      assert(actual.columns === expectedColumns)
+      assert(actual.collect() === Seq(Row("C", 1, "value", "Value")))
+    }
   }
 
   test("diff with custom diff options") {
@@ -489,54 +592,6 @@ class DiffSuite extends FunSuite with SparkTestSession {
 
     assert(actual.columns === Seq("action", "id", "before_value", "after_value"))
     assert(actual.collect() === expected)
-  }
-
-  test("diff options with empty diff column name") {
-    // test the copy method (constructor), not the fluent methods
-    val default = DiffOptions.default
-    val options = default.copy(diffColumn = "")
-    assert(options.diffColumn.isEmpty)
-  }
-
-  test("diff options left and right prefixes") {
-    // test the copy method (constructor), not the fluent methods
-    val default = DiffOptions.default
-    doTestRequirement(default.copy(leftColumnPrefix = ""),
-      "Left column prefix must not be empty")
-    doTestRequirement(default.copy(rightColumnPrefix = ""),
-      "Right column prefix must not be empty")
-    val prefix = "prefix"
-    doTestRequirement(default.copy(leftColumnPrefix = prefix, rightColumnPrefix = prefix),
-      s"Left and right column prefix must be distinct: $prefix")
-  }
-
-  test("diff options diff value") {
-    // test the copy method (constructor), not the fluent methods
-    val default = DiffOptions.default
-
-    val emptyInsertDiffValueOpts = default.copy(insertDiffValue = "")
-    assert(emptyInsertDiffValueOpts.insertDiffValue.isEmpty)
-    val emptyChangeDiffValueOpts = default.copy(changeDiffValue = "")
-    assert(emptyChangeDiffValueOpts.changeDiffValue.isEmpty)
-    val emptyDeleteDiffValueOpts = default.copy(deleteDiffValue = "")
-    assert(emptyDeleteDiffValueOpts.deleteDiffValue.isEmpty)
-    val emptyNochangeDiffValueOpts = default.copy(nochangeDiffValue = "")
-    assert(emptyNochangeDiffValueOpts.nochangeDiffValue.isEmpty)
-
-    Seq("value", "").foreach { value =>
-      doTestRequirement(default.copy(insertDiffValue = value, changeDiffValue = value),
-        s"Diff values must be distinct: List($value, $value, D, N)")
-      doTestRequirement(default.copy(insertDiffValue = value, deleteDiffValue = value),
-        s"Diff values must be distinct: List($value, C, $value, N)")
-      doTestRequirement(default.copy(insertDiffValue = value, nochangeDiffValue = value),
-        s"Diff values must be distinct: List($value, C, D, $value)")
-      doTestRequirement(default.copy(changeDiffValue = value, deleteDiffValue = value),
-        s"Diff values must be distinct: List(I, $value, $value, N)")
-      doTestRequirement(default.copy(changeDiffValue = value, nochangeDiffValue = value),
-        s"Diff values must be distinct: List(I, $value, D, $value)")
-      doTestRequirement(default.copy(deleteDiffValue = value, nochangeDiffValue = value),
-        s"Diff values must be distinct: List(I, C, $value, $value)")
-    }
   }
 
   test("diff of empty schema") {
@@ -586,17 +641,19 @@ class DiffSuite extends FunSuite with SparkTestSession {
   }
 
   test("diff with case-insensitive column names") {
-    // different column names only compiles with DataFrames
-    val left = this.left.toDF("id", "value")
-    val right = this.right.toDF("ID", "VaLuE")
+    withSQLConf(SQLConf.CASE_SENSITIVE.key -> "false") {
+      // different column names only compiles with DataFrames
+      val left = this.left.toDF("id", "value")
+      val right = this.right.toDF("ID", "VaLuE")
 
-    val actual = left.diff(right, "id").orderBy("id")
-    val reverse = right.diff(left, "id").orderBy("id")
+      val actual = left.diff(right, "id").orderBy("id")
+      val reverse = right.diff(left, "id").orderBy("id")
 
-    assert(actual.columns === expectedDiffColumns)
-    assert(actual.collect() === expectedDiff)
-    assert(reverse.columns === Seq("diff", "id", "left_VaLuE", "right_VaLuE"))
-    assert(reverse.collect() === expectedReverseDiff)
+      assert(actual.columns === expectedDiffColumns)
+      assert(actual.collect() === expectedDiff)
+      assert(reverse.columns === Seq("diff", "id", "left_VaLuE", "right_VaLuE"))
+      assert(reverse.collect() === expectedReverseDiff)
+    }
   }
 
   test("diff with case-sensitive column names") {
@@ -614,7 +671,7 @@ class DiffSuite extends FunSuite with SparkTestSession {
 
   test("diff of non-existing id column") {
     doTestRequirement(left.diff(right, "does not exists"),
-      "Some id columns do not exist: does not exists")
+      "Some id columns do not exist: does not exists missing among id, value")
   }
 
   test("diff with different number of column") {
@@ -726,18 +783,6 @@ class DiffSuite extends FunSuite with SparkTestSession {
     val options = DiffOptions.default.withChangeColumn("value")
     doTestRequirement(left.diff(right, options, "id", "value"),
       "The id columns must not contain the change column name 'value': id, value")
-  }
-
-  test("diff options with change column name same as diff column") {
-    doTestRequirement(
-      DiffOptions.default.withDiffColumn("same").withChangeColumn("same"),
-      "Change column name must be different to diff column: same"
-    )
-
-    doTestRequirement(
-      DiffOptions.default.withChangeColumn("same").withDiffColumn("same"),
-      "Change column name must be different to diff column: same"
-    )
   }
 
   def doTestRequirement(f: => Any, expected: String): Unit = {

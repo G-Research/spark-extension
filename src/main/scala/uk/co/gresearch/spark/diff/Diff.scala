@@ -29,12 +29,13 @@ import org.apache.spark.sql.{Column, DataFrame, Dataset, Encoder}
  */
 class Diff(options: DiffOptions) {
 
-  // column names case-sensitivity can be configured
-  private def columnName(columnName: String): String =
-    if (SQLConf.get.caseSensitiveAnalysis) columnName else columnName.toLowerCase(Locale.ROOT)
+  private def checkSchema[T](left: Dataset[T], right: Dataset[T], idColumns: String*): Unit = {
+    require(left.columns.length == left.columns.toSet.size &&
+      right.columns.length == right.columns.toSet.size,
+      "The datasets have duplicate columns.\n" +
+        s"Left column names: ${left.columns.mkString(", ")}\n" +
+        s"Right column names: ${right.columns.mkString(", ")}")
 
-  @scala.annotation.varargs
-  def checkSchema[T](left: Dataset[T], right: Dataset[T], idColumns: String*): Unit = {
     require(left.columns.length == right.columns.length,
       "The number of columns doesn't match.\n" +
         s"Left column names (${left.columns.length}): ${left.columns.mkString(", ")}\n" +
@@ -43,8 +44,8 @@ class Diff(options: DiffOptions) {
     require(left.columns.length > 0, "The schema must not be empty")
 
     // column types must match but we ignore the nullability of columns
-    val leftFields = left.schema.fields.map(f => columnName(f.name) -> f.dataType)
-    val rightFields = right.schema.fields.map(f => columnName(f.name) -> f.dataType)
+    val leftFields = left.schema.fields.map(f => handleConfiguredCaseSensitivity(f.name) -> f.dataType)
+    val rightFields = right.schema.fields.map(f => handleConfiguredCaseSensitivity(f.name) -> f.dataType)
     val leftExtraSchema = leftFields.diff(rightFields)
     val rightExtraSchema = rightFields.diff(leftFields)
     require(leftExtraSchema.isEmpty && rightExtraSchema.isEmpty,
@@ -52,24 +53,32 @@ class Diff(options: DiffOptions) {
         s"Left extra columns: ${leftExtraSchema.map(t => s"${t._1} (${t._2})").mkString(", ")}\n" +
         s"Right extra columns: ${rightExtraSchema.map(t => s"${t._1} (${t._2})").mkString(", ")}")
 
-    val columns = left.columns.map(columnName)
-    val pkColumns = if (idColumns.isEmpty) columns.toList else idColumns.map(columnName)
+    val columns = left.columns.map(handleConfiguredCaseSensitivity)
+    val pkColumns = if (idColumns.isEmpty) columns.toList else idColumns.map(handleConfiguredCaseSensitivity)
     val missingIdColumns = pkColumns.diff(columns)
     require(missingIdColumns.isEmpty,
-      s"Some id columns do not exist: ${missingIdColumns.mkString(", ")}")
+      s"Some id columns do not exist: ${missingIdColumns.mkString(", ")} missing among ${columns.mkString(", ")}")
 
-    require(!pkColumns.contains(options.diffColumn),
+    require(!pkColumns.contains(handleConfiguredCaseSensitivity(options.diffColumn)),
       s"The id columns must not contain the diff column name '${options.diffColumn}': " +
         s"${pkColumns.mkString(", ")}")
 
     val nonIdColumns = columns.diff(pkColumns)
     val diffValueColumns = getDiffValueColumns(nonIdColumns)
 
-    require(!diffValueColumns.contains(options.diffColumn),
+    require(!diffValueColumns.contains(handleConfiguredCaseSensitivity(options.diffColumn)),
       s"The column prefixes '${options.leftColumnPrefix}' and '${options.rightColumnPrefix}', " +
         s"together with these non-id columns " +
         s"must not produce the diff column name '${options.diffColumn}': " +
         s"${nonIdColumns.mkString(", ")}")
+
+    options.changeColumn.foreach( changeColumn =>
+      require(!diffValueColumns.contains(handleConfiguredCaseSensitivity(changeColumn)),
+        s"The column prefixes '${options.leftColumnPrefix}' and '${options.rightColumnPrefix}', " +
+          s"together with these non-id columns " +
+          s"must not produce the change column name '${changeColumn}': " +
+          s"${nonIdColumns.mkString(", ")}")
+    )
 
     require(diffValueColumns.forall(column => !pkColumns.contains(column)),
       s"The column prefixes '${options.leftColumnPrefix}' and '${options.rightColumnPrefix}', " +
@@ -78,9 +87,15 @@ class Diff(options: DiffOptions) {
         s"${nonIdColumns.mkString(", ")}")
   }
 
-  def getDiffValueColumns(nonIdColumns: Seq[String]): Seq[String] =
+  /**
+   * Produces the left and right value columns (non-id columns).
+   * @param nonIdColumns value column names
+   * @return left and right diff value column names
+   */
+  private def getDiffValueColumns(nonIdColumns: Seq[String]): Seq[String] =
     Seq(options.leftColumnPrefix, options.rightColumnPrefix)
       .flatMap(prefix => nonIdColumns.map(column => s"${prefix}_$column"))
+      .map(handleConfiguredCaseSensitivity)
 
   /**
    * Returns a new DataFrame that contains the differences between the two Datasets
@@ -140,8 +155,8 @@ class Diff(options: DiffOptions) {
     checkSchema(left, right, idColumns: _*)
 
     val pkColumns = if (idColumns.isEmpty) left.columns.toList else idColumns
-    val pkColumnsCs = pkColumns.map(columnName).toSet
-    val otherColumns = left.columns.filter(col => !pkColumnsCs.contains(columnName(col)))
+    val pkColumnsCs = pkColumns.map(handleConfiguredCaseSensitivity).toSet
+    val otherColumns = left.columns.filter(col => !pkColumnsCs.contains(handleConfiguredCaseSensitivity(col)))
 
     require(!options.changeColumn.exists(pkColumns.contains),
       s"The id columns must not contain the change column name '${options.changeColumn.get}': ${pkColumns.mkString((", "))}")
