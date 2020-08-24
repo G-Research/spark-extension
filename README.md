@@ -13,7 +13,7 @@ two datasets, i.e. which rows to _add_, _delete_ or _change_ to get from one dat
 Add this line to your `build.sbt` file:
 
 ```sbt
-libraryDependencies += "uk.co.gresearch.spark" %% "spark-extension" % "1.0.0"
+libraryDependencies += "uk.co.gresearch.spark" %% "spark-extension" % "1.1.0-3.0"
 ```
 
 ### Maven
@@ -24,7 +24,7 @@ Add this dependency to your `pom.xml` file:
 <dependency>
   <groupId>uk.co.gresearch.spark</groupId>
   <artifactId>spark-extension_2.12</artifactId>
-  <version>1.0.0</version>
+  <version>1.1.0-3.0</version>
 </dependency>
 ```
 
