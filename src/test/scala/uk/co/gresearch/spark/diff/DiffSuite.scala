@@ -16,11 +16,12 @@
 
 package uk.co.gresearch.spark.diff
 
+import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{Dataset, Encoders, Row}
 import org.scalatest.FunSuite
-import uk.co.gresearch.spark.SparkTestSession
+import uk.co.gresearch.spark.{SparkTestSession, backticks}
 
 case class Empty()
 case class Value(id: Int, value: Option[String])
@@ -783,6 +784,62 @@ class DiffSuite extends FunSuite with SparkTestSession {
     val options = DiffOptions.default.withChangeColumn("value")
     doTestRequirement(left.diff(right, options, "id", "value"),
       "The id columns must not contain the change column name 'value': id, value")
+  }
+
+  test("diff with dots in diff column") {
+    val options = DiffOptions.default
+      .withDiffColumn("the.diff")
+
+    val actual = left.diff(right, options, "id").orderBy("id")
+    val expectedDiffColumns = Seq("the.diff", "id", "left_value", "right_value")
+
+    assert(actual.columns === expectedDiffColumns)
+    assert(actual.collect() === expectedDiff)
+  }
+
+  test("diff with dots in change column") {
+    val options = DiffOptions.default
+      .withChangeColumn("the.changes")
+
+    val actual = left7.diff(right7, options, "id").orderBy("id")
+    val expectedDiffColumns = Seq("diff", "the.changes", "id", "left_value", "right_value", "left_label", "right_label")
+
+    assert(actual.columns === expectedDiffColumns)
+    assert(actual.collect() === expectedDiff7)
+  }
+
+  test("diff with dots in prefixes") {
+    val options = DiffOptions.default
+      .withLeftColumnPrefix("left.prefix")
+      .withRightColumnPrefix("right.prefix")
+
+    val actual = left.diff(right, options, "id").orderBy("id")
+    val expectedDiffColumns = Seq("diff", "id", "left.prefix_value", "right.prefix_value")
+
+    assert(actual.columns === expectedDiffColumns)
+    assert(actual.collect() === expectedDiff)
+  }
+
+  test("diff with dot in id column") {
+    val l = left.withColumnRenamed("id", "the.id")
+    val r = right.withColumnRenamed("id", "the.id")
+
+    val actual = l.diff(r, "the.id").orderBy("`the.id`")
+    val expectedDiffColumns = Seq("diff", "the.id", "left_value", "right_value")
+
+    assert(actual.columns === expectedDiffColumns)
+    assert(actual.collect() === expectedDiff)
+  }
+
+  test("diff with dot in value column") {
+    val l = left.withColumnRenamed("value", "the.value")
+    val r = right.withColumnRenamed("value", "the.value")
+
+    val actual = l.diff(r, "id").orderBy("id")
+    val expectedDiffColumns = Seq("diff", "id", "left_the.value", "right_the.value")
+
+    assert(actual.columns === expectedDiffColumns)
+    assert(actual.collect() === expectedDiff)
   }
 
   def doTestRequirement(f: => Any, expected: String): Unit = {

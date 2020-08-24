@@ -3,6 +3,8 @@
 This project provides extensions to the [Apache Spark project](https://spark.apache.org/) in Scala and Python:
 - [Diff](DIFF.md): A `diff` transformation for `Dataset`s that computes the differences between
 two datasets, i.e. which rows to _add_, _delete_ or _change_ to get from one dataset to the other.
+- `backticks(string: String, strings: String*): String)`: Encloses the given column name with backticks (`` ` ``) when needed.
+  This is a handy way to ensure column names with special characters like dots (`.`) work with `col()` or `select()`.
 
 ## Using Spark Extension
 

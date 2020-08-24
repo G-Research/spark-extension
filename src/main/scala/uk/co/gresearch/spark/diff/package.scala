@@ -77,6 +77,9 @@ package object diff {
      * The id columns are in order as given to the method. If no id columns are given then all
      * columns of this Dataset are id columns and appear in the same order. The remaining non-id
      * columns are in the order of this Dataset.
+     *
+     * The id column names are take literally, i.e. "a.field" is interpreted as "`a.field`, which is a
+     * column name containing a dot. This is not interpreted as a column "a" with a field "field" (struct).
      */
     @scala.annotation.varargs
     def diff(other: Dataset[T], idColumns: String*): DataFrame = {

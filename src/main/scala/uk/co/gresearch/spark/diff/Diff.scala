@@ -22,6 +22,7 @@ import org.apache.spark.sql.functions._
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.{ArrayType, StringType}
 import org.apache.spark.sql.{Column, DataFrame, Dataset, Encoder}
+import uk.co.gresearch.spark.backticks
 
 /**
  * Differ class to diff two Datasets. See Diff.of(…) for details.
@@ -164,8 +165,8 @@ class Diff(options: DiffOptions) {
     val existsColumnName = Diff.distinctStringNameFor(left.columns)
     val l = left.withColumn(existsColumnName, lit(1))
     val r = right.withColumn(existsColumnName, lit(1))
-    val joinCondition = pkColumns.map(c => l(c) <=> r(c)).reduce(_ && _)
-    val unChanged = otherColumns.map(c => l(c) <=> r(c)).reduceOption(_ && _)
+    val joinCondition = pkColumns.map(c => l(backticks(c)) <=> r(backticks(c))).reduce(_ && _)
+    val unChanged = otherColumns.map(c => l(backticks(c)) <=> r(backticks(c))).reduceOption(_ && _)
     val changeCondition = not(unChanged.getOrElse(lit(true)))
 
     val diffCondition =
@@ -176,11 +177,11 @@ class Diff(options: DiffOptions) {
         as(options.diffColumn)
 
     val diffColumns =
-      pkColumns.map(c => coalesce(l(c), r(c)).as(c)) ++
+      pkColumns.map(c => coalesce(l(backticks(c)), r(backticks(c))).as(c)) ++
         otherColumns.flatMap(c =>
           Seq(
-            left(c).as(s"${options.leftColumnPrefix}_$c"),
-            right(c).as(s"${options.rightColumnPrefix}_$c")
+            left(backticks(c)).as(s"${options.leftColumnPrefix}_$c"),
+            right(backticks(c)).as(s"${options.rightColumnPrefix}_$c")
           )
         )
 
@@ -194,7 +195,7 @@ class Diff(options: DiffOptions) {
                 .map(columns =>
                   concat(
                     columns.map(c =>
-                      when(l(c) <=> r(c), array()).otherwise(array(lit(c)))
+                      when(l(backticks(c)) <=> r(backticks(c)), array()).otherwise(array(lit(c)))
                     ): _*
                   )
                 ).getOrElse(
