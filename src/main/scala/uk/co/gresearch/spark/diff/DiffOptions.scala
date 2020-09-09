@@ -16,6 +16,24 @@
 
 package uk.co.gresearch.spark.diff
 
+import uk.co.gresearch.spark.diff
+import uk.co.gresearch.spark.diff.DiffMode.{Default, DiffMode}
+
+object DiffMode extends Enumeration {
+  type DiffMode = Value
+
+  /**
+   * The diff contains value columns from the left and right dataset, arranged column by column:
+   * diff,( changes,) id-1, id-2, …, left-value-1, right-value-1, left-value-2, right-value-2, …
+   */
+  val ColumnByColumn: diff.DiffMode.Value = Value
+
+  /**
+   * The default diff mode is ColumnByColumn.
+   */
+  val Default: diff.DiffMode.Value = ColumnByColumn
+}
+
 /**
  * Configuration class for diffing Datasets.
  *
@@ -27,6 +45,7 @@ package uk.co.gresearch.spark.diff
  * @param deleteDiffValue value in diff column for deleted rows
  * @param nochangeDiffValue value in diff column for un-changed rows
  * @param changeColumn name of change column
+ * @param diffMode diff output format
  */
 case class DiffOptions(diffColumn: String,
                        leftColumnPrefix: String,
@@ -35,7 +54,8 @@ case class DiffOptions(diffColumn: String,
                        changeDiffValue: String,
                        deleteDiffValue: String,
                        nochangeDiffValue: String,
-                       changeColumn: Option[String] = None) {
+                       changeColumn: Option[String] = None,
+                       diffMode: DiffMode = Default) {
 
   require(leftColumnPrefix.nonEmpty, "Left column prefix must not be empty")
   require(rightColumnPrefix.nonEmpty, "Right column prefix must not be empty")
@@ -138,11 +158,20 @@ case class DiffOptions(diffColumn: String,
     this.copy(changeColumn = None)
   }
 
+  /**
+   * Fluent method to change the diff mode.
+   * Returns a new immutable DiffOptions instance with the new diff mode.
+   * @return new immutable DiffOptions instance
+   */
+  def withDiffMode(diffMode: DiffMode): DiffOptions = {
+    this.copy(diffMode = diffMode)
+  }
+
 }
 
 object DiffOptions {
   /**
    * Default diffing options.
    */
-  val default: DiffOptions = DiffOptions("diff", "left", "right", "I", "C", "D", "N", None)
+  val default: DiffOptions = DiffOptions("diff", "left", "right", "I", "C", "D", "N", None, Default)
 }
