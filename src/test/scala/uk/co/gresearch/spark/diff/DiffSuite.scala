@@ -624,7 +624,7 @@ class DiffSuite extends FunSuite with SparkTestSession {
       )
 
       assert(actual.columns === expectedColumns)
-      assert(actual.collect() === expectedDiff7)
+      assert(actual.collect() === expectedDiff7WithChanges)
     }
   }
 
@@ -849,7 +849,7 @@ class DiffSuite extends FunSuite with SparkTestSession {
       StructField("left_label", StringType, nullable = true),
       StructField("right_label", StringType, nullable = true)
     )))
-    assert(actual.collect() === expectedDiff7)
+    assert(actual.collect() === expectedDiff7WithChanges)
   }
 
   test("diff with change column without id columns") {
@@ -873,13 +873,30 @@ class DiffSuite extends FunSuite with SparkTestSession {
     val actual = left7.diff(right7, options, "id").orderBy("id")
 
     assert(actual.columns === Seq("diff", "value", "id", "left_value", "right_value", "left_label", "right_label"))
-    assert(actual.collect() === expectedDiff7)
+    assert(actual.collect() === expectedDiff7WithChanges)
   }
 
   test("diff with change column name in id columns") {
     val options = DiffOptions.default.withChangeColumn("value")
     doTestRequirement(left.diff(right, options, "id", "value"),
       "The id columns must not contain the change column name 'value': id, value")
+  }
+
+  test("diff with column-by-column diff mode") {
+    val options = DiffOptions.default.withDiffMode(DiffMode.ColumnByColumn)
+    val actual = left7.diff(right7, options, "id").orderBy("id")
+
+    assert(actual.columns === Seq("diff", "id", "left_value", "right_value", "left_label", "right_label"))
+    assert(actual.collect() === expectedDiff7)
+  }
+
+  test("diff with side-by-side diff mode") {
+    val options = DiffOptions.default.withDiffMode(DiffMode.SideBySide)
+    val actual = left7.diff(right7, options, "id").orderBy("id")
+
+    assert(actual.columns === Seq("diff", "id", "left_value", "left_label", "right_value", "right_label"))
+    val expected: Seq[Row] = expectedDiff7.map(row => Row(row.getString(0), row.getInt(1), row.getString(2), row.getString(4), row.getString(3), row.getString(5)))
+    assert(actual.collect() === expected)
   }
 
   test("diff with left-side diff mode") {
@@ -969,7 +986,7 @@ class DiffSuite extends FunSuite with SparkTestSession {
     val expectedDiffColumns = Seq("diff", "the.changes", "id", "left_value", "right_value", "left_label", "right_label")
 
     assert(actual.columns === expectedDiffColumns)
-    assert(actual.collect() === expectedDiff7)
+    assert(actual.collect() === expectedDiff7WithChanges)
   }
 
   test("diff with dots in prefixes") {

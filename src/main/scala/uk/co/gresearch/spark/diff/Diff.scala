@@ -101,15 +101,25 @@ class Diff(options: DiffOptions) {
    * @param nonIdColumns value column names
    * @return left and right diff value column names
    */
-  private def getDiffValueColumns(nonIdColumns: Seq[String], diffMode: DiffMode): Seq[String] =
+  private def getDiffValueColumns(nonIdColumns: Seq[String], diffMode: DiffMode): Seq[String] = {
+    def prefixColumns(columns: Seq[String])(prefix: String): Seq[String] =
+      columns.map(column => s"${prefix}_$column")
+
     diffMode match {
       case DiffMode.ColumnByColumn =>
         Seq(options.leftColumnPrefix, options.rightColumnPrefix)
-          .flatMap(prefix => nonIdColumns.map(column => s"${prefix}_$column"))
+          .flatMap(prefixColumns(nonIdColumns))
           .map(handleConfiguredCaseSensitivity)
+
+      case DiffMode.SideBySide =>
+        prefixColumns(nonIdColumns)(options.leftColumnPrefix) ++
+          prefixColumns(nonIdColumns)(options.rightColumnPrefix)
+            .map(handleConfiguredCaseSensitivity)
+
       case DiffMode.LeftSide | DiffMode.RightSide =>
         nonIdColumns
     }
+  }
 
   /**
    * Returns a new DataFrame that contains the differences between the two Datasets
@@ -226,9 +236,13 @@ class Diff(options: DiffOptions) {
           )
         )
 
+      case DiffMode.SideBySide =>
+        otherColumns.map(c => left(backticks(c)).as(s"${options.leftColumnPrefix}_$c")) ++
+          otherColumns.map(c => right(backticks(c)).as(s"${options.rightColumnPrefix}_$c"))
+
       case DiffMode.LeftSide | DiffMode.RightSide =>
         otherColumns.map(c =>
-          if(options.diffMode == DiffMode.LeftSide) left(backticks(c)) else right(backticks(c))
+          if (options.diffMode == DiffMode.LeftSide) left(backticks(c)) else right(backticks(c))
         )
     }
     idColumns ++ valueColumns

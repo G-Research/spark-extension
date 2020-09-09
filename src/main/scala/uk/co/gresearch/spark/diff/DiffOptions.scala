@@ -32,9 +32,12 @@ object DiffMode extends Enumeration {
    *                   arranged column by column:
    *   diff,( changes,) id-1, id-2, …, left-value-1, right-value-1, left-value-2, right-value-2, …
    *
+   * - SideBySide: The diff contains value columns from the left and right dataset,
+   *               arranged side by side:
+   *   diff,( changes,) id-1, id-2, …, left-value-1, left-value-2, …, right-value-1, right-value-2, …
    * - LeftSide / RightSide: The diff contains value columns from the left / right dataset only.
    */
-  val ColumnByColumn, LeftSide, RightSide = Value
+  val ColumnByColumn, SideBySide, LeftSide, RightSide = Value
 
   /**
    * The diff mode determines the output columns of the diffing transformation.
