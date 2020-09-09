@@ -16,12 +16,11 @@
 
 package uk.co.gresearch.spark.diff
 
-import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{Dataset, Encoders, Row}
 import org.scalatest.FunSuite
-import uk.co.gresearch.spark.{SparkTestSession, backticks}
+import uk.co.gresearch.spark.SparkTestSession
 
 case class Empty()
 case class Value(id: Int, value: Option[String])
@@ -48,6 +47,9 @@ case class DiffAsExtra(diff: String,
                        left_value: Option[String],
                        right_value: Option[String],
                        extra: String)
+case class DiffAsOneSide(diff: String,
+                         id: Int,
+                         value: Option[String])
 
 class DiffSuite extends FunSuite with SparkTestSession {
 
@@ -108,6 +110,45 @@ class DiffSuite extends FunSuite with SparkTestSession {
   )
 
   lazy val expectedDiff7: Seq[Row] = Seq(
+    Row("C", 1, "one", "One", "one label", "one label"),
+    Row("C", 2, "two", "two", "two labels", "two Labels"),
+    Row("C", 3, "three", "Three", "three labels", "Three Labels"),
+    Row("C", 4, "four", null, "four labels", null),
+    Row("C", 5, null, "five", null, "five labels"),
+    Row("N", 6, "six", "six", "six labels", "six labels"),
+    Row("D", 7, "seven", null, "seven labels", null),
+    Row("I", 8, null, "eight", null, "eight labels"),
+    Row("D", 9, null, null, null, null),
+    Row("I", 10, null, null, null, null)
+  )
+
+  lazy val expectedLeftDiff7: Seq[Row] = Seq(
+    Row("C", 1, "one", "one label"),
+    Row("C", 2, "two", "two labels"),
+    Row("C", 3, "three", "three labels"),
+    Row("C", 4, "four", "four labels"),
+    Row("C", 5, null, null),
+    Row("N", 6, "six", "six labels"),
+    Row("D", 7, "seven", "seven labels"),
+    Row("I", 8, null, null),
+    Row("D", 9, null, null),
+    Row("I", 10, null, null)
+  )
+
+  lazy val expectedRightDiff7: Seq[Row] = Seq(
+    Row("C", 1, "One", "one label"),
+    Row("C", 2, "two", "two Labels"),
+    Row("C", 3, "Three", "Three Labels"),
+    Row("C", 4, null, null),
+    Row("C", 5, "five", "five labels"),
+    Row("N", 6, "six", "six labels"),
+    Row("D", 7, null, null),
+    Row("I", 8, "eight", "eight labels"),
+    Row("D", 9, null, null),
+    Row("I", 10, null, null)
+  )
+
+  lazy val expectedDiff7WithChanges: Seq[Row] = Seq(
     Row("C", Seq("value"), 1, "one", "One", "one label", "one label"),
     Row("C", Seq("label"), 2, "two", "two", "two labels", "two Labels"),
     Row("C", Seq("value", "label"), 3, "three", "Three", "three labels", "Three Labels"),
@@ -430,6 +471,17 @@ class DiffSuite extends FunSuite with SparkTestSession {
       "The id columns must not contain the diff column name 'diff': diff")
     doTestRequirement(left.diff(right, "diff", "id"),
       "The id columns must not contain the diff column name 'diff': diff, id")
+
+    withSQLConf(SQLConf.CASE_SENSITIVE.key -> "false") {
+      doTestRequirement(left.withColumnRenamed("diff", "Diff")
+        .diff(right.withColumnRenamed("diff", "Diff"), "Diff", "id"),
+        "The id columns must not contain the diff column name 'diff': diff, id")
+    }
+
+    withSQLConf(SQLConf.CASE_SENSITIVE.key -> "true") {
+      left.withColumnRenamed("diff", "Diff")
+        .diff(right.withColumnRenamed("diff", "Diff"), "Diff", "id")
+    }
   }
 
   test("diff with non-id column diff in T") {
@@ -461,6 +513,26 @@ class DiffSuite extends FunSuite with SparkTestSession {
         "must not produce the diff column name 'a_value': value")
   }
 
+  test("diff with left-side mode where non-id column would produce diff column name") {
+    val options = DiffOptions.default
+      .withDiffColumn("a_value")
+      .withLeftColumnPrefix("a")
+      .withRightColumnPrefix("b")
+      .withDiffMode(DiffMode.LeftSide)
+
+    left.diff(right, options, "id")
+  }
+
+  test("diff with right-side mode where non-id column would produce diff column name") {
+    val options = DiffOptions.default
+      .withDiffColumn("a_value")
+      .withLeftColumnPrefix("a")
+      .withRightColumnPrefix("b")
+      .withDiffMode(DiffMode.RightSide)
+
+    left.diff(right, options, "id")
+  }
+
   test("diff where case-insensitive non-id column produces diff column name") {
     withSQLConf(SQLConf.CASE_SENSITIVE.key -> "false") {
       val options = DiffOptions.default
@@ -471,6 +543,30 @@ class DiffSuite extends FunSuite with SparkTestSession {
       doTestRequirement(left.diff(right, options, "id"),
         "The column prefixes 'A' and 'B', together with these non-id columns " +
           "must not produce the diff column name 'a_value': value")
+    }
+  }
+
+  test("diff with left-side mode where case-insensitive non-id column would produce diff column name") {
+    withSQLConf(SQLConf.CASE_SENSITIVE.key -> "false") {
+      val options = DiffOptions.default
+        .withDiffColumn("a_value")
+        .withLeftColumnPrefix("A")
+        .withRightColumnPrefix("B")
+        .withDiffMode(DiffMode.LeftSide)
+
+      left.diff(right, options, "id")
+    }
+  }
+
+  test("diff with right-side mode where case-insensitive non-id column would produce diff column name") {
+    withSQLConf(SQLConf.CASE_SENSITIVE.key -> "false") {
+      val options = DiffOptions.default
+        .withDiffColumn("a_value")
+        .withLeftColumnPrefix("A")
+        .withRightColumnPrefix("B")
+        .withDiffMode(DiffMode.RightSide)
+
+      left.diff(right, options, "id")
     }
   }
 
@@ -786,6 +882,74 @@ class DiffSuite extends FunSuite with SparkTestSession {
       "The id columns must not contain the change column name 'value': id, value")
   }
 
+  test("diff with left-side diff mode") {
+    val options = DiffOptions.default.withDiffMode(DiffMode.LeftSide)
+    val actual = left7.diff(right7, options, "id").orderBy("id")
+
+    assert(actual.columns === Seq("diff", "id", "value", "label"))
+    assert(actual.collect() === expectedLeftDiff7)
+  }
+
+  test("diff with right-side diff mode") {
+    val options = DiffOptions.default.withDiffMode(DiffMode.RightSide)
+    val actual = left7.diff(right7, options, "id").orderBy("id")
+
+    assert(actual.columns === Seq("diff", "id", "value", "label"))
+    assert(actual.collect() === expectedRightDiff7)
+  }
+
+  test("diff as U with left-side diff mode") {
+    val options = DiffOptions.default.withDiffMode(DiffMode.LeftSide)
+    val actual = left.diffAs[DiffAsOneSide](right, options, "id").orderBy("id")
+
+    assert(actual.columns === Seq("diff", "id", "value"))
+    val expected: Seq[DiffAsOneSide] = Seq(
+      DiffAsOneSide("N", 1, Some("one")),
+      DiffAsOneSide("C", 2, Some("two")),
+      DiffAsOneSide("D", 3, Some("three")),
+      DiffAsOneSide("I", 4, None)
+    )
+    assert(actual.collect() === expected)
+  }
+
+  test("diff as U with right-side diff mode") {
+    val options = DiffOptions.default.withDiffMode(DiffMode.RightSide)
+    val actual = left.diffAs[DiffAsOneSide](right, options, "id").orderBy("id")
+
+    assert(actual.columns === Seq("diff", "id", "value"))
+    val expected: Seq[DiffAsOneSide] = Seq(
+      DiffAsOneSide("N", 1, Some("one")),
+      DiffAsOneSide("C", 2, Some("Two")),
+      DiffAsOneSide("D", 3, None),
+      DiffAsOneSide("I", 4, Some("four"))
+    )
+    assert(actual.collect() === expected)
+  }
+
+  test("diff with left-side diff mode and diff column name in value columns") {
+    val options = DiffOptions.default.withDiffColumn("value").withDiffMode(DiffMode.LeftSide)
+    doTestRequirement(left.diff(right, options, "id"),
+      "The non-id columns must not contain the diff column name 'value': value")
+  }
+
+  test("diff with right-side diff mode and diff column name in value columns") {
+    val options = DiffOptions.default.withDiffColumn("value").withDiffMode(DiffMode.RightSide)
+    doTestRequirement(right.diff(right, options, "id"),
+    "The non-id columns must not contain the diff column name 'value': value")
+  }
+
+  test("diff with left-side diff mode and change column name in value columns") {
+    val options = DiffOptions.default.withChangeColumn("value").withDiffMode(DiffMode.LeftSide)
+    doTestRequirement(left.diff(right, options, "id"),
+      "The non-id columns must not contain the change column name 'value': value")
+  }
+
+  test("diff with right-side diff mode and change column name in value columns") {
+    val options = DiffOptions.default.withChangeColumn("value").withDiffMode(DiffMode.RightSide)
+    doTestRequirement(right.diff(right, options, "id"),
+      "The non-id columns must not contain the change column name 'value': value")
+  }
+
   test("diff with dots in diff column") {
     val options = DiffOptions.default
       .withDiffColumn("the.diff")
@@ -821,25 +985,49 @@ class DiffSuite extends FunSuite with SparkTestSession {
   }
 
   test("diff with dot in id column") {
-    val l = left.withColumnRenamed("id", "the.id")
-    val r = right.withColumnRenamed("id", "the.id")
+    val l = left7.withColumnRenamed("id", "the.id")
+    val r = right7.withColumnRenamed("id", "the.id")
 
     val actual = l.diff(r, "the.id").orderBy("`the.id`")
-    val expectedDiffColumns = Seq("diff", "the.id", "left_value", "right_value")
+    val expectedDiffColumns = Seq("diff", "the.id", "left_value", "right_value", "left_label", "right_label")
 
     assert(actual.columns === expectedDiffColumns)
-    assert(actual.collect() === expectedDiff)
+    assert(actual.collect() === expectedDiff7)
   }
 
   test("diff with dot in value column") {
-    val l = left.withColumnRenamed("value", "the.value")
-    val r = right.withColumnRenamed("value", "the.value")
+    val l = left7.withColumnRenamed("value", "the.value")
+    val r = right7.withColumnRenamed("value", "the.value")
 
     val actual = l.diff(r, "id").orderBy("id")
-    val expectedDiffColumns = Seq("diff", "id", "left_the.value", "right_the.value")
+    val expectedDiffColumns = Seq("diff", "id", "left_the.value", "right_the.value", "left_label", "right_label")
 
     assert(actual.columns === expectedDiffColumns)
-    assert(actual.collect() === expectedDiff)
+    assert(actual.collect() === expectedDiff7)
+  }
+
+  test("diff with left-side diff mode and dot in value column") {
+    val l = left7.withColumnRenamed("value", "the.value")
+    val r = right7.withColumnRenamed("value", "the.value")
+    val options = DiffOptions.default.withDiffMode(DiffMode.LeftSide)
+
+    val actual = l.diff(r, options, "id").orderBy("id")
+    val expectedDiffColumns = Seq("diff", "id", "the.value", "label")
+
+    assert(actual.columns === expectedDiffColumns)
+    assert(actual.collect() === expectedLeftDiff7)
+  }
+
+  test("diff with right-side diff mode and dot in value column") {
+    val l = left7.withColumnRenamed("value", "the.value")
+    val r = right7.withColumnRenamed("value", "the.value")
+    val options = DiffOptions.default.withDiffMode(DiffMode.RightSide)
+
+    val actual = l.diff(r, options, "id").orderBy("id")
+    val expectedDiffColumns = Seq("diff", "id", "the.value", "label")
+
+    assert(actual.columns === expectedDiffColumns)
+    assert(actual.collect() === expectedRightDiff7)
   }
 
   def doTestRequirement(f: => Any, expected: String): Unit = {

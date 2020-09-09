@@ -19,16 +19,25 @@ package uk.co.gresearch.spark.diff
 import uk.co.gresearch.spark.diff
 import uk.co.gresearch.spark.diff.DiffMode.{Default, DiffMode}
 
+/**
+ * The diff mode determines the output columns of the diffing transformation.
+ */
 object DiffMode extends Enumeration {
   type DiffMode = Value
 
   /**
-   * The diff contains value columns from the left and right dataset, arranged column by column:
-   * diff,( changes,) id-1, id-2, …, left-value-1, right-value-1, left-value-2, right-value-2, …
+   * The diff mode determines the output columns of the diffing transformation.
+   *
+   * - ColumnByColumn: The diff contains value columns from the left and right dataset,
+   *                   arranged column by column:
+   *   diff,( changes,) id-1, id-2, …, left-value-1, right-value-1, left-value-2, right-value-2, …
+   *
+   * - LeftSide / RightSide: The diff contains value columns from the left / right dataset only.
    */
-  val ColumnByColumn: diff.DiffMode.Value = Value
+  val ColumnByColumn, LeftSide, RightSide = Value
 
   /**
+   * The diff mode determines the output columns of the diffing transformation.
    * The default diff mode is ColumnByColumn.
    */
   val Default: diff.DiffMode.Value = ColumnByColumn
