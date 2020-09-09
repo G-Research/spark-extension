@@ -75,6 +75,7 @@ object DiffMode extends Enumeration {
  * @param nochangeDiffValue value in diff column for un-changed rows
  * @param changeColumn name of change column
  * @param diffMode diff output format
+ * @param sparseMode un-changed values are null on both sides
  */
 case class DiffOptions(diffColumn: String,
                        leftColumnPrefix: String,
@@ -84,7 +85,8 @@ case class DiffOptions(diffColumn: String,
                        deleteDiffValue: String,
                        nochangeDiffValue: String,
                        changeColumn: Option[String] = None,
-                       diffMode: DiffMode = Default) {
+                       diffMode: DiffMode = Default,
+                       sparseMode: Boolean = false) {
 
   require(leftColumnPrefix.nonEmpty, "Left column prefix must not be empty")
   require(rightColumnPrefix.nonEmpty, "Right column prefix must not be empty")
@@ -196,11 +198,20 @@ case class DiffOptions(diffColumn: String,
     this.copy(diffMode = diffMode)
   }
 
+  /**
+   * Fluent method to change the sparse mode.
+   * Returns a new immutable DiffOptions instance with the new sparse mode.
+   * @return new immutable DiffOptions instance
+   */
+  def withSparseMode(sparseMode: Boolean): DiffOptions = {
+    this.copy(sparseMode = sparseMode)
+  }
+
 }
 
 object DiffOptions {
   /**
    * Default diffing options.
    */
-  val default: DiffOptions = DiffOptions("diff", "left", "right", "I", "C", "D", "N", None, Default)
+  val default: DiffOptions = DiffOptions("diff", "left", "right", "I", "C", "D", "N", None, Default, false)
 }

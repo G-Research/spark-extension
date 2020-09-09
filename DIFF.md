@@ -124,6 +124,7 @@ Diffing can be configured via an optional `DiffOptions` instance (see [Methods](
 |`nochangeDiffValue` |`"N"`    |Unchanged rows are marked with this string in the 'diff column'.|
 |`changeColumn`      |*none*   |An array with the names of all columns that have changed values is provided in this column (only for unchanged and changed rows, *null* otherwise).|
 |`diffMode`          |`DiffModes.Default`|Configures the diff output format. For details see [Diff Modes](#diff-modes) section below.|
+|`sparseMode`          |`false`|When `true`, only values that have changed are provided on left and right side, `null` is used for un-changed values.|
 
 Either construct an instance via the constructor …
 
@@ -147,6 +148,7 @@ val options = DiffOptions.default
   .withNochangeDiffValue("n")
   .withChangeColumn("changes")
   .withDiffMode(DiffModes.Default)
+  .withSparseMode(true)
 ```
 
 ### Diffing Modes
@@ -159,12 +161,96 @@ The result of the diff transformation can have the following formats:
                       for each column.
 - *side by side*: The non-id columns from the left and right dataset are are arranged side by side,
                   i.e. first there are all columns from the left dataset, then from the right one.
-                  This is useful to visually compare the datasets as a whole.
+                  This is useful to visually compare the datasets as a whole, especially in conjunction
+                  with the sparse mode.
 - *left side*: Only the columns of the left dataset are present in the diff output. This mode
                provides the left dataset as is, annotated with diff action and optional changed column names. 
 - *right side*: Only the columns of the right dataset are present in the diff output. This mode
                 provides the right dataset as given, as well as the diff action that has been applied to it.
                 This serves as a patch that, applied to the left dataset, results in the right dataset.
+
+With the following two datasets `left` and `right`:
+
+```scala
+val left = Seq(
+  Value(1, Some("one"), None),
+  Value(2, Some("two"), Some("number two")),
+  Value(3, Some("three"), Some("number three")),
+  Value(4, Some("four"), Some("number four")),
+  Value(5, Some("five"), Some("number five")),
+).toDS
+
+val right = Seq(
+  Value(1, Some("one"), Some("one")),
+  Value(2, Some("Two"), Some("number two")),
+  Value(3, Some("Three"), Some("number Three")),
+  Value(4, Some("four"), Some("number four")),
+  Value(6, Some("six"), Some("number six")),
+).toDS
+```
+
+the diff modes produce the following outputs:
+
+#### Column by Column
+
+|diff |id   |left_value|right_value|left_label  |right_label |
+|:---:|:---:|:--------:|:---------:|:----------:|:----------:|
+|C    |1    |one       |one        |*null*      |one         |
+|C    |2    |two       |Two        |number two  |number two  |
+|C    |3    |three     |Three      |number three|number Three|
+|N    |4    |four      |four       |number four |number four |
+|D    |5    |five      |null       |number five |*null*      |
+|I    |6    |*null*    |six        |*null*      |number six  |
+
+#### Side by Side
+
+|diff |id   |left_value|left_label  |right_value|right_label |
+|:---:|:---:|:--------:|:----------:|:---------:|:----------:|
+|C    |1    |one       |*null*      |one        |one         |
+|C    |2    |two       |number two  |Two        |number two  |
+|C    |3    |three     |number three|Three      |number Three|
+|N    |4    |four      |number four |four       |number four |
+|D    |5    |five      |number five |null       |*null*      |
+|I    |6    |*null*    |*null*      |six        |number six  |
+
+#### Left Side
+
+|diff |id   |value|label       |
+|:---:|:---:|:---:|:----------:|
+|C    |1    |one  |null        |
+|C    |2    |two  |number two  |
+|C    |3    |three|number three|
+|N    |4    |four |number four |
+|D    |5    |five |number five |
+|I    |6    |null |null        |
+
+#### Right Side
+
+|diff |id   |value|label       |
+|:---:|:---:|:---:|:----------:|
+|C    |1    |one  |one         |
+|C    |2    |Two  |number two  |
+|C    |3    |Three|number Three|
+|N    |4    |four |number four |
+|D    |5    |null |null        |
+|I    |6    |six  |number six  |
+
+### Sparse Mode
+
+The diff modes above can be combined with sparse mode. In sparse mode, only values that differ between
+the two datasets are in the diff result, all other values are `null`.
+
+Above [Column by Column](#column-by-column) example would look in sparse mode as follows:
+
+|diff |id   |left_value|right_value|left_label  |right_label |
+|:---:|:---:|:--------:|:---------:|:----------:|:----------:|
+|C    |1    |null      |null       |null        |one         |
+|C    |2    |two       |Two        |null        |null        |
+|C    |3    |three     |Three      |number three|number Three|
+|N    |4    |null      |null       |null        |null        |
+|D    |5    |five      |null       |number five |null        |
+|I    |6    |null      |six        |null        |number six  |
+
 
 ## Methods (Scala)
 
