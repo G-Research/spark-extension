@@ -4,6 +4,9 @@ on: [push]
 
 jobs:
   build-and-test:
+    name: Build and Test (Spark ${{ matrix.spark-version }} Scala ${{ matrix.scala-version }} Python  ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+
     strategy:
       fail-fast: false
       matrix:
@@ -23,9 +26,6 @@ jobs:
             scala-compat-version: '2.11'
           - scala-version: '2.12.10'
             scala-compat-version: '2.12'
-
-    name: Build and Test (Spark ${{ matrix.spark-version }} Scala ${{ matrix.scala-version }} Python  ${{ matrix.python-version }})
-    runs-on: ubuntu-latest
 
     steps:
     - name: Checkout
@@ -62,20 +62,12 @@ jobs:
         mkdir -p target/surefire-reports
         python -m pytest python/test --junit-xml target/surefire-reports/pytest.xml
 
-    - name: Publish Unit Test Results
-      if: always()
-      uses: EnricoMi/publish-unit-test-result-action@master
-      with:
-        check_name: Unit Test Results (Spark ${{ matrix.spark-version }} Scala ${{ matrix.scala-version }} Python  ${{ matrix.python-version }})
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        files: "target/surefire-reports/*.xml"
-
     - name: Generate Unit Test Report
       if: failure()
       run: mvn --batch-mode surefire-report:report-only
 
     - name: Upload Unit Test Results
-      if: failure()
+      if: always()
       uses: actions/upload-artifact@v2
       with:
         name: Unit Test Results (Spark ${{ matrix.spark-version }} Scala ${{ matrix.scala-version }} Python  ${{ matrix.python-version }})
@@ -83,3 +75,23 @@ jobs:
           target/surefire-reports/*.xml
           !target/surefire-reports/TEST-org.scalatest*.xml
           target/site/surefire-report.html
+
+  publish-test-results:
+    name: "Publish Unit Tests Results"
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+    - name: Download Artifacts
+      uses: actions/download-artifact@v2
+      with:
+        path: artifacts
+
+    - name: Publish Unit Test Results
+      uses: EnricoMi/publish-unit-test-result-action@master
+      with:
+        check_name: Unit Test Results
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        files: "artifacts/**/*.xml"
+        log_level: DEBUG
