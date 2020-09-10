@@ -82,4 +82,4 @@ jobs:
       with:
         check_name: Unit Test Results (Spark ${{ matrix.spark-version }} Scala ${{ matrix.scala-version }} Python  ${{ matrix.python-version }})
         github_token: ${{ secrets.GITHUB_TOKEN }}
-        report_paths: "target/surefire-reports/*.xml"
+        files: "target/surefire-reports/*.xml"
