@@ -62,6 +62,14 @@ jobs:
         mkdir -p target/surefire-reports
         python -m pytest python/test --junit-xml target/surefire-reports/pytest.xml
 
+    - name: Publish Unit Test Results
+      if: always()
+      uses: EnricoMi/publish-unit-test-result-action@v1.0
+      with:
+        check_name: Unit Test Results (Spark ${{ matrix.spark-version }} Scala ${{ matrix.scala-version }} Python  ${{ matrix.python-version }})
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        files: "target/surefire-reports/*.xml"
+
     - name: Generate Unit Test Report
       if: failure()
       run: mvn --batch-mode surefire-report:report-only
@@ -75,11 +83,3 @@ jobs:
           target/surefire-reports/*.xml
           !target/surefire-reports/TEST-org.scalatest*.xml
           target/site/surefire-report.html
-
-    - name: Publish Unit Test Results
-      if: always()
-      uses: EnricoMi/publish-unit-test-result-action@v1.0
-      with:
-        check_name: Unit Test Results (Spark ${{ matrix.spark-version }} Scala ${{ matrix.scala-version }} Python  ${{ matrix.python-version }})
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        files: "target/surefire-reports/*.xml"
