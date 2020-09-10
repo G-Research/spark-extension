@@ -1,12 +1,6 @@
 name: CI
 
-on:
-  push:
-    branches:
-      - master
-    tags:
-      - v*
-  pull_request:
+on: [push]
 
 jobs:
   build-and-test:
@@ -58,40 +52,34 @@ jobs:
         pip install -r python/requirements-${{ matrix.spark-compat-version }}_${{ matrix.scala-compat-version }}.txt
         pip install pytest
 
-    - name: Build and Test
+    - name: Scala Tests
       run: mvn --batch-mode test
 
-    - name: PyTest
+    - name: Python Tests
       env:
         PYTHONPATH: python:python/test
       run: |
         mkdir -p target/surefire-reports
         python -m pytest python/test --junit-xml target/surefire-reports/pytest.xml
 
-    - name: Upload Test Results
-      if: ${{ failure() }}
+    - name: Generate Unit Test Report
+      if: failure()
+      run: mvn --batch-mode surefire-report:report-only
+
+    - name: Upload Unit Test Results
+      if: failure()
       uses: actions/upload-artifact@v2
       with:
         name: Unit Test Results (Spark ${{ matrix.spark-version }} Scala ${{ matrix.scala-version }} Python  ${{ matrix.python-version }})
         path: |
           target/surefire-reports/*.xml
           !target/surefire-reports/TEST-org.scalatest*.xml
+          target/site/surefire-report.html
 
-    - name: Test Report
-      if: ${{ failure() }}
-      run: mvn --batch-mode surefire-report:report-only
-
-    - name: Upload Report
-      if: ${{ failure() }}
-      uses: actions/upload-artifact@v2
+    - name: Publish Unit Test Results
+      if: always()
+      uses: EnricoMi/publish-unit-test-result-action@v1.0
       with:
-        name: Unit Test Results (Spark ${{ matrix.spark-version }} Scala ${{ matrix.scala-version }} Python  ${{ matrix.python-version }})
-        path: target/site/surefire-report.html
-
-    - name: Unit Test Report
-      if: ${{ always() }}
-      uses: scacap/action-surefire-report@v1.0.3
-      with:
-        check_name: Unit Test Report (Spark ${{ matrix.spark-version }} Scala ${{ matrix.scala-version }} Python  ${{ matrix.python-version }})
+        check_name: Unit Test Results (Spark ${{ matrix.spark-version }} Scala ${{ matrix.scala-version }} Python  ${{ matrix.python-version }})
         github_token: ${{ secrets.GITHUB_TOKEN }}
-        report_paths: "**/surefire-reports/*.xml"
+        report_paths: "target/surefire-reports/*.xml"
