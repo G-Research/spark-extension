@@ -13,7 +13,21 @@
 #  limitations under the License.
 
 from py4j.java_gateway import JavaObject, JVMView
-from pyspark.sql import DataFrame, SQLContext
+from pyspark.sql import DataFrame
+from enum import Enum
+
+
+class DiffMode(Enum):
+    ColumnByColumn = "ColumnByColumn"
+    SideBySide = "SideBySide"
+    LeftSide = "LeftSide"
+    RightSide = "RightSide"
+
+    # the actual default enum value is defined in Java
+    Default = "Default"
+
+    def _to_java(self, jvm: JVMView) -> JavaObject:
+        return jvm.uk.co.gresearch.spark.diff.DiffMode.withNameOption(self.name).get()
 
 
 class DiffOptions:
@@ -36,6 +50,8 @@ class DiffOptions:
     :type nochange_diff_value: str
     :param change_column: name of change column
     :type change_column: str
+    :param diff_mode: diff mode
+    :type diff_mode: DiffMode
     """
     def __init__(self,
                  diff_column: str = 'diff',
@@ -45,7 +61,8 @@ class DiffOptions:
                  change_diff_value: str = 'C',
                  delete_diff_value: str = 'D',
                  nochange_diff_value: str = 'N',
-                 change_column: str = None):
+                 change_column: str = None,
+                 diff_mode: DiffMode = DiffMode.Default):
         self.diff_column = diff_column
         self.left_column_prefix = left_column_prefix
         self.right_column_prefix = right_column_prefix
@@ -54,6 +71,7 @@ class DiffOptions:
         self.delete_diff_value = delete_diff_value
         self.nochange_diff_value = nochange_diff_value
         self.change_column = change_column
+        self.diff_mode = diff_mode
 
     def with_diff_column(self, diff_column: str) -> 'DiffOptions':
         """
@@ -73,7 +91,8 @@ class DiffOptions:
             change_diff_value=self.change_diff_value,
             delete_diff_value=self.delete_diff_value,
             nochange_diff_value=self.nochange_diff_value,
-            change_column=self.change_column
+            change_column=self.change_column,
+            diff_mode=self.diff_mode
         )
 
     def with_left_column_prefix(self, left_column_prefix: str) -> 'DiffOptions':
@@ -94,7 +113,8 @@ class DiffOptions:
             change_diff_value=self.change_diff_value,
             delete_diff_value=self.delete_diff_value,
             nochange_diff_value=self.nochange_diff_value,
-            change_column=self.change_column
+            change_column=self.change_column,
+            diff_mode=self.diff_mode
         )
 
     def with_right_column_prefix(self, right_column_prefix: str) -> 'DiffOptions':
@@ -115,7 +135,8 @@ class DiffOptions:
             change_diff_value=self.change_diff_value,
             delete_diff_value=self.delete_diff_value,
             nochange_diff_value=self.nochange_diff_value,
-            change_column=self.change_column
+            change_column=self.change_column,
+            diff_mode=self.diff_mode
         )
 
     def with_insert_diff_value(self, insert_diff_value: str) -> 'DiffOptions':
@@ -136,7 +157,8 @@ class DiffOptions:
             change_diff_value=self.change_diff_value,
             delete_diff_value=self.delete_diff_value,
             nochange_diff_value=self.nochange_diff_value,
-            change_column=self.change_column
+            change_column=self.change_column,
+            diff_mode=self.diff_mode
         )
 
     def with_change_diff_value(self, change_diff_value: str) -> 'DiffOptions':
@@ -157,7 +179,8 @@ class DiffOptions:
             change_diff_value=change_diff_value,
             delete_diff_value=self.delete_diff_value,
             nochange_diff_value=self.nochange_diff_value,
-            change_column=self.change_column
+            change_column=self.change_column,
+            diff_mode=self.diff_mode
         )
 
     def with_delete_diff_value(self, delete_diff_value: str) -> 'DiffOptions':
@@ -178,7 +201,8 @@ class DiffOptions:
             change_diff_value=self.change_diff_value,
             delete_diff_value=delete_diff_value,
             nochange_diff_value=self.nochange_diff_value,
-            change_column=self.change_column
+            change_column=self.change_column,
+            diff_mode=self.diff_mode
         )
 
     def with_nochange_diff_value(self, nochange_diff_value: str) -> 'DiffOptions':
@@ -199,7 +223,8 @@ class DiffOptions:
             change_diff_value=self.change_diff_value,
             delete_diff_value=self.delete_diff_value,
             nochange_diff_value=nochange_diff_value,
-            change_column=self.change_column
+            change_column=self.change_column,
+            diff_mode=self.diff_mode
         )
 
     def with_change_column(self, change_column: str) -> 'DiffOptions':
@@ -207,7 +232,7 @@ class DiffOptions:
         Fluent method to change the change column name.
         Returns a new immutable DiffOptions instance with the new change column name.
 
-        :param change_column: new diff column name
+        :param change_column: new change column name
         :type change_column: str
         :return: new immutable DiffOptions instance
         :rtype: DiffOptions
@@ -220,7 +245,8 @@ class DiffOptions:
             change_diff_value=self.change_diff_value,
             delete_diff_value=self.delete_diff_value,
             nochange_diff_value=self.nochange_diff_value,
-            change_column=change_column
+            change_column=change_column,
+            diff_mode=self.diff_mode
         )
 
     def without_change_column(self) -> 'DiffOptions':
@@ -239,7 +265,30 @@ class DiffOptions:
             change_diff_value=self.change_diff_value,
             delete_diff_value=self.delete_diff_value,
             nochange_diff_value=self.nochange_diff_value,
-            change_column=None
+            change_column=None,
+            diff_mode=self.diff_mode
+        )
+
+    def with_diff_mode(self, diff_mode: DiffMode) -> 'DiffOptions':
+        """
+        Fluent method to change the diff mode.
+        Returns a new immutable DiffOptions instance with the new diff mode.
+
+        :param diff_mode: new diff mode
+        :type diff_mode: DiffMode
+        :return: new immutable DiffOptions instance
+        :rtype: DiffOptions
+        """
+        return DiffOptions(
+            diff_column=self.diff_column,
+            left_column_prefix=self.left_column_prefix,
+            right_column_prefix=self.right_column_prefix,
+            insert_diff_value=self.insert_diff_value,
+            change_diff_value=self.change_diff_value,
+            delete_diff_value=self.delete_diff_value,
+            nochange_diff_value=self.nochange_diff_value,
+            change_column=self.change_column,
+            diff_mode=diff_mode
         )
 
     def _to_java(self, jvm: JVMView) -> JavaObject:
@@ -251,7 +300,8 @@ class DiffOptions:
             self.change_diff_value,
             self.delete_diff_value,
             self.nochange_diff_value,
-            jvm.scala.Option.apply(self.change_column)
+            jvm.scala.Option.apply(self.change_column),
+            self.diff_mode._to_java(jvm)
         )
 
 

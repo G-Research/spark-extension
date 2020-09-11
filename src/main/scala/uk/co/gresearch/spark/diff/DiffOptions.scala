@@ -42,8 +42,25 @@ object DiffMode extends Enumeration {
   /**
    * The diff mode determines the output columns of the diffing transformation.
    * The default diff mode is ColumnByColumn.
+   *
+   * Default is not a enum value here (hence the def) so that we do not have to include it in every
+   * match clause. We will see the respective enum value that Default points to instead.
    */
-  val Default: diff.DiffMode.Value = ColumnByColumn
+  def Default: diff.DiffMode.Value = ColumnByColumn
+
+  // we want to return Default's enum value for 'Default' here but cannot override super.withName.
+  def withNameOption(name: String): Option[Value] = {
+    if ("Default".equals(name)) {
+      Some(DiffMode.Default)
+    } else {
+      try {
+        Some(super.withName(name))
+      } catch {
+        case _: NoSuchElementException => None
+      }
+    }
+  }
+
 }
 
 /**
