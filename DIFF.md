@@ -106,7 +106,9 @@ This `diff` transformation provides the following features:
   * diff column name (default: `"diff"`), if default name exists in diff result schema
   * diff action labels (defaults: `"N"`, `"I"`, `"D"`, `"C"`), allows custom diff notation,
 e.g. Unix diff left-right notation (<, >) or git before-after format (+, -, -+)
-* optionally provides a *change column* that lists all non-id column names that have changed (only for `"D"` action rows)
+  * different diff result formats
+  * sparse diffing mode
+* optionally provides a *change column* that lists all non-id column names that have changed (only for `"C"` action rows)
 * guarantees that no duplicate columns exist in the result, throws a readable exception otherwise
 
 ## Configuring Diff
@@ -124,12 +126,12 @@ Diffing can be configured via an optional `DiffOptions` instance (see [Methods](
 |`nochangeDiffValue` |`"N"`    |Unchanged rows are marked with this string in the 'diff column'.|
 |`changeColumn`      |*none*   |An array with the names of all columns that have changed values is provided in this column (only for unchanged and changed rows, *null* otherwise).|
 |`diffMode`          |`DiffModes.Default`|Configures the diff output format. For details see [Diff Modes](#diff-modes) section below.|
-|`sparseMode`          |`false`|When `true`, only values that have changed are provided on left and right side, `null` is used for un-changed values.|
+|`sparseMode`        |`false`  |When `true`, only values that have changed are provided on left and right side, `null` is used for un-changed values.|
 
 Either construct an instance via the constructor …
 
 ```scala
-val options = DiffOptions("d", "l", "r", "i", "c", "d", "n", Some("changes"), DiffModes.Default)
+val options = DiffOptions("d", "l", "r", "i", "c", "d", "n", Some("changes"), DiffModes.Default, false)
 ```
 
 … or via the `.with*` methods. The former requires all options to be specified, whereas the latter
@@ -172,6 +174,8 @@ The result of the diff transformation can have the following formats:
 With the following two datasets `left` and `right`:
 
 ```scala
+case class Value(id: Int, value: Option[String], label: Option[String])
+
 val left = Seq(
   Value(1, Some("one"), None),
   Value(2, Some("two"), Some("number two")),
