@@ -122,6 +122,19 @@ class DiffSuite extends FunSuite with SparkTestSession {
     Row("I", 10, null, null, null, null)
   )
 
+  lazy val expectedSparseDiff7: Seq[Row] = Seq(
+    Row("C", 1, "one", "One", null, null),
+    Row("C", 2, null, null, "two labels", "two Labels"),
+    Row("C", 3, "three", "Three", "three labels", "Three Labels"),
+    Row("C", 4, "four", null, "four labels", null),
+    Row("C", 5, null, "five", null, "five labels"),
+    Row("N", 6, null, null, null, null),
+    Row("D", 7, "seven", null, "seven labels", null),
+    Row("I", 8, null, "eight", null, "eight labels"),
+    Row("D", 9, null, null, null, null),
+    Row("I", 10, null, null, null, null)
+  )
+
   lazy val expectedLeftDiff7: Seq[Row] = Seq(
     Row("C", 1, "one", "one label"),
     Row("C", 2, "two", "two labels"),
@@ -1045,6 +1058,38 @@ class DiffSuite extends FunSuite with SparkTestSession {
 
     assert(actual.columns === expectedDiffColumns)
     assert(actual.collect() === expectedRightDiff7)
+  }
+
+  test("diff with column-by-column and sparse mode") {
+    val options = DiffOptions.default.withDiffMode(DiffMode.ColumnByColumn).withSparseMode(true)
+    val actual = left7.diff(right7, options, "id").orderBy("id")
+
+    assert(actual.columns === Seq("diff", "id", "left_value", "right_value", "left_label", "right_label"))
+    assert(actual.collect() === expectedSparseDiff7)
+  }
+
+  test("diff with side-by-side and sparse mode") {
+    val options = DiffOptions.default.withDiffMode(DiffMode.SideBySide).withSparseMode(true)
+    val actual = left7.diff(right7, options, "id").orderBy("id")
+
+    assert(actual.columns === Seq("diff", "id", "left_value", "left_label", "right_value", "right_label"))
+    assert(actual.collect() === expectedSparseDiff7.map(row => Row(row.getString(0), row.getInt(1), row.getString(2), row.getString(4), row.getString(3), row.getString(5))))
+  }
+
+  test("diff with left side and sparse mode") {
+    val options = DiffOptions.default.withDiffMode(DiffMode.LeftSide).withSparseMode(true)
+    val actual = left7.diff(right7, options, "id").orderBy("id")
+
+    assert(actual.columns === Seq("diff", "id", "value", "label"))
+    assert(actual.collect() === expectedSparseDiff7.map(row => Row(row.getString(0), row.getInt(1), row.getString(2), row.getString(4))))
+  }
+
+  test("diff with right side and sparse mode") {
+    val options = DiffOptions.default.withDiffMode(DiffMode.RightSide).withSparseMode(true)
+    val actual = left7.diff(right7, options, "id").orderBy("id")
+
+    assert(actual.columns === Seq("diff", "id", "value", "label"))
+    assert(actual.collect() === expectedSparseDiff7.map(row => Row(row.getString(0), row.getInt(1), row.getString(3), row.getString(5))))
   }
 
   def doTestRequirement(f: => Any, expected: String): Unit = {

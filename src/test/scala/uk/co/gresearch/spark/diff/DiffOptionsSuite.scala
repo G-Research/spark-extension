@@ -118,8 +118,9 @@ class DiffOptionsSuite extends FunSuite with SparkTestSession {
       .withNochangeDiffValue("n")
       .withChangeColumn("change")
       .withDiffMode(DiffMode.LeftSide)
+      .withSparseMode(true)
 
-    val expected = DiffOptions("d", "l", "r", "i", "c", "d", "n", Some("change"), DiffMode.LeftSide)
+    val expected = DiffOptions("d", "l", "r", "i", "c", "d", "n", Some("change"), DiffMode.LeftSide, true)
     assert(options === expected)
   }
 

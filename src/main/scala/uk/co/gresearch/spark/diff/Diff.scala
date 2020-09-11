@@ -227,22 +227,35 @@ class Diff(options: DiffOptions) {
   def getDiffColumns[T](options: DiffOptions, pkColumns: Seq[String], otherColumns: Seq[String],
                         left: Dataset[T], right: Dataset[T]): Seq[Column] = {
     val idColumns = pkColumns.map(c => coalesce(left(backticks(c)), right(backticks(c))).as(c))
+
+    val (leftValues, rightValues) = if (options.sparseMode) {
+      (
+        otherColumns.map(c => (c, if (options.sparseMode) when(not(left(backticks(c)) <=> right(backticks(c))), left(backticks(c))) else left(backticks(c)))).toMap,
+        otherColumns.map(c => (c, if (options.sparseMode) when(not(left(backticks(c)) <=> right(backticks(c))), right(backticks(c))) else right(backticks(c)))).toMap
+      )
+    } else {
+      (
+        otherColumns.map(c => (c, left(backticks(c)))).toMap,
+        otherColumns.map(c => (c, right(backticks(c)))).toMap
+      )
+    }
+
     val valueColumns = options.diffMode match {
       case DiffMode.ColumnByColumn =>
         otherColumns.flatMap(c =>
           Seq(
-            left(backticks(c)).as(s"${options.leftColumnPrefix}_$c"),
-            right(backticks(c)).as(s"${options.rightColumnPrefix}_$c")
+            leftValues(c).as(s"${options.leftColumnPrefix}_$c"),
+            rightValues(c).as(s"${options.rightColumnPrefix}_$c")
           )
         )
 
       case DiffMode.SideBySide =>
-        otherColumns.map(c => left(backticks(c)).as(s"${options.leftColumnPrefix}_$c")) ++
-          otherColumns.map(c => right(backticks(c)).as(s"${options.rightColumnPrefix}_$c"))
+        otherColumns.map(c => leftValues(c).as(s"${options.leftColumnPrefix}_$c")) ++
+          otherColumns.map(c => rightValues(c).as(s"${options.rightColumnPrefix}_$c"))
 
       case DiffMode.LeftSide | DiffMode.RightSide =>
         otherColumns.map(c =>
-          if (options.diffMode == DiffMode.LeftSide) left(backticks(c)) else right(backticks(c))
+          if (options.diffMode == DiffMode.LeftSide) leftValues(c).as(c) else rightValues(c).as(c)
         )
     }
     idColumns ++ valueColumns
