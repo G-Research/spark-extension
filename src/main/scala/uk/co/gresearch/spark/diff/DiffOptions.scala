@@ -16,6 +16,53 @@
 
 package uk.co.gresearch.spark.diff
 
+import uk.co.gresearch.spark.diff
+import uk.co.gresearch.spark.diff.DiffMode.{Default, DiffMode}
+
+/**
+ * The diff mode determines the output columns of the diffing transformation.
+ */
+object DiffMode extends Enumeration {
+  type DiffMode = Value
+
+  /**
+   * The diff mode determines the output columns of the diffing transformation.
+   *
+   * - ColumnByColumn: The diff contains value columns from the left and right dataset,
+   *                   arranged column by column:
+   *   diff,( changes,) id-1, id-2, …, left-value-1, right-value-1, left-value-2, right-value-2, …
+   *
+   * - SideBySide: The diff contains value columns from the left and right dataset,
+   *               arranged side by side:
+   *   diff,( changes,) id-1, id-2, …, left-value-1, left-value-2, …, right-value-1, right-value-2, …
+   * - LeftSide / RightSide: The diff contains value columns from the left / right dataset only.
+   */
+  val ColumnByColumn, SideBySide, LeftSide, RightSide = Value
+
+  /**
+   * The diff mode determines the output columns of the diffing transformation.
+   * The default diff mode is ColumnByColumn.
+   *
+   * Default is not a enum value here (hence the def) so that we do not have to include it in every
+   * match clause. We will see the respective enum value that Default points to instead.
+   */
+  def Default: diff.DiffMode.Value = ColumnByColumn
+
+  // we want to return Default's enum value for 'Default' here but cannot override super.withName.
+  def withNameOption(name: String): Option[Value] = {
+    if ("Default".equals(name)) {
+      Some(DiffMode.Default)
+    } else {
+      try {
+        Some(super.withName(name))
+      } catch {
+        case _: NoSuchElementException => None
+      }
+    }
+  }
+
+}
+
 /**
  * Configuration class for diffing Datasets.
  *
@@ -27,6 +74,7 @@ package uk.co.gresearch.spark.diff
  * @param deleteDiffValue value in diff column for deleted rows
  * @param nochangeDiffValue value in diff column for un-changed rows
  * @param changeColumn name of change column
+ * @param diffMode diff output format
  */
 case class DiffOptions(diffColumn: String,
                        leftColumnPrefix: String,
@@ -35,7 +83,8 @@ case class DiffOptions(diffColumn: String,
                        changeDiffValue: String,
                        deleteDiffValue: String,
                        nochangeDiffValue: String,
-                       changeColumn: Option[String] = None) {
+                       changeColumn: Option[String] = None,
+                       diffMode: DiffMode = Default) {
 
   require(leftColumnPrefix.nonEmpty, "Left column prefix must not be empty")
   require(rightColumnPrefix.nonEmpty, "Right column prefix must not be empty")
@@ -138,11 +187,20 @@ case class DiffOptions(diffColumn: String,
     this.copy(changeColumn = None)
   }
 
+  /**
+   * Fluent method to change the diff mode.
+   * Returns a new immutable DiffOptions instance with the new diff mode.
+   * @return new immutable DiffOptions instance
+   */
+  def withDiffMode(diffMode: DiffMode): DiffOptions = {
+    this.copy(diffMode = diffMode)
+  }
+
 }
 
 object DiffOptions {
   /**
    * Default diffing options.
    */
-  val default: DiffOptions = DiffOptions("diff", "left", "right", "I", "C", "D", "N", None)
+  val default: DiffOptions = DiffOptions("diff", "left", "right", "I", "C", "D", "N", None, Default)
 }

@@ -123,11 +123,12 @@ Diffing can be configured via an optional `DiffOptions` instance (see [Methods](
 |`deleteDiffValue`   |`"D"`    |Deleted rows are marked with this string in the 'diff column'.|
 |`nochangeDiffValue` |`"N"`    |Unchanged rows are marked with this string in the 'diff column'.|
 |`changeColumn`      |*none*   |An array with the names of all columns that have changed values is provided in this column (only for unchanged and changed rows, *null* otherwise).|
+|`diffMode`          |`DiffModes.Default`|Configures the diff output format. For details see [Diff Modes](#diff-modes) section below.|
 
 Either construct an instance via the constructor …
 
 ```scala
-val options = DiffOptions("d", "l", "r", "i", "c", "d", "n", Some("changes"))
+val options = DiffOptions("d", "l", "r", "i", "c", "d", "n", Some("changes"), DiffModes.Default)
 ```
 
 … or via the `.with*` methods. The former requires all options to be specified, whereas the latter
@@ -145,7 +146,25 @@ val options = DiffOptions.default
   .withDeleteDiffValue("d")
   .withNochangeDiffValue("n")
   .withChangeColumn("changes")
+  .withDiffMode(DiffModes.Default)
 ```
+
+### Diffing Modes
+
+The result of the diff transformation can have the following formats:
+
+- *column by column*: The non-id columns are arranged column by column, i.e. for each non-id column
+                      there are two columns next to each other in the diff result, one from the left
+                      and one from the right dataset. This is useful to easily compare the values
+                      for each column.
+- *side by side*: The non-id columns from the left and right dataset are are arranged side by side,
+                  i.e. first there are all columns from the left dataset, then from the right one.
+                  This is useful to visually compare the datasets as a whole.
+- *left side*: Only the columns of the left dataset are present in the diff output. This mode
+               provides the left dataset as is, annotated with diff action and optional changed column names. 
+- *right side*: Only the columns of the right dataset are present in the diff output. This mode
+                provides the right dataset as given, as well as the diff action that has been applied to it.
+                This serves as a patch that, applied to the left dataset, results in the right dataset.
 
 ## Methods (Scala)
 

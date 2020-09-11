@@ -106,6 +106,8 @@ class DiffOptionsSuite extends FunSuite with SparkTestSession {
   }
 
   test("fluent methods of diff options") {
+    assert(DiffMode.Default != DiffMode.LeftSide, "test assumption on default diff mode must hold, otherwise test is trivial")
+
     val options = DiffOptions.default
       .withDiffColumn("d")
       .withLeftColumnPrefix("l")
@@ -114,7 +116,10 @@ class DiffOptionsSuite extends FunSuite with SparkTestSession {
       .withChangeDiffValue("c")
       .withDeleteDiffValue("d")
       .withNochangeDiffValue("n")
-    val expected = DiffOptions("d", "l", "r", "i", "c", "d", "n")
+      .withChangeColumn("change")
+      .withDiffMode(DiffMode.LeftSide)
+
+    val expected = DiffOptions("d", "l", "r", "i", "c", "d", "n", Some("change"), DiffMode.LeftSide)
     assert(options === expected)
   }
 

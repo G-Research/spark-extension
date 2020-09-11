@@ -16,13 +16,11 @@
 
 package uk.co.gresearch.spark.diff
 
-import java.util.Locale
-
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.{ArrayType, StringType}
 import org.apache.spark.sql.{Column, DataFrame, Dataset, Encoder}
 import uk.co.gresearch.spark.backticks
+import uk.co.gresearch.spark.diff.DiffMode.DiffMode
 
 /**
  * Differ class to diff two Datasets. See Diff.of(…) for details.
@@ -56,6 +54,7 @@ class Diff(options: DiffOptions) {
 
     val columns = left.columns.map(handleConfiguredCaseSensitivity)
     val pkColumns = if (idColumns.isEmpty) columns.toList else idColumns.map(handleConfiguredCaseSensitivity)
+    val nonPkColumns = columns.diff(pkColumns)
     val missingIdColumns = pkColumns.diff(columns)
     require(missingIdColumns.isEmpty,
       s"Some id columns do not exist: ${missingIdColumns.mkString(", ")} missing among ${columns.mkString(", ")}")
@@ -63,9 +62,18 @@ class Diff(options: DiffOptions) {
     require(!pkColumns.contains(handleConfiguredCaseSensitivity(options.diffColumn)),
       s"The id columns must not contain the diff column name '${options.diffColumn}': " +
         s"${pkColumns.mkString(", ")}")
+    if(Set(DiffMode.LeftSide, DiffMode.RightSide).contains(options.diffMode))
+      require(!nonPkColumns.contains(options.diffColumn),
+        s"The non-id columns must not contain the diff column name '${options.diffColumn}': ${nonPkColumns.mkString((", "))}")
+
+    require(!options.changeColumn.exists(pkColumns.contains),
+      s"The id columns must not contain the change column name '${options.changeColumn.get}': ${pkColumns.mkString((", "))}")
+    if(Set(DiffMode.LeftSide, DiffMode.RightSide).contains(options.diffMode))
+      require(!options.changeColumn.exists(nonPkColumns.contains),
+        s"The non-id columns must not contain the change column name '${options.changeColumn.get}': ${nonPkColumns.mkString((", "))}")
 
     val nonIdColumns = columns.diff(pkColumns)
-    val diffValueColumns = getDiffValueColumns(nonIdColumns)
+    val diffValueColumns = getDiffValueColumns(nonIdColumns, options.diffMode)
 
     require(!diffValueColumns.contains(handleConfiguredCaseSensitivity(options.diffColumn)),
       s"The column prefixes '${options.leftColumnPrefix}' and '${options.rightColumnPrefix}', " +
@@ -93,10 +101,25 @@ class Diff(options: DiffOptions) {
    * @param nonIdColumns value column names
    * @return left and right diff value column names
    */
-  private def getDiffValueColumns(nonIdColumns: Seq[String]): Seq[String] =
-    Seq(options.leftColumnPrefix, options.rightColumnPrefix)
-      .flatMap(prefix => nonIdColumns.map(column => s"${prefix}_$column"))
-      .map(handleConfiguredCaseSensitivity)
+  private def getDiffValueColumns(nonIdColumns: Seq[String], diffMode: DiffMode): Seq[String] = {
+    def prefixColumns(columns: Seq[String])(prefix: String): Seq[String] =
+      columns.map(column => s"${prefix}_$column")
+
+    diffMode match {
+      case DiffMode.ColumnByColumn =>
+        Seq(options.leftColumnPrefix, options.rightColumnPrefix)
+          .flatMap(prefixColumns(nonIdColumns))
+          .map(handleConfiguredCaseSensitivity)
+
+      case DiffMode.SideBySide =>
+        prefixColumns(nonIdColumns)(options.leftColumnPrefix) ++
+          prefixColumns(nonIdColumns)(options.rightColumnPrefix)
+            .map(handleConfiguredCaseSensitivity)
+
+      case DiffMode.LeftSide | DiffMode.RightSide =>
+        nonIdColumns
+    }
+  }
 
   /**
    * Returns a new DataFrame that contains the differences between the two Datasets
@@ -159,9 +182,6 @@ class Diff(options: DiffOptions) {
     val pkColumnsCs = pkColumns.map(handleConfiguredCaseSensitivity).toSet
     val otherColumns = left.columns.filter(col => !pkColumnsCs.contains(handleConfiguredCaseSensitivity(col)))
 
-    require(!options.changeColumn.exists(pkColumns.contains),
-      s"The id columns must not contain the change column name '${options.changeColumn.get}': ${pkColumns.mkString((", "))}")
-
     val existsColumnName = Diff.distinctStringNameFor(left.columns)
     val l = left.withColumn(existsColumnName, lit(1))
     val r = right.withColumn(existsColumnName, lit(1))
@@ -176,14 +196,7 @@ class Diff(options: DiffOptions) {
         otherwise(lit(options.nochangeDiffValue)).
         as(options.diffColumn)
 
-    val diffColumns =
-      pkColumns.map(c => coalesce(l(backticks(c)), r(backticks(c))).as(c)) ++
-        otherColumns.flatMap(c =>
-          Seq(
-            left(backticks(c)).as(s"${options.leftColumnPrefix}_$c"),
-            right(backticks(c)).as(s"${options.rightColumnPrefix}_$c")
-          )
-        )
+    val diffColumns = getDiffColumns(options, pkColumns, otherColumns, left, right)
 
     val changeColumn =
       options.changeColumn
@@ -211,6 +224,30 @@ class Diff(options: DiffOptions) {
       .select((diffCondition +: changeColumn) ++ diffColumns: _*)
   }
 
+  def getDiffColumns[T](options: DiffOptions, pkColumns: Seq[String], otherColumns: Seq[String],
+                        left: Dataset[T], right: Dataset[T]): Seq[Column] = {
+    val idColumns = pkColumns.map(c => coalesce(left(backticks(c)), right(backticks(c))).as(c))
+    val valueColumns = options.diffMode match {
+      case DiffMode.ColumnByColumn =>
+        otherColumns.flatMap(c =>
+          Seq(
+            left(backticks(c)).as(s"${options.leftColumnPrefix}_$c"),
+            right(backticks(c)).as(s"${options.rightColumnPrefix}_$c")
+          )
+        )
+
+      case DiffMode.SideBySide =>
+        otherColumns.map(c => left(backticks(c)).as(s"${options.leftColumnPrefix}_$c")) ++
+          otherColumns.map(c => right(backticks(c)).as(s"${options.rightColumnPrefix}_$c"))
+
+      case DiffMode.LeftSide | DiffMode.RightSide =>
+        otherColumns.map(c =>
+          if (options.diffMode == DiffMode.LeftSide) left(backticks(c)) else right(backticks(c))
+        )
+    }
+    idColumns ++ valueColumns
+  }
+
   /**
    * Returns a new Dataset that contains the differences between the two Datasets of the same type `T`.
    *
@@ -236,7 +273,7 @@ class Diff(options: DiffOptions) {
                  diffEncoder: Encoder[U], idColumns: String*): Dataset[U] = {
     val nonIdColumns = left.columns.diff(if (idColumns.isEmpty) left.columns.toList else idColumns)
     val encColumns = diffEncoder.schema.fields.map(_.name)
-    val diffColumns = Seq(options.diffColumn) ++ idColumns ++ getDiffValueColumns(nonIdColumns)
+    val diffColumns = Seq(options.diffColumn) ++ idColumns ++ getDiffValueColumns(nonIdColumns, options.diffMode)
     val extraColumns = encColumns.diff(diffColumns)
 
     require(extraColumns.isEmpty,
