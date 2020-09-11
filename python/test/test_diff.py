@@ -119,6 +119,17 @@ class DiffTest(SparkTest):
             diff_in_right_side_mode_row('D', 7, None, None),
         ]
 
+        diff_in_sparse_mode_row = Row('diff', 'id', 'left_val', 'right_val', 'left_label', 'right_label')
+        cls.expected_diff_in_sparse_mode = [
+            diff_in_sparse_mode_row('C', 1, 1.0, 1.1, None, None),
+            diff_in_sparse_mode_row('C', 2, None, None, 'two', 'Two'),
+            diff_in_sparse_mode_row('N', 3, None, None, None, None),
+            diff_in_sparse_mode_row('C', 4, None, 4.0, None, 'four'),
+            diff_in_sparse_mode_row('C', 5, 5.0, None, 'five', None),
+            diff_in_sparse_mode_row('I', 6, None, 6.0, None, 'six'),
+            diff_in_sparse_mode_row('D', 7, 7.0, None, 'seven', None),
+        ]
+
     def test_dataframe_diff(self):
         diff = self.left_df.diff(self.right_df, 'id').orderBy('id').collect()
         self.assertEqual(self.expected_diff, diff)
@@ -156,6 +167,11 @@ class DiffTest(SparkTest):
         options = DiffOptions().with_diff_mode(DiffMode.RightSide)
         diff = self.left_df.diff_with_options(self.right_df, options, 'id').orderBy('id').collect()
         self.assertEqual(self.expected_diff_in_right_side_mode, diff)
+
+    def test_dataframe_diff_with_sparse_mode(self):
+        options = DiffOptions().with_sparse_mode(True)
+        diff = self.left_df.diff_with_options(self.right_df, options, 'id').orderBy('id').collect()
+        self.assertEqual(self.expected_diff_in_sparse_mode, diff)
 
     def test_diff_of(self):
         diff = Diff().of(self.left_df, self.right_df, 'id').orderBy('id').collect()
@@ -195,6 +211,11 @@ class DiffTest(SparkTest):
         options = DiffOptions().with_diff_mode(DiffMode.RightSide)
         diff = Diff(options).of(self.left_df, self.right_df, 'id').orderBy('id').collect()
         self.assertEqual(self.expected_diff_in_right_side_mode, diff)
+
+    def test_dataframe_diff_with_sparse_mode(self):
+        options = DiffOptions().with_sparse_mode(True)
+        diff = Diff(options).of(self.left_df, self.right_df, 'id').orderBy('id').collect()
+        self.assertEqual(self.expected_diff_in_sparse_mode, diff)
 
     def test_diff_options_default(self):
         jvm = self.spark._jvm
@@ -240,7 +261,8 @@ class DiffTest(SparkTest):
             .with_delete_diff_value('r') \
             .with_nochange_diff_value('n') \
             .with_change_column('c') \
-            .with_diff_mode(DiffMode.SideBySide)
+            .with_diff_mode(DiffMode.SideBySide) \
+            .with_sparse_mode(True)
 
         self.assertEqual(options.diff_column, 'd')
         self.assertEqual(options.left_column_prefix, 'l')
@@ -251,6 +273,7 @@ class DiffTest(SparkTest):
         self.assertEqual(options.nochange_diff_value, 'n')
         self.assertEqual(options.change_column, 'c')
         self.assertEqual(options.diff_mode, DiffMode.SideBySide)
+        self.assertEqual(options.sparse_mode, True)
 
         self.assertNotEqual(options.diff_column, default.diff_column)
         self.assertNotEqual(options.left_column_prefix, default.left_column_prefix)
@@ -261,6 +284,7 @@ class DiffTest(SparkTest):
         self.assertNotEqual(options.nochange_diff_value, default.nochange_diff_value)
         self.assertNotEqual(options.change_column, default.change_column)
         self.assertNotEqual(options.diff_mode, default.diff_mode)
+        self.assertNotEqual(options.sparse_mode, default.sparse_mode)
 
         without_change = options.without_change_column()
         self.assertEqual(without_change.diff_column, 'd')
@@ -272,6 +296,7 @@ class DiffTest(SparkTest):
         self.assertEqual(without_change.nochange_diff_value, 'n')
         self.assertIsNone(without_change.change_column)
         self.assertEqual(without_change.diff_mode, DiffMode.SideBySide)
+        self.assertEqual(without_change.sparse_mode, True)
 
 
 if __name__ == '__main__':

@@ -52,6 +52,8 @@ class DiffOptions:
     :type change_column: str
     :param diff_mode: diff mode
     :type diff_mode: DiffMode
+    :param sparse_mode: sparse mode
+    :type sparse_mode: bool
     """
     def __init__(self,
                  diff_column: str = 'diff',
@@ -62,7 +64,8 @@ class DiffOptions:
                  delete_diff_value: str = 'D',
                  nochange_diff_value: str = 'N',
                  change_column: str = None,
-                 diff_mode: DiffMode = DiffMode.Default):
+                 diff_mode: DiffMode = DiffMode.Default,
+                 sparse_mode: bool = False):
         self.diff_column = diff_column
         self.left_column_prefix = left_column_prefix
         self.right_column_prefix = right_column_prefix
@@ -72,6 +75,7 @@ class DiffOptions:
         self.nochange_diff_value = nochange_diff_value
         self.change_column = change_column
         self.diff_mode = diff_mode
+        self.sparse_mode = sparse_mode
 
     def with_diff_column(self, diff_column: str) -> 'DiffOptions':
         """
@@ -92,7 +96,8 @@ class DiffOptions:
             delete_diff_value=self.delete_diff_value,
             nochange_diff_value=self.nochange_diff_value,
             change_column=self.change_column,
-            diff_mode=self.diff_mode
+            diff_mode=self.diff_mode,
+            sparse_mode=self.sparse_mode
         )
 
     def with_left_column_prefix(self, left_column_prefix: str) -> 'DiffOptions':
@@ -114,7 +119,8 @@ class DiffOptions:
             delete_diff_value=self.delete_diff_value,
             nochange_diff_value=self.nochange_diff_value,
             change_column=self.change_column,
-            diff_mode=self.diff_mode
+            diff_mode=self.diff_mode,
+            sparse_mode=self.sparse_mode
         )
 
     def with_right_column_prefix(self, right_column_prefix: str) -> 'DiffOptions':
@@ -136,7 +142,8 @@ class DiffOptions:
             delete_diff_value=self.delete_diff_value,
             nochange_diff_value=self.nochange_diff_value,
             change_column=self.change_column,
-            diff_mode=self.diff_mode
+            diff_mode=self.diff_mode,
+            sparse_mode=self.sparse_mode
         )
 
     def with_insert_diff_value(self, insert_diff_value: str) -> 'DiffOptions':
@@ -158,7 +165,8 @@ class DiffOptions:
             delete_diff_value=self.delete_diff_value,
             nochange_diff_value=self.nochange_diff_value,
             change_column=self.change_column,
-            diff_mode=self.diff_mode
+            diff_mode=self.diff_mode,
+            sparse_mode=self.sparse_mode
         )
 
     def with_change_diff_value(self, change_diff_value: str) -> 'DiffOptions':
@@ -180,7 +188,8 @@ class DiffOptions:
             delete_diff_value=self.delete_diff_value,
             nochange_diff_value=self.nochange_diff_value,
             change_column=self.change_column,
-            diff_mode=self.diff_mode
+            diff_mode=self.diff_mode,
+            sparse_mode=self.sparse_mode
         )
 
     def with_delete_diff_value(self, delete_diff_value: str) -> 'DiffOptions':
@@ -202,7 +211,8 @@ class DiffOptions:
             delete_diff_value=delete_diff_value,
             nochange_diff_value=self.nochange_diff_value,
             change_column=self.change_column,
-            diff_mode=self.diff_mode
+            diff_mode=self.diff_mode,
+            sparse_mode=self.sparse_mode
         )
 
     def with_nochange_diff_value(self, nochange_diff_value: str) -> 'DiffOptions':
@@ -224,7 +234,8 @@ class DiffOptions:
             delete_diff_value=self.delete_diff_value,
             nochange_diff_value=nochange_diff_value,
             change_column=self.change_column,
-            diff_mode=self.diff_mode
+            diff_mode=self.diff_mode,
+            sparse_mode=self.sparse_mode
         )
 
     def with_change_column(self, change_column: str) -> 'DiffOptions':
@@ -246,7 +257,8 @@ class DiffOptions:
             delete_diff_value=self.delete_diff_value,
             nochange_diff_value=self.nochange_diff_value,
             change_column=change_column,
-            diff_mode=self.diff_mode
+            diff_mode=self.diff_mode,
+            sparse_mode=self.sparse_mode
         )
 
     def without_change_column(self) -> 'DiffOptions':
@@ -266,7 +278,8 @@ class DiffOptions:
             delete_diff_value=self.delete_diff_value,
             nochange_diff_value=self.nochange_diff_value,
             change_column=None,
-            diff_mode=self.diff_mode
+            diff_mode=self.diff_mode,
+            sparse_mode=self.sparse_mode
         )
 
     def with_diff_mode(self, diff_mode: DiffMode) -> 'DiffOptions':
@@ -288,7 +301,31 @@ class DiffOptions:
             delete_diff_value=self.delete_diff_value,
             nochange_diff_value=self.nochange_diff_value,
             change_column=self.change_column,
-            diff_mode=diff_mode
+            diff_mode=diff_mode,
+            sparse_mode=self.sparse_mode
+        )
+
+    def with_sparse_mode(self, sparse_mode: bool) -> 'DiffOptions':
+        """
+        Fluent method to change the sparse mode.
+        Returns a new immutable DiffOptions instance with the new sparse mode.
+
+        :param sparse: new sparse mode
+        :type sparse: bool
+        :return: new immutable DiffOptions instance
+        :rtype: DiffOptions
+        """
+        return DiffOptions(
+            diff_column=self.diff_column,
+            left_column_prefix=self.left_column_prefix,
+            right_column_prefix=self.right_column_prefix,
+            insert_diff_value=self.insert_diff_value,
+            change_diff_value=self.change_diff_value,
+            delete_diff_value=self.delete_diff_value,
+            nochange_diff_value=self.nochange_diff_value,
+            change_column=self.change_column,
+            diff_mode=self.diff_mode,
+            sparse_mode=sparse_mode
         )
 
     def _to_java(self, jvm: JVMView) -> JavaObject:
@@ -301,7 +338,8 @@ class DiffOptions:
             self.delete_diff_value,
             self.nochange_diff_value,
             jvm.scala.Option.apply(self.change_column),
-            self.diff_mode._to_java(jvm)
+            self.diff_mode._to_java(jvm),
+            self.sparse_mode
         )
 
 
