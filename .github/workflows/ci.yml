@@ -1,11 +1,14 @@
 name: CI
 
-on: [push]
+on: [push, pull_request_target]
 
 jobs:
   build-and-test:
     name: Build and Test (Spark ${{ matrix.spark-version }} Scala ${{ matrix.scala-version }} Python  ${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    # always run on push events, but only run on pull_request_target event when pull request pulls from fork repository
+    # for pull requests within the same repository, the pull event is sufficient
+    if: github.event_name == 'push' || github.event_name == 'pull_request_target' && github.event.pull_request.head.repo.full_name != github.repository
 
     strategy:
       fail-fast: false
@@ -80,7 +83,8 @@ jobs:
     name: "Publish Unit Tests Results"
     needs: build-and-test
     runs-on: ubuntu-latest
-    if: always()
+    # the build-and-test job might be skipped, we don't need to run this job then
+    if: success() || failure()
 
     steps:
     - name: Download Artifacts
