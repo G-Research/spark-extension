@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [1.2.0] - 2020-10-06
+
+### Added
+- Add diff modes (#22): column-by-column, side-by-side, left and right side diff modes
+- Adds sparse mode (#23): diff DataFrame contains only changed values
+
 ## [1.1.0] - 2020-08-24
 
 ### Added

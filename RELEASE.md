@@ -7,11 +7,11 @@ as described below.
 
 ## Testing master for all  environments
 
-The following steps release a snapshot and test it. Test all versions listed under [further down](#releasing-master-for-other-environments).
+The following steps release a snapshot and test it. Test all versions listed [further down](#releasing-master-for-other-environments).
 
-- Set the version with `sh set-version.sh`, e.g. `sh set-version.sh 2.4.6 2.11.12`
+- Set the version with `./set-version.sh`, e.g. `./set-version.sh 2.4.6 2.11.12`
 - Release a snapshot (make sure the version in the `pom.xml` file ends with `SNAPSHOT`): `mvn clean deploy`
-- Test the released snapshot: `sh test-release.sh`
+- Test the released snapshot: `./test-release.sh`
 
 ## Releasing from master
 
@@ -25,7 +25,7 @@ Follow this procedure to release a new version:
 - Commit the change to your local git repository, use a commit message like `Releasing 1.1.0`. Do not push to github yet.
 - Tag that commit with a version tag like `v1.1.0` and message like `Release v1.1.0`. Do not push to github yet.
 - Release the version with `mvn clean deploy`. This will be put into a staging repository and not automatically released (due to `<autoReleaseAfterClose>false</autoReleaseAfterClose>` in your [`pom.xml`](pom.xml) file).
-- Inspect and test the staged version. Use `sh test-release.sh` or the `spark-examples` project for that. If you are happy with everything:
+- Inspect and test the staged version. Use `./test-release.sh` or the `spark-examples` project for that. If you are happy with everything:
   - Push the commit and tag to origin.
   - Release the package with `mvn nexus-staging:release`.
   - Bump the version to the next [minor version](https://semver.org/) in `pom.xml` and append the `-SNAPSHOT` suffix again, e.g. `1.1.0` → `1.2.0-SNAPSHOT`.
@@ -40,13 +40,14 @@ Once you have released the new version, release from the same tag for all other 
   - Spark 2.4 with Scala 2.11 and 2.12
   - Spark 3.0 with 2.12 (already released above, should be the tagged version)
 - Always use the latest Spark version per Spark minor version
+  - Test Spark 2.4 with Scala 2.12 against Spark 2.4.2
 - Use Scala 2.11.12 and 2.12.10 specifically
 - Release process:
   - Checkout the release tag, e.g. `git checkout v1.0.0`
-  - Set the version in the `pom.xml` file via `set-version.sh`, e.g. `sh set-version.sh 2.4.6 2.11.12`
+  - Set the version in the `pom.xml` file via `set-version.sh`, e.g. `./set-version.sh 2.4.6 2.11.12`
   - Review the `pom.xml` file changes: `git diff pom.xml`
   - Release the version with `mvn clean deploy`
-  - Inspect and test the staged version. Use `sh test-release.sh` or the `spark-examples` project for that.
+  - Inspect and test the staged version. Use `./test-release.sh` or the `spark-examples` project for that.
     - If you are happy with everything, release the package with `mvn nexus-staging:release`.
     - Otherwise drop it with `mvn nexus-staging:drop`.
 - Revert the changes done to the `pom.xml` file: `git checkout pom.xml`
