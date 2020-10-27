@@ -38,7 +38,7 @@ class HistogramSuite extends FunSuite with SparkTestSession {
     IntValue(3, "three", -123),
     IntValue(3, "three", 100),
     IntValue(3, "three", 1024),
-    IntValue(4, "four", 0),
+    IntValue(4, "four", 0)
   ).toDS()
   val intThresholds = Seq(-200, -100, 0, 100, 200)
 
@@ -53,7 +53,7 @@ class HistogramSuite extends FunSuite with SparkTestSession {
     DoubleValue(3, "three", -123.0),
     DoubleValue(3, "three", 100.0),
     DoubleValue(3, "three", 1024.0),
-    DoubleValue(4, "four", 0.0),
+    DoubleValue(4, "four", 0.0)
   ).toDS()
   val doubleThresholds = Seq(-200.0, -100.0, 0.0, 100.0, 200.0)
 
