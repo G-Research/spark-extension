@@ -37,7 +37,7 @@ as follows:
 Equivalent to that query is:
 
     import uk.co.gresearch.spark._
-    
+
     df.histogram(Seq(100, 200), $"score", $"user")
 
 The first argument is a sequence of thresholds, the second argument provides the value column.
