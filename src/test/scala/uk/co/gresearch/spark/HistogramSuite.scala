@@ -195,7 +195,7 @@ class HistogramSuite extends FunSuite with SparkTestSession {
     val exception = intercept[AnalysisException] {
       ints.histogram(intThresholds, $"value", $"does-not-exist")
     }
-    assert(exception.getMessage.startsWith("cannot resolve '`does-not-exist`' given input columns: [>200, id, title, value, ≤-100, ≤-200, ≤0, ≤100, ≤200"))
+    assert(exception.getMessage.startsWith("cannot resolve '`does-not-exist`' given input columns: ["))
   }
 
 }
