@@ -16,10 +16,7 @@
 
 package uk.co.gresearch
 
-import org.apache.spark.sql.functions._
 import org.apache.spark.sql._
-
-import scala.collection.generic.Sorted
 
 package object spark {
 

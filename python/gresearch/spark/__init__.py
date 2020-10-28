@@ -15,16 +15,16 @@
 from typing import List, Any
 from typing import Union
 
-from py4j.java_gateway import JVMView
+from py4j.java_gateway import JVMView, JavaObject
 from pyspark.sql import DataFrame
 
 
-def _to_seq(jvm: JVMView, list: List[Any]):
+def _to_seq(jvm: JVMView, list: List[Any]) -> JavaObject:
     array = jvm.java.util.ArrayList(list)
     return jvm.scala.collection.JavaConverters.asScalaIteratorConverter(array.iterator()).asScala().toSeq()
 
 
-def _get_scala_object(jvm: JVMView, name: str):
+def _get_scala_object(jvm: JVMView, name: str) -> JavaObject:
     clazz = jvm.java.lang.Class.forName('{}$'.format(name))
     ff = clazz.getDeclaredField("MODULE$")
     return ff.get(None)

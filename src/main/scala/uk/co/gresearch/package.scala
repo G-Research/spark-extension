@@ -41,7 +41,7 @@ package object gresearch {
     /**
      * Executes the given transformation on the decorated instance.
      *
-     * This allows to write elegant code like
+     * This allows writing fluent code like
      *
      * {{{
      * i.doThis()
@@ -67,7 +67,7 @@ package object gresearch {
     def call[R](transformation: T => R): R = transformation(t)
 
     /**
-     * Allows to perform a transformation only if the given condition is true:
+     * Allows to perform a transformation fluently only if the given condition is true:
      *
      * {{{
      *   a.when(true).call(_.action())
