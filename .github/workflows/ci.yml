@@ -4,7 +4,7 @@ on: [push, pull_request_target]
 
 jobs:
   build-and-test:
-    name: Build and Test (Spark ${{ matrix.spark-version }} Scala ${{ matrix.scala-version }} Python  ${{ matrix.python-version }})
+    name: Build and Test (Spark ${{ matrix.spark-version }} Scala ${{ matrix.scala-version }} Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     # always run on push events, but only run on pull_request_target event when pull request pulls from fork repository
     # for pull requests within the same repository, the pull event is sufficient
@@ -73,7 +73,7 @@ jobs:
       if: always()
       uses: actions/upload-artifact@v2
       with:
-        name: Unit Test Results (Spark ${{ matrix.spark-version }} Scala ${{ matrix.scala-version }} Python  ${{ matrix.python-version }})
+        name: Unit Test Results (Spark ${{ matrix.spark-version }} Scala ${{ matrix.scala-version }} Python ${{ matrix.python-version }})
         path: |
           target/surefire-reports/*.xml
           !target/surefire-reports/TEST-org.scalatest*.xml

@@ -15,6 +15,7 @@
 from py4j.java_gateway import JavaObject, JVMView
 from pyspark.sql import DataFrame
 from enum import Enum
+from gresearch.spark import _to_seq
 
 
 class DiffMode(Enum):
@@ -353,11 +354,6 @@ class Diff:
     def __init__(self, options: DiffOptions = None):
         self._options = options or DiffOptions()
 
-    @staticmethod
-    def _to_seq(jvm, list):
-        array = jvm.java.util.ArrayList(list)
-        return jvm.scala.collection.JavaConverters.asScalaIteratorConverter(array.iterator()).asScala().toSeq()
-
     def _to_java(self, jvm: JVMView) -> JavaObject:
         jdo = self._options._to_java(jvm)
         return jvm.uk.co.gresearch.spark.diff.Diff(jdo)
@@ -427,7 +423,7 @@ class Diff:
         """
         jvm = left._sc._jvm
         jdiff = self._to_java(jvm)
-        jdf = jdiff.of(left._jdf, right._jdf, self._to_seq(jvm, id_columns))
+        jdf = jdiff.of(left._jdf, right._jdf, _to_seq(jvm, list(id_columns)))
         return DataFrame(jdf, left.sql_ctx)
 
 

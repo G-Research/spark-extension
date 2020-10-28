@@ -16,6 +16,8 @@
 
 package uk.co.gresearch
 
+import org.apache.spark.sql._
+
 package object spark {
 
   /**
@@ -34,11 +36,37 @@ package object spark {
    *   col(backticks("a.column", "a.field"))  // produces "`a.column`.`a.field`"
    * }}}
    *
-   * @param string a string
+   * @param string  a string
    * @param strings more strings
    * @return
    */
   def backticks(string: String, strings: String*): String = (string +: strings)
     .map(s => if (s.contains(".") && !s.startsWith("`") && !s.endsWith("`")) s"`$s`" else s).mkString(".")
+
+  /**
+   * Implicit class to extend a Spark Dataset.
+   *
+   * @param df dataset or dataframe
+   * @tparam D inner type of dataset
+   */
+  implicit class ExtendedDataFrame[D](df: Dataset[D]) {
+    /**
+     * Compute the histogram of a column when aggregated by aggregate columns.
+     * Thresholds are expected to be provided in ascending order.
+     * The result dataframe contains the aggregate and histogram columns only.
+     * For each threshold value in thresholds, there will be a column named s"≤$threshold".
+     * There will also be a final column called s">${last_threshold}", that counts the remaining
+     * values that exceed the last threshold.
+     *
+     * @param thresholds       sequence of thresholds, must implement <= and > operators w.r.t. valueColumn
+     * @param valueColumn      histogram is computed for values of this column
+     * @param aggregateColumns histogram is computed against these columns
+     * @tparam T type of histogram thresholds
+     * @return dataframe with aggregate and histogram columns
+     */
+    def histogram[T: Ordering](thresholds: Seq[T], valueColumn: Column, aggregateColumns: Column*): DataFrame =
+      Histogram.of(df, thresholds, valueColumn, aggregateColumns: _*)
+
+  }
 
 }
