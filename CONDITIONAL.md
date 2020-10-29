@@ -17,6 +17,8 @@ Here are some methods that reduce that extra effort for you.
 
 You can run a transformation on a DataFrame like this:
 
+    import uk.co.gresearch._
+
     df.call(transformation)
 
 This nicely integrate with a chain of fluent transformation calls:
@@ -47,7 +49,7 @@ then your you have to break that chaining and the code becomes harder to read:
 
 You can conditionally call a transformations like this:
 
-    import uk.co.gresearch.spark._
+    import uk.co.gresearch._
 
     val condition = true
 
@@ -59,7 +61,7 @@ You can conditionally call a transformations like this:
 
 In case you need an else transformation as well, try this:
 
-    import uk.co.gresearch.spark._
+    import uk.co.gresearch._
 
     val condition = true
 
