@@ -7,10 +7,7 @@ two datasets, i.e. which rows to _add_, _delete_ or _change_ to get from one dat
 
 **[Histogram](HISTOGRAM.md):** A `histogram` transformation that computes the histogram DataFrame for a value column.
 
-**Backticks:** `backticks(string: String, strings: String*): String)`: Encloses the given column name with backticks (`` ` ``) when needed.
-This is a handy way to ensure column names with special characters like dots (`.`) work with `col()` or `select()`.
-
-**Fluent method call:** `T.call(transformation: T => R): R`: Turns a transformation `T => R`, that is not part of `T` into a fluent method call on `T`.
+**[Fluent method call](CONDITIONAL.md):** `T.call(transformation: T => R): R`: Turns a transformation `T => R`, that is not part of `T` into a fluent method call on `T`.
 This allows writing fluent code like:
 
 ```scala
@@ -22,16 +19,7 @@ i.doThis()
  .doMore()
 ```
 
-rather than
-
-```scala
-transformation(
-  i.doThis()
-   .doThat()
-).doMore()
-```
-
-**Fluent conditional method call:** `T.when(condition: Boolean).call(transformation: T => T): T`:
+**[Fluent conditional method call](CONDITIONAL.md):** `T.when(condition: Boolean).call(transformation: T => T): T`:
 Perform a transformation fluently only if the given condition is true.
 This allows writing fluent code like:
 
@@ -44,16 +32,9 @@ i.doThis()
  .doMore()
 ```
 
-rather than
+**Backticks:** `backticks(string: String, strings: String*): String)`: Encloses the given column name with backticks (`` ` ``) when needed.
+This is a handy way to ensure column names with special characters like dots (`.`) work with `col()` or `select()`.
 
-```scala
-val intermediate1 =
-  i.doThis()
-   .doThat()
-val intermediate2 =
-  if (condition) transformation(intermediate1) else indermediate1
-intermediate2.doMore()
-```
 
 ## Using Spark Extension
 
@@ -125,7 +106,7 @@ For example, switch to Spark 2.4.6 and Scala 2.11.12 by running `sh set-version.
 
 Then execute `mvn package` to create a jar from the sources. It can be found in `target/`.
 
-## Test
+## Testing
 
 Run the Scala tests via `mvn test`.
 
