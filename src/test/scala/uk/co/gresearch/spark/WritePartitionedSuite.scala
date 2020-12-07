@@ -109,19 +109,19 @@ class WritePartitionedSuite extends FunSuite with SparkTestSession {
             "2020-07-01,one",
             "2020-07-02,One",
             "2020-07-03,ONE",
-            "2020-07-04,one",
+            "2020-07-04,one"
           ))
           case "id=2" => assert(lines === Seq(
             "2020-07-01,two",
             "2020-07-02,Two",
             "2020-07-03,TWO",
-            "2020-07-04,two",
+            "2020-07-04,two"
           ))
           case "id=3" => assert(lines === Seq(
-            "2020-07-01,three",
+            "2020-07-01,three"
           ))
           case "id=4" => assert(lines === Seq(
-            "2020-07-01,four",
+            "2020-07-01,four"
           ))
         }
       }
@@ -145,19 +145,19 @@ class WritePartitionedSuite extends FunSuite with SparkTestSession {
             "2020-07-04,one",
             "2020-07-03,ONE",
             "2020-07-02,One",
-            "2020-07-01,one",
+            "2020-07-01,one"
           ))
           case "id=2" => assert(lines === Seq(
             "2020-07-04,two",
             "2020-07-03,TWO",
             "2020-07-02,Two",
-            "2020-07-01,two",
+            "2020-07-01,two"
           ))
           case "id=3" => assert(lines === Seq(
-            "2020-07-01,three",
+            "2020-07-01,three"
           ))
           case "id=4" => assert(lines === Seq(
-            "2020-07-01,four",
+            "2020-07-01,four"
           ))
         }
       }
