@@ -77,7 +77,7 @@ package object spark {
       if (partitionColumns.isEmpty)
         throw new IllegalArgumentException(s"partition columns must not be empty")
 
-      if (partitionColumns.exists(!_.isInstanceOf[NamedExpression]))
+      if (partitionColumns.exists(!_.expr.isInstanceOf[NamedExpression]))
         throw new IllegalArgumentException(s"partition columns must be named: ${partitionColumns.mkString(",")}")
 
       val partitionColumnsMap = partitionColumns.map(c => c.expr.asInstanceOf[NamedExpression].name -> c).toMap
