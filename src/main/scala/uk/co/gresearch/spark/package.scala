@@ -17,6 +17,8 @@
 package uk.co.gresearch
 
 import org.apache.spark.sql._
+import org.apache.spark.sql.catalyst.expressions.NamedExpression
+import org.apache.spark.sql.functions.col
 
 package object spark {
 
@@ -66,6 +68,31 @@ package object spark {
      */
     def histogram[T: Ordering](thresholds: Seq[T], valueColumn: Column, aggregateColumns: Column*): DataFrame =
       Histogram.of(df, thresholds, valueColumn, aggregateColumns: _*)
+
+    def writePartitionedBy(partitionColumns: Seq[Column],
+                           moreFileColumns: Seq[Column] = Seq.empty,
+                           moreFileOrder: Seq[Column] = Seq.empty,
+                           partitions: Option[Int] = None,
+                           writtenProjection: Option[Seq[Column]] = None): DataFrameWriter[Row] = {
+      if (partitionColumns.isEmpty)
+        throw new IllegalArgumentException(s"partition columns must not be empty")
+
+      if (partitionColumns.exists(!_.expr.isInstanceOf[NamedExpression]))
+        throw new IllegalArgumentException(s"partition columns must be named: ${partitionColumns.mkString(",")}")
+
+      val partitionColumnsMap = partitionColumns.map(c => c.expr.asInstanceOf[NamedExpression].name -> c).toMap
+      val partitionColumnNames = partitionColumnsMap.keys.map(col).toSeq
+      val rangeColumns = partitionColumnNames ++ moreFileColumns
+      val sortColumns = partitionColumnNames ++ moreFileColumns ++ moreFileOrder
+      df.toDF
+        .call(ds => partitionColumnsMap.foldLeft(ds) { case (ds, (name, col)) => ds.withColumn(name, col) })
+        .when(partitions.isEmpty).call(_.repartitionByRange(rangeColumns: _*))
+        .when(partitions.isDefined).call(_.repartitionByRange(partitions.get, rangeColumns: _*))
+        .sortWithinPartitions(sortColumns: _*)
+        .when(writtenProjection.isDefined).call(_.select(writtenProjection.get: _*))
+        .write
+        .partitionBy(partitionColumnsMap.keys.toSeq: _*)
+    }
 
   }
 
