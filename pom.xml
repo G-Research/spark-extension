@@ -17,7 +17,8 @@
   <scm>
     <connection>scm:git:git://github.com/g-research/spark-extension.git</connection>
     <developerConnection>scm:git:ssh://github.com:g-research/spark-extension.git</developerConnection>
-    <url>http://github.com/g-research/spark-extension.git/tree/master</url>
+    <url>https://github.com/g-research/spark-extension/tree/${project.scm.tag}</url>
+    <tag>master</tag>
   </scm>
   <developers>
     <developer>
