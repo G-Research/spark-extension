@@ -18,7 +18,6 @@ package uk.co.gresearch.spark
 
 import org.apache.spark.sql.{Dataset, Row}
 import org.scalatest.FunSuite
-import uk.co.gresearch._
 import uk.co.gresearch.spark.SparkSuite.Value
 
 import scala.reflect.ClassTag
@@ -37,8 +36,10 @@ class SparkSuite extends FunSuite with SparkTestSession {
   }
 
 
-  def assertIsDataFrame[T](actual: Dataset[T]): Unit =
-    assert(actual.encoder.clsTag === ClassTag(classOf[Row]))
+  def assertIsDataFrame[T : ClassTag](actual: Dataset[T]): Unit = {
+    val clsTag = implicitly[ClassTag[T]]
+    assert(clsTag === ClassTag(classOf[Row]))
+  }
 
   test("call dataset-to-dataset transformation") {
     assertIsDataFrame(spark.emptyDataset[Value].call(_.sort()))
