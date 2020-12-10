@@ -17,7 +17,7 @@ then
 	ln -s spark-$spark-bin-hadoop2.7 spark-$spark
 fi
 
-spark-$spark/bin/spark-shell --packages uk.co.gresearch.spark:spark-extension_$scala_compat:$version < test-release.scala
+spark-$spark/bin/spark-shell --packages uk.co.gresearch.spark:spark-extension_$scala_compat:$version --repositories https://oss.sonatype.org/content/groups/staging/ < test-release.scala
 
 if [ ! -e "venv" ]
 then
