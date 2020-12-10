@@ -18,7 +18,6 @@ package uk.co.gresearch.spark
 
 import org.apache.spark.sql.functions.{sum, when}
 import org.apache.spark.sql.{Column, DataFrame, Dataset}
-import uk.co.gresearch.DatasetTransformation
 
 import scala.annotation.tailrec
 

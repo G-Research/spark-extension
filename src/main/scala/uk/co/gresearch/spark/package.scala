@@ -87,6 +87,34 @@ package object spark {
     def histogram[T: Ordering](thresholds: Seq[T], valueColumn: Column, aggregateColumns: Column*): DataFrame =
       Histogram.of(df, thresholds, valueColumn, aggregateColumns: _*)
 
+    /**
+     * Writes the Dataset / DataFrame via DataFrameWriter.partitionBy. In addition to partitionBy,
+     * this method sorts the data to improve partition file size. Small partitions will contain few
+     * files, large partitions contain more files. Partition ids are contained in a single partition
+     * file per `partitionBy` partition only. Rows within the partition files are also sorted,
+     * if partitionOrder is defined.
+     *
+     * Calling:
+     * {{{
+     *   df.writePartitionedBy(Seq("a"), Seq("b"), Seq("c"), Some(10), Seq($"a", concat($"b", $"c")))
+     * }}}
+
+     * is equivalent to:
+     * {{{
+     *   df.repartitionByRange(10, $"a", $"b")
+     *     .sortWithinPartitions($"a", $"b", $"c")
+     *     .select($"a", concat($"b", $"c"))
+     *     .write
+     *     .partitionBy("a")
+     * }}}
+     *
+     * @param partitionColumns columns used for partitioning
+     * @param moreFileColumns columns where individual values are written to a single file
+     * @param moreFileOrder additional columns to sort partition files
+     * @param partitions optional number of partition files
+     * @param writtenProjection additional transformation to be applied before calling write
+     * @return configured DataFrameWriter
+     */
     def writePartitionedBy(partitionColumns: Seq[Column],
                            moreFileColumns: Seq[Column] = Seq.empty,
                            moreFileOrder: Seq[Column] = Seq.empty,
