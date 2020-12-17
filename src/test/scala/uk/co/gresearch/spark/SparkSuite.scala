@@ -16,15 +16,17 @@
 
 package uk.co.gresearch.spark
 
-import org.apache.spark.sql.{Dataset, Row}
+import org.apache.spark.sql._
 import org.scalatest.FunSuite
+import uk.co.gresearch.ExtendedAny
 import uk.co.gresearch.spark.SparkSuite.Value
-
-import scala.reflect.ClassTag
 
 class SparkSuite extends FunSuite with SparkTestSession {
 
   import spark.implicits._
+
+  val emptyDataset: Dataset[Value] = spark.emptyDataset[Value]
+  val emptyDataFrame: DataFrame = spark.createDataFrame(Seq.empty[Value])
 
   test("backticks") {
     assert(backticks("column") === "column")
@@ -35,60 +37,169 @@ class SparkSuite extends FunSuite with SparkTestSession {
     assert(backticks("the.alias", "a.column", "a.field") === "`the.alias`.`a.column`.`a.field`")
   }
 
+  def assertIsDataset[T](actual: Dataset[T]): Unit = {
+    // if calling class compiles, we assert success
+    // further we evaluate the dataset to see this works as well
+    actual.collect()
+  }
 
-  def assertIsDataFrame[T : ClassTag](actual: Dataset[T]): Unit = {
-    val clsTag = implicitly[ClassTag[T]]
-    assert(clsTag === ClassTag(classOf[Row]))
+  def assertIsGenericType[T](actual: T): Unit = {
+    // if calling class compiles, we assert success
   }
 
   test("call dataset-to-dataset transformation") {
-    assertIsDataFrame(spark.emptyDataset[Value].call(_.sort()))
+    assertIsDataset[Value](spark.emptyDataset[Value].transform(_.sort()))
+    assertIsDataset[Value](spark.emptyDataset[Value].call(_.sort()))
   }
 
   test("call dataset-to-dataframe transformation") {
-    assertIsDataFrame(spark.emptyDataset[Value].call(_.drop("string")))
+    assertIsDataset[Row](spark.emptyDataset[Value].transform(_.drop("string")))
+    assertIsDataset[Row](spark.emptyDataset[Value].call(_.drop("string")))
   }
 
   test("call dataframe-to-dataset transformation") {
-    assertIsDataFrame(spark.createDataFrame(Seq.empty[Value]).call(_.as[Value]))
+    assertIsDataset[Value](spark.createDataFrame(Seq.empty[Value]).transform(_.as[Value]))
+    assertIsDataset[Value](spark.createDataFrame(Seq.empty[Value]).call(_.as[Value]))
   }
 
   test("call dataframe-to-dataframe transformation") {
-    assertIsDataFrame(spark.createDataFrame(Seq.empty[Value]).call(_.drop("string")))
+    assertIsDataset[Row](spark.createDataFrame(Seq.empty[Value]).transform(_.drop("string")))
+    assertIsDataset[Value](spark.createDataFrame(Seq.empty[Value]).call(_.as[Value]))
   }
 
 
-  test("when true call dataset-to-dataset transformation") {
-    assertIsDataFrame(spark.emptyDataset[Value].when(true).call(_.sort()))
+  Seq(true, false).foreach { condition =>
+    test(s"call on $condition condition dataset-to-dataset transformation") {
+      assertIsGenericType[Dataset[Value]](
+        emptyDataset.transform(_.on(condition).call(_.sort()))
+      )
+      assertIsGenericType[Dataset[Value]](
+        emptyDataset.on(condition).call(_.sort())
+      )
+    }
+
+    test(s"call on $condition condition dataframe-to-dataframe transformation") {
+      assertIsGenericType[DataFrame](
+        emptyDataFrame.transform(_.on(condition).call(_.drop("string")))
+      )
+      assertIsGenericType[DataFrame](
+        emptyDataFrame.on(condition).call(_.drop("string"))
+      )
+    }
+
+    test(s"when $condition call dataset-to-dataset transformation") {
+      assertIsDataset[Value](
+        emptyDataset.transform(_.when(condition).call(_.sort()))
+      )
+      assertIsDataset[Value](
+        emptyDataset.when(condition).call(_.sort())
+      )
+    }
+
+    test(s"when $condition call dataframe-to-dataframe transformation") {
+      assertIsDataset[Row](
+        emptyDataFrame.transform(_.when(condition).call(_.drop("string")))
+      )
+      assertIsDataset[Row](
+        emptyDataFrame.when(condition).call(_.drop("string"))
+      )
+    }
+
+
+    test(s"call on $condition condition either dataset-to-dataset transformation") {
+      assertIsGenericType[Dataset[Value]](
+        spark.emptyDataset[Value]
+          .transform(
+            _.on(condition)
+              .either(_.sort())
+              .or(_.orderBy())
+          )
+      )
+    }
+
+    test(s"call on $condition condition either dataset-to-dataframe transformation") {
+      assertIsGenericType[DataFrame](
+        spark.emptyDataset[Value]
+          .transform(
+            _.on(condition)
+              .either(_.drop("string"))
+              .or(_.withColumnRenamed("string", "value"))
+          )
+      )
+    }
+
+    test(s"call on $condition condition either dataframe-to-dataset transformation") {
+      assertIsGenericType[Dataset[Value]](
+        spark.createDataFrame(Seq.empty[Value])
+          .transform(
+            _.on(condition)
+              .either(_.as[Value])
+              .or(_.as[Value])
+          )
+      )
+    }
+
+    test(s"call on $condition condition either dataframe-to-dataframe transformation") {
+      assertIsGenericType[DataFrame](
+        spark.createDataFrame(Seq.empty[Value])
+          .transform(
+            _.on(condition)
+              .either(_.drop("string"))
+              .or(_.withColumnRenamed("string", "value"))
+          )
+      )
+    }
   }
 
-  test("when true call dataset-to-dataframe transformation") {
-    assertIsDataFrame(spark.emptyDataset[Value].when(true).call(_.drop("string")))
+
+  test("on true condition call either writer-to-writer methods") {
+    assertIsGenericType[DataFrameWriter[Value]](
+      spark
+        .emptyDataset[Value]
+        .write
+        .on(true)
+        .either(_.partitionBy("id"))
+        .or(_.bucketBy(10, "id"))
+        .mode(SaveMode.Overwrite)
+    )
   }
 
-  test("when true call dataframe-to-dataset transformation") {
-    assertIsDataFrame(spark.createDataFrame(Seq.empty[Value]).when(true).call(_.as[Value]))
+  test("on false condition call either writer-to-writer methods") {
+    assertIsGenericType[DataFrameWriter[Value]](
+      spark
+        .emptyDataset[Value]
+        .write
+        .on(false)
+        .either(_.partitionBy("id"))
+        .or(_.bucketBy(10, "id"))
+        .mode(SaveMode.Overwrite)
+    )
   }
 
-  test("when true call dataframe-to-dataframe transformation") {
-    assertIsDataFrame(spark.createDataFrame(Seq.empty[Value]).when(true).call(_.drop("string")))
+  test("on true condition call either writer-to-unit methods") {
+    withTempPath { dir =>
+      assertIsGenericType[Unit](
+        spark
+          .emptyDataset[Value]
+          .write
+          .on(true)
+          .either(_.csv(dir.getAbsolutePath))
+          .or(_.csv(dir.getAbsolutePath))
+      )
+    }
   }
 
-
-  test("when false call implicit dataset-to-dataset transformation") {
-    assertIsDataFrame(spark.emptyDataset[Value].when(false).call(_.sort()))
-  }
-
-  test("when false call explicit dataset-to-dataframe transformation") {
-    assertIsDataFrame(spark.emptyDataset[Value].when(false).call(_.drop("string")))
-  }
-
-  test("when false call explicit dataframe-to-dataset transformation") {
-    assertIsDataFrame(spark.createDataFrame(Seq.empty[Value]).when(false).call(_.as[Value]))
-  }
-
-  test("when false call implicit dataframe-to-dataframe transformation") {
-    assertIsDataFrame(spark.createDataFrame(Seq.empty[Value]).when(false).call(_.drop("string")))
+  test("on false condition call either writer-to-unit methods") {
+    withTempPath { dir =>
+      assertIsGenericType[Unit](
+        spark
+          .emptyDataset[Value]
+          .write
+          .on(false)
+          .either(_.csv(dir.getAbsolutePath))
+          .or(_.csv(dir.getAbsolutePath))
+      )
+    }
   }
 
 }

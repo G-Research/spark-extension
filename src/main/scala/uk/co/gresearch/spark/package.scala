@@ -45,24 +45,6 @@ package object spark {
   def backticks(string: String, strings: String*): String = (string +: strings)
     .map(s => if (s.contains(".") && !s.startsWith("`") && !s.endsWith("`")) s"`$s`" else s).mkString(".")
 
-  trait WhenTransformation[T] {
-    /**
-     * Executes the given transformation.
-     *
-     * @param transformation transformation
-     * @return transformation result
-     */
-    def call[R](transformation: Dataset[T] => Dataset[R]): DataFrame
-  }
-
-  case class ThenTransformation[T](t: Dataset[T]) extends WhenTransformation[T] {
-    override def call[R](transformation: Dataset[T] => Dataset[R]): DataFrame = t.call(transformation)
-  }
-
-  case class OtherwiseTransformation[T](t: Dataset[T]) extends WhenTransformation[T] {
-    override def call[R](transformation: Dataset[T] => Dataset[R]): DataFrame = t.toDF
-  }
-
   /**
    * Implicit class to extend a Spark Dataset.
    *
@@ -139,68 +121,6 @@ package object spark {
         .write
         .partitionBy(partitionColumnsMap.keys.toSeq: _*)
     }
-
-    /**
-     * Executes the given transformation on the decorated instance.
-     *
-     * This allows writing fluent code like
-     *
-     * {{{
-     * i.doThis()
-     *  .doThat()
-     *  .call(transformation)
-     *  .doMore()
-     * }}}
-     *
-     * rather than
-     *
-     * {{{
-     * transformation(
-     *   i.doThis()
-     *    .doThat()
-     * ).doMore()
-     * }}}
-     *
-     * where the effective sequence of operations is not clear.
-     *
-     * @param transformation transformation
-     * @return the transformation result
-     */
-    def call[R](transformation: Dataset[D] => Dataset[R]): DataFrame = transformation(df).toDF
-
-    /**
-     * Allows to perform a transformation fluently only if the given condition is true:
-     *
-     * {{{
-     *   a.when(true).call(_.action())
-     * }}}
-     *
-     * This allows to write elegant code like
-     *
-     * {{{
-     * i.doThis()
-     *  .doThat()
-     *  .when(condition).call(transformation)
-     *  .doMore()
-     * }}}
-     *
-     * rather than
-     *
-     * {{{
-     * val intermediate1 =
-     *   i.doThis()
-     *    .doThat()
-     * val intermediate2 =
-     *   if (condition) transformation(intermediate1) else indermediate1
-     * intermediate2.doMore()
-     * }}}
-     *
-     * @param condition condition
-     * @return WhenTransformation
-     */
-    def when(condition: Boolean): WhenTransformation[D] =
-      if (condition) ThenTransformation(df) else OtherwiseTransformation(df)
-
   }
 
 }

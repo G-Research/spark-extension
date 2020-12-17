@@ -1,64 +1,52 @@
 # DataFrame Transformations
 
-The Spark `DataFrame` API allows for chaining transformations as in the following example:
+The Spark `Dataset` API allows for chaining transformations as in the following example:
 
 ```scala
-df.where($"id" === 1)
+ds.where($"id" === 1)
   .withColumn("state", lit("new"))
   .orderBy($"timestamp")
 ```
 
-When you define additional transformations, then you cannot call them in the same fluent way
-without extra effort (like an implicit class wrapping the DataFrame):
+When you define additional transformation functions, the `Dataset` API allows you to
+also fluently call into those:
 
 ```scala
 def transformation(df: DataFrame): DataFrame = df.distinct
+
+ds.transform(transformation)
 ```
 
-Here are some methods that reduce that extra effort for you.
+Here are some methods that extend this principle to conditional calls.
 
-# Additional Transformations
+## Conditional Transformations
 
-You can run a transformation on a DataFrame like this:
+You can run a transformation after checking a condition with a chain of fluent transformation calls:
 
 ```scala
 import uk.co.gresearch._
 
-df.call(transformation)
-```
+val condition = true
 
-This nicely integrate with a chain of fluent transformation calls:
-
-```scala
-df.where($"id" === 1)
-  .withColumn("state", lit("new"))
-  .call(transformation)
-  .orderBy($"timestamp")
+val result =
+  ds.where($"id" === 1)
+    .withColumn("state", lit("new"))
+    .when(condition).call(transformation)
+    .orderBy($"timestamp")
 ```
 
 rather than
 
 ```scala
-transformation(
-  df.where($"id" === 1)
-    .withColumn("state", lit("new"))
-).orderBy($"timestamp")
-```
-
-# Conditional Transformations
-
-If you want to perform any of the transformations only if a condition is true,
-then your you have to break that chaining and the code becomes harder to read:
-
-```scala
 val condition = true
 
-val filteredDf = df.where($"id" === 1)
+val filteredDf = ds.where($"id" === 1)
                    .withColumn("state", lit("new"))
-val condDf = if (condition) df.call(transformation) else df
-val result = df.orderBy($"timestamp")
+val condDf = if (condition) ds.call(transformation) else ds
+val result = ds.orderBy($"timestamp")
 ```
-You can conditionally call a transformations like this:
+
+In case you need an else transformation as well, try:
 
 ```scala
 import uk.co.gresearch._
@@ -66,23 +54,21 @@ import uk.co.gresearch._
 val condition = true
 
 val result =
-  df.where($"id" === 1)
+  ds.where($"id" === 1)
     .withColumn("state", lit("new"))
-    .when(condition).call(transformation)
+    .on(condition).either(transformation).or(other)
     .orderBy($"timestamp")
 ```
 
-In case you need an else transformation as well, try this:
+## Fluent and conditional functions elsewhere
+
+The same fluent notation works for instances other than `Dataset` or `DataFrame`, e.g.
+for the `DataFrameWriter`:
 
 ```scala
-import uk.co.gresearch._
+def writeData[T](writer: DataFrameWriter[T]): Unit = { ... }
 
-val condition = true
-
-val result =
-  df.where($"id" === 1)
-    .withColumn("state", lit("new"))
-    .when(condition).call(transformation)
-    .when(!condition).call(other)
-    .orderBy($"timestamp")
+ds.write
+  .when(compress).call(_.option("compression", "gzip"))
+  .call(writeData)
 ```
