@@ -38,6 +38,13 @@ This is a handy way to ensure column names with special characters like dots (`.
 
 ## Using Spark Extension
 
+The `spark-extension` package is available for all Spark 2.4 and 3.0 versions. The package version
+has the following semantics: `spark-extension_{SCALA_COMPAT_VERSION}-{VERSION}-{SPARK_COMPAT_VERSION}`:
+
+- `SCALA_COMPAT_VERSION`: Scala binary compatibility (minor) version. Available are `2.11` and `2.12`.
+- `SPARK_COMPAT_VERSION`: Apache Spark binary compatibility (minor) version. Available are `2.4` and `3.0`.
+- `VERSION`: The package version, e.g. `1.3.2`.
+
 ### SBT
 
 Add this line to your `build.sbt` file:
