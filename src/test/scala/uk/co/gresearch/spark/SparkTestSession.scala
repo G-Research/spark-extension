@@ -25,7 +25,7 @@ trait SparkTestSession extends SQLHelper {
   lazy val spark: SparkSession = {
     SparkSession
       .builder()
-      .master("local[1]")
+      .master("local[2]")
       .appName("spark test example")
       .config("spark.sql.shuffle.partitions", 2)
       .config("spark.local.dir", ".")
