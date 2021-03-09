@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>uk.co.gresearch.spark</groupId>
   <artifactId>spark-extension_2.12</artifactId>
-  <version>1.4.0-3.0-SNAPSHOT</version>
+  <version>1.4.0-3.1-SNAPSHOT</version>
   <name>Spark Extension</name>
   <description>A library that provides useful extensions to Apache Spark.</description>
   <inceptionYear>2020</inceptionYear>
@@ -40,8 +40,8 @@
     <scala.compat.version>2.12</scala.compat.version>
     <scala.version>${scala.compat.version}.10</scala.version>
     <!-- keep in-sync with python/requirements-3.0_2.12.txt -->
-    <spark.compat.version>3.0</spark.compat.version>
-    <spark.version>${spark.compat.version}.0</spark.version>
+    <spark.compat.version>3.1</spark.compat.version>
+    <spark.version>${spark.compat.version}.1</spark.version>
   </properties>
 
   <dependencies>
