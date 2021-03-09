@@ -38,11 +38,11 @@ This is a handy way to ensure column names with special characters like dots (`.
 
 ## Using Spark Extension
 
-The `spark-extension` package is available for all Spark 2.4 and 3.0 versions. The package version
+The `spark-extension` package is available for all Spark 2.4, 3.0 and 3.1 versions. The package version
 has the following semantics: `spark-extension_{SCALA_COMPAT_VERSION}-{VERSION}-{SPARK_COMPAT_VERSION}`:
 
 - `SCALA_COMPAT_VERSION`: Scala binary compatibility (minor) version. Available are `2.11` and `2.12`.
-- `SPARK_COMPAT_VERSION`: Apache Spark binary compatibility (minor) version. Available are `2.4` and `3.0`.
+- `SPARK_COMPAT_VERSION`: Apache Spark binary compatibility (minor) version. Available are `2.4`, `3.0` and `3.1`.
 - `VERSION`: The package version, e.g. `1.3.2`.
 
 ### SBT
@@ -50,7 +50,7 @@ has the following semantics: `spark-extension_{SCALA_COMPAT_VERSION}-{VERSION}-{
 Add this line to your `build.sbt` file:
 
 ```sbt
-libraryDependencies += "uk.co.gresearch.spark" %% "spark-extension" % "1.3.2-3.0"
+libraryDependencies += "uk.co.gresearch.spark" %% "spark-extension" % "1.3.2-3.1"
 ```
 
 ### Maven
@@ -61,7 +61,7 @@ Add this dependency to your `pom.xml` file:
 <dependency>
   <groupId>uk.co.gresearch.spark</groupId>
   <artifactId>spark-extension_2.12</artifactId>
-  <version>1.3.2-3.0</version>
+  <version>1.3.2-3.1</version>
 </dependency>
 ```
 
@@ -70,10 +70,10 @@ Add this dependency to your `pom.xml` file:
 Launch a Spark Shell with the Spark Extension dependency (version ≥1.1.0) as follows:
 
 ```shell script
-spark-shell --packages uk.co.gresearch.spark:spark-extension_2.12:1.3.2-3.0
+spark-shell --packages uk.co.gresearch.spark:spark-extension_2.12:1.3.2-3.1
 ```
 
-Note: Pick the right Scala version (here 2.12) and Spark version (here 3.0) depending on your Spark Shell version.
+Note: Pick the right Scala version (here 2.12) and Spark version (here 3.1) depending on your Spark Shell version.
 
 ### Python
 
@@ -82,7 +82,7 @@ Launch the Python Spark REPL (pyspark 2.4.2 and ≥3.0) with the Spark Extension
 ```shell script
 pyspark --packages uk.co.gresearch.spark:spark-extension_2.11:1.3.2-2.4  # pyspark != 2.4.2
 pyspark --packages uk.co.gresearch.spark:spark-extension_2.12:1.3.2-2.4  # pyspark == 2.4.2
-pyspark --packages uk.co.gresearch.spark:spark-extension_2.12:1.3.2-3.0  # pyspark >= 3.0.0
+pyspark --packages uk.co.gresearch.spark:spark-extension_2.12:1.3.2-3.1  # pyspark >= 3.0.0
 ```
 
 Note: Pick the right Scala version and Spark version depending on your PySpark version.
@@ -90,10 +90,10 @@ Note: Pick the right Scala version and Spark version depending on your PySpark v
 Run your Python scripts that use PySpark (pyspark 2.4.2 and ≥3.0) via `spark-submit`:
 
 ```shell script
-spark-submit --packages uk.co.gresearch.spark:spark-extension_2.12:1.3.2-3.0 [script.py]
+spark-submit --packages uk.co.gresearch.spark:spark-extension_2.12:1.3.2-3.1 [script.py]
 ```
 
-Note: Pick the right Scala version (here 2.12) and Spark version (here 3.0) depending on your Spark version.
+Note: Pick the right Scala version (here 2.12) and Spark version (here 3.1) depending on your Spark version.
 
 ## Build
 
