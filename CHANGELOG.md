@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [1.3.2] - 2020-12-17
 
+### Added
+- Add support for Spark 3.1
+
+## [1.3.2] - 2020-12-17
+
 ### Changed
 - Refine conditional transformation helper methods
 
