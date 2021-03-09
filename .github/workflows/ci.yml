@@ -16,30 +16,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        spark-version: ['3.0.2', '3.1.1']
+        scala-version: ['2.12.10']
+        python-version: ['3.6', '3.7', '3.8']
         include:
-          - spark-version: '2.4.7'
-            spark-compat-version: '2.4'
-            scala-version: '2.11.12'
-            scala-compat-version: '2.11'
-            python-version: '3.6'
-
-          - spark-version: '2.4.2'
-            spark-compat-version: '2.4'
-            scala-version: '2.12.10'
-            scala-compat-version: '2.12'
-            python-version: '3.6'
-
           - spark-version: '3.0.2'
             spark-compat-version: '3.0'
-            scala-version: '2.12.10'
-            scala-compat-version: '2.12'
-            python-version: '3.6'
-
           - spark-version: '3.1.1'
             spark-compat-version: '3.1'
-            scala-version: '2.12.10'
+          - scala-version: '2.12.10'
             scala-compat-version: '2.12'
-            python-version: '3.6'
 
     steps:
     - name: Checkout
