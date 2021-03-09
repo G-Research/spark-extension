@@ -1,3 +1,0 @@
-py4j
-# only PySpark 2.4.2 is available for Scala 2.12
-pyspark==2.4.2

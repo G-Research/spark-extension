@@ -1,3 +1,0 @@
-py4j
-# any PySpark other than 2.4.2 works with Scala 2.11
-pyspark==2.4.7
