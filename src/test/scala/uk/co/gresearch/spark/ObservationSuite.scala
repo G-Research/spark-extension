@@ -20,6 +20,8 @@ import org.apache.spark.sql.functions.{count, lit, sum}
 import org.apache.spark.sql.{Row, SparkSession}
 import org.scalatest.FunSuite
 
+import java.util.concurrent.TimeUnit
+
 class ObservationSuite extends FunSuite with SparkTestSession {
 
   implicit val s: SparkSession = spark
@@ -31,9 +33,13 @@ class ObservationSuite extends FunSuite with SparkTestSession {
     val observation = Observation("stats", count(lit(1)), sum($"id"))
     assert(observation.option.isEmpty === true)
     assert(observation.option.isDefined === false)
+    assert(!observation.waitCompleted(10, TimeUnit.MILLISECONDS))
+    assert(observation.option.isEmpty === true)
+    assert(observation.option.isDefined === false)
 
     val cnt = df.repartition(10, $"id").cache.observe(observation).count()
 
+    assert(observation.waitCompleted(10, TimeUnit.SECONDS))
     assert(observation.waitAndGet === Row(4, 15))
     assert(observation.option.isEmpty === false)
     assert(observation.option.isDefined === true)
