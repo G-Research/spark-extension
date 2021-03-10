@@ -122,10 +122,13 @@ package object spark {
         .partitionBy(partitionColumnsMap.keys.toSeq: _*)
     }
 
-    def observe(observation: Observation): Dataset[D] = {
-      observation.register(df.sparkSession)
-      df.observe(observation.name, observation.expr, observation.exprs: _*)
-    }
+    /**
+     * Add the observation to the Dataset.
+     *
+     * @param observation observation
+     * @return observed dataset
+     */
+    def observe(observation: Observation): Dataset[D] = observation.observe(df)
 
   }
 

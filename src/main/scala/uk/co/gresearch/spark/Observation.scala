@@ -2,16 +2,29 @@ package uk.co.gresearch.spark
 
 import org.apache.spark.sql.execution.QueryExecution
 import org.apache.spark.sql.util.QueryExecutionListener
-import org.apache.spark.sql.{Column, Row, SparkSession}
+import org.apache.spark.sql.{Column, Dataset, Row, SparkSession}
 
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.locks.{Condition, Lock, ReentrantLock}
 
+/**
+ * Observation helper class to simplify calling Dataset.observe().
+ * This class is not thread-safe. Use it in a single thread or guard access via a lock.
+ *
+ * @param name observation name
+ * @param expr metric expression
+ * @param exprs metric expressions
+ */
 case class Observation(name: String, expr: Column, exprs: Column*) extends QueryExecutionListener {
   @transient
   var row: Option[Row] = None
   val lock: Lock = new ReentrantLock()
   val completed: Condition = lock.newCondition()
+
+  def observe[T](ds: Dataset[T]): Dataset[T] = {
+    register(ds.sparkSession)
+    ds.observe(name, expr, exprs: _*)
+  }
 
   def get: Row = row.get
 
@@ -39,6 +52,20 @@ case class Observation(name: String, expr: Column, exprs: Column*) extends Query
 
   def waitCompleted(time: Long, unit: TimeUnit): Boolean = waitCompleted(Some(time), unit)
 
+  def reset(): Unit = {
+    lock.lock()
+    try {
+      row = None
+    } finally {
+      lock.unlock()
+    }
+  }
+
+  private def register(spark: SparkSession): Unit = {
+    spark.listenerManager.unregister(this)
+    spark.listenerManager.register(this)
+  }
+
   override def onSuccess(funcName: String, qe: QueryExecution, durationNs: Long): Unit =
     onFailureOrSuccess(funcName, qe)
 
@@ -59,10 +86,5 @@ case class Observation(name: String, expr: Column, exprs: Column*) extends Query
     metrics
       .find { case (metricName, _) => metricName.equals(name) }
       .map { case (_, row) => row }
-
-  private[spark] def register(spark: SparkSession): Unit = {
-    spark.listenerManager.unregister(this)
-    spark.listenerManager.register(this)
-  }
 
 }
