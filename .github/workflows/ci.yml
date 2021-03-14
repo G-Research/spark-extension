@@ -9,8 +9,8 @@ on:
   pull_request:
 
 jobs:
-  build-and-test:
-    name: Build and Test (Spark ${{ matrix.spark-version }} Scala ${{ matrix.scala-version }} Python ${{ matrix.python-version }})
+  build:
+    name: Build and Test (Spark ${{ matrix.spark-version }} Scala ${{ matrix.scala-version }})
     runs-on: ubuntu-latest
 
     strategy:
@@ -21,78 +21,162 @@ jobs:
             spark-compat-version: '2.4'
             scala-version: '2.11.12'
             scala-compat-version: '2.11'
-            python-version: '3.6'
 
           - spark-version: '2.4.2'
             spark-compat-version: '2.4'
             scala-version: '2.12.10'
             scala-compat-version: '2.12'
-            python-version: '3.6'
 
           - spark-version: '3.0.2'
             spark-compat-version: '3.0'
             scala-version: '2.12.10'
             scala-compat-version: '2.12'
-            python-version: '3.6'
 
           - spark-version: '3.1.1'
             spark-compat-version: '3.1'
             scala-version: '2.12.10'
             scala-compat-version: '2.12'
-            python-version: '3.6'
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v2
 
-    - name: Set versions in pom.xml
-      run: |
-        ./set-version.sh ${{ matrix.spark-version }} ${{ matrix.scala-version }}
-        git diff
+      - name: Set versions in pom.xml
+        run: |
+          ./set-version.sh ${{ matrix.spark-version }} ${{ matrix.scala-version }}
+          git diff
 
-    - name: Setup JDK 1.8
-      uses: actions/setup-java@v1
-      with:
-        java-version: 1.8
+      - name: Cache Maven packages
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-mvn-build-${{ matrix.spark-version }}-${{ matrix.scala-version }}-${{ hashFiles('pom.xml') }}
 
-    - name: Setup Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
+      - name: Setup JDK 1.8
+        uses: actions/setup-java@v1
+        with:
+          java-version: 1.8
 
-    - name: Install Python dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r python/requirements-${{ matrix.spark-compat-version }}_${{ matrix.scala-compat-version }}.txt
-        pip install pytest
+      - name: Build
+        run: mvn --batch-mode compile test-compile package -DskipTests
 
-    - name: Scala Tests
-      run: mvn --batch-mode test
+      - name: Upload Binaries
+        uses: actions/upload-artifact@v2
+        with:
+          name: Binaries-${{ matrix.spark-version }}-${{ matrix.scala-version }}
+          path: |
+            *
+            !.*
+            !target/*-javadoc.jar
+            !target/site
 
-    - name: Python Tests
-      env:
-        PYTHONPATH: python:python/test
-      run: |
-        mkdir -p target/surefire-reports
-        python -m pytest python/test --junit-xml target/surefire-reports/pytest.xml
+  test:
+    name: Test (Spark ${{ matrix.spark-version }} Scala ${{ matrix.scala-version }} Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    needs: build
 
-    - name: Generate Unit Test Report
-      if: failure()
-      run: mvn --batch-mode surefire-report:report-only
+    strategy:
+      fail-fast: false
+      matrix:
+        spark-version: ['2.4.2', '2.4.7', '3.0.2', '3.1.1']
+        python-version: ['3.6', '3.7', '3.8']
+        include:
+          - spark-version: '2.4.7'
+            spark-compat-version: '2.4'
+            scala-version: '2.11.12'
+            scala-compat-version: '2.11'
 
-    - name: Upload Unit Test Results
-      if: always()
-      uses: actions/upload-artifact@v2
-      with:
-        name: Unit Test Results (Spark ${{ matrix.spark-version }} Scala ${{ matrix.scala-version }} Python ${{ matrix.python-version }})
-        path: |
-          target/surefire-reports/*.xml
-          !target/surefire-reports/TEST-org.scalatest*.xml
-          target/site/surefire-report.html
+          - spark-version: '2.4.2'
+            spark-compat-version: '2.4'
+            scala-version: '2.12.10'
+            scala-compat-version: '2.12'
+
+          - spark-version: '3.0.2'
+            spark-compat-version: '3.0'
+            scala-version: '2.12.10'
+            scala-compat-version: '2.12'
+
+          - spark-version: '3.1.1'
+            spark-compat-version: '3.1'
+            scala-version: '2.12.10'
+            scala-compat-version: '2.12'
+        exclude:
+          - spark-version: '2.4.2'
+            python-version: '3.8'
+          - spark-version: '2.4.7'
+            python-version: '3.8'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Set versions in pom.xml
+        run: |
+          ./set-version.sh ${{ matrix.spark-version }} ${{ matrix.scala-version }}
+          git diff
+
+      - name: Fetch Binaries Artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: Binaries-${{ matrix.spark-version }}-${{ matrix.scala-version }}
+          path: .
+
+      - name: Cache Maven packages
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-mvn-build-${{ matrix.spark-version }}-${{ matrix.scala-version }}-${{ hashFiles('pom.xml') }}
+
+      - name: Setup JDK 1.8
+        uses: actions/setup-java@v1
+        with:
+          java-version: 1.8
+
+      - name: Cache Pip packages
+        uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-test-${{ matrix.python-version }}-${{ hashFiles('requirements.txt') }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pypandoc
+          pip install -r python/requirements-${{ matrix.spark-compat-version }}_${{ matrix.scala-compat-version }}.txt
+          pip install pytest
+
+      - name: Scala Tests
+        run: mvn --batch-mode test
+
+      - name: Python Tests
+        env:
+          PYTHONPATH: python:python/test
+        run: |
+          mkdir -p target/surefire-reports
+          python -m pytest python/test --junit-xml target/surefire-reports/pytest.xml
+
+      - name: Generate Unit Test Report
+        if: failure()
+        run: mvn --batch-mode surefire-report:report-only
+
+      - name: Upload Unit Test Results
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: Unit Test Results (Spark ${{ matrix.spark-version }} Scala ${{ matrix.scala-version }} Python ${{ matrix.python-version }})
+          path: |
+            target/surefire-reports/*.xml
+            !target/surefire-reports/TEST-org.scalatest*.xml
+            target/site/surefire-report.html
 
   publish-test-results:
     name: "Publish Unit Tests Results"
-    needs: build-and-test
+    needs: test
     runs-on: ubuntu-latest
     # the build-and-test job might be skipped, we don't need to run this job then
     # the action is useless on pull_request events from fork repositories
@@ -102,13 +186,13 @@ jobs:
       ( github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository )
 
     steps:
-    - name: Download Artifacts
-      uses: actions/download-artifact@v2
-      with:
-        path: artifacts
+      - name: Download Artifacts
+        uses: actions/download-artifact@v2
+        with:
+          path: artifacts
 
-    - name: Publish Unit Test Results
-      uses: docker://ghcr.io/enricomi/publish-unit-test-result-action:v1
-      with:
-        github_token: ${{ github.token }}
-        files: "artifacts/**/*.xml"
+      - name: Publish Unit Test Results
+        uses: docker://ghcr.io/enricomi/publish-unit-test-result-action:v1
+        with:
+          github_token: ${{ github.token }}
+          files: "artifacts/Unit Test Results */**/*.xml"
