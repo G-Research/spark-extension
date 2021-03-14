@@ -38,12 +38,14 @@ case class Observation(name: String, expr: Column, exprs: Column*) extends Query
   def waitCompleted(time: Option[Long] = None, unit: TimeUnit = TimeUnit.SECONDS): Boolean = {
     lock.lock()
     try {
-      if (row.isEmpty)
+      if (row.isEmpty) {
         if (time.isDefined) {
+          println(s"waiting for signal: ${time.get}")
           completed.await(time.get, unit)
         } else {
           completed.await()
         }
+      }
       row.isDefined
     } finally {
       lock.unlock()
@@ -66,17 +68,21 @@ case class Observation(name: String, expr: Column, exprs: Column*) extends Query
     spark.listenerManager.register(this)
   }
 
-  override def onSuccess(funcName: String, qe: QueryExecution, durationNs: Long): Unit =
-    onFailureOrSuccess(funcName, qe)
+  override def onSuccess(funcName: String, qe: QueryExecution, durationNs: Long): Unit = {
+    println(s"success: $funcName $name")
+    onFinish(funcName, qe)
+  }
 
-  override def onFailure(funcName: String, qe: QueryExecution, exception: Exception): Unit =
-    onFailureOrSuccess(funcName, qe)
+  override def onFailure(funcName: String, qe: QueryExecution, exception: Exception): Unit = {
+    println(s"failure: $funcName $name")
+    onFinish(funcName, qe)
+  }
 
-  def onFailureOrSuccess(funcName: String, qe: QueryExecution): Unit = {
+  def onFinish(funcName: String, qe: QueryExecution): Unit = {
     lock.lock()
     try {
       this.row = getMetricRow(qe.observedMetrics)
-      completed.signalAll()
+      if (this.row.isDefined) completed.signalAll()
     } finally {
       lock.unlock()
     }

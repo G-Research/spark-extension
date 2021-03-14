@@ -16,8 +16,8 @@
 
 package uk.co.gresearch.spark
 
-import org.apache.spark.sql.functions.{count, lit, sum}
-import org.apache.spark.sql.{DataFrame, Row, SparkSession}
+import org.apache.spark.sql.functions.{count, lit, mean, sum}
+import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 import org.scalatest.FunSuite
 
 import java.util.concurrent.TimeUnit
@@ -27,6 +27,11 @@ class ObservationSuite extends FunSuite with SparkTestSession {
   implicit val s: SparkSession = spark
 
   import spark.implicits._
+
+  val df: Dataset[Row] = Seq((1, "a"), (2, "b"), (4, "c"), (8, "d"))
+    .toDF("id", "value")
+    .repartition(10, $"id")
+    .cache
 
   test("Dataset.observe(Observation)") {
     doTestObservation((df: DataFrame, observation: Observation) => df.observe(observation))
@@ -40,28 +45,25 @@ class ObservationSuite extends FunSuite with SparkTestSession {
     assert(observation.option.isEmpty === true)
     assert(observation.option.isDefined === false)
     assertThrows[NoSuchElementException] { observation.get }
-    assert(!observation.waitCompleted(10, TimeUnit.MILLISECONDS))
+    val start = System.nanoTime()
+    assert(!observation.waitCompleted(250, TimeUnit.MILLISECONDS))
+    assert(System.nanoTime() - start >= 250000000L)
     assert(observation.option.isEmpty === true)
     assert(observation.option.isDefined === false)
     assertThrows[NoSuchElementException] { observation.get }
   }
 
   def assertObservation(observation: Observation, count: Long): Unit = {
-    assert(observation.waitCompleted(10, TimeUnit.SECONDS))
-    assert(observation.waitAndGet === Row(4, 15))
+    assert(observation.waitCompleted(250, TimeUnit.SECONDS))
+    assert(observation.waitAndGet === Row(4, 15, 3.75))
     assert(observation.option.isEmpty === false)
     assert(observation.option.isDefined === true)
-    assert(observation.get === Row(4, 15))
+    assert(observation.get === Row(4, 15, 3.75))
     assert(count === 4)
   }
 
   def doTestObservation(observe: (DataFrame, Observation) => DataFrame): Unit = {
-    val df = Seq((1, "a"), (2, "b"), (4, "c"), (8, "d"))
-      .toDF("id", "value")
-      .repartition(10, $"id")
-      .cache
-
-    val observation = Observation("stats", count(lit(1)), sum($"id"))
+    val observation = Observation("observation", count(lit(1)), sum($"id"), mean($"id"))
     assertEmptyObservation(observation)
 
     val observed = observe(df, observation)
@@ -76,10 +78,34 @@ class ObservationSuite extends FunSuite with SparkTestSession {
     val cnt2 = observed.count()
     assertObservation(observation, cnt2)
 
+    observation.reset()
+    assertEmptyObservation(observation)
+
+    val list = observed.collect()
+    assertObservation(observation, list.length)
+
+    observation.reset()
+    assertEmptyObservation(observation)
+
+    val list2 = observe(df.orderBy("id"), observation).collect()
+    assertObservation(observation, list2.length)
+
     // this does not guarantee that I see the third observation or still the second
     // but sufficient for testing this does produce either result
     val cnt3 = observed.count()
     assertObservation(observation, cnt3)
+  }
+
+  test("observation with concurrent action") {
+    val observation = Observation("observation", count(lit(1)), sum($"id"), mean($"id"))
+    val observed = df.observe(observation)
+    assertEmptyObservation(observation)
+
+    df.collect()
+    assertEmptyObservation(observation)
+
+    val cnt = observed.count()
+    assertObservation(observation, cnt)
   }
 
 }
