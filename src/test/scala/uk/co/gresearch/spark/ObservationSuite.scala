@@ -42,28 +42,40 @@ class ObservationSuite extends FunSuite with SparkTestSession {
     doTestObservation((df: DataFrame, observation: Observation) => observation.observe(df))
   }
 
-  def assertEmptyObservation(observation: Observation): Unit = {
-    assert(observation.option.isEmpty === true)
-    assert(observation.option.isDefined === false)
-    assertThrows[NoSuchElementException] { observation.get }
+  def assertTime(assertion: Long => Boolean)(function: => Any): Unit = {
     val start = System.nanoTime()
-    assert(!observation.waitCompleted(250, TimeUnit.MILLISECONDS))
-    assert(System.nanoTime() - start >= 250000000L)
-    assert(observation.option.isEmpty === true)
-    assert(observation.option.isDefined === false)
-    assertThrows[NoSuchElementException] { observation.get }
+    function
+    assert(assertion(System.nanoTime() - start))
+  }
+
+  def assertEmptyObservation(observation: Observation): Unit = {
+    assertTime(_ >= 250000000L) {
+      assert(!observation.waitCompleted(250, TimeUnit.MILLISECONDS))
+    }
+    assertTime(_ >= 250000000L) {
+      assert(observation.option(250, TimeUnit.MILLISECONDS).isEmpty)
+    }
+    assertTime(_ >= 250000000L) {
+      assertThrows[NoSuchElementException] { observation.get(250, TimeUnit.MILLISECONDS) }
+    }
   }
 
   def assertObservation(observation: Observation, count: Long): Unit = {
-    assert(observation.waitCompleted(250, TimeUnit.SECONDS))
-    assert(observation.waitAndGet === Row(4, 15, 3.75))
-    assert(observation.option.isEmpty === false)
-    assert(observation.option.isDefined === true)
+    assert(observation.waitCompleted(250, TimeUnit.MILLISECONDS))
+    assert(observation.waitCompleted())
+
+    assert(observation.option(100, TimeUnit.MILLISECONDS).isDefined)
+    assert(observation.option.isDefined)
+    assert(observation.option.get === Row(4, 15, 3.75))
+
+    assert(observation.get(100, TimeUnit.MILLISECONDS) === Row(4, 15, 3.75))
     assert(observation.get === Row(4, 15, 3.75))
+
     assert(count === 4)
   }
 
   def doTestObservation(observe: (DataFrame, Observation) => DataFrame): Unit = {
+    // observation names need to be unique here so that subsequent tests do not interfere
     val observation = Observation(UUID.randomUUID().toString, count(lit(1)), sum($"id"), mean($"id"))
     assertEmptyObservation(observation)
 
@@ -95,6 +107,18 @@ class ObservationSuite extends FunSuite with SparkTestSession {
     // but sufficient for testing this does produce either result
     val cnt3 = observed.count()
     assertObservation(observation, cnt3)
+
+    observation.close()
+    assertObservation(observation, cnt3)
+
+    // evaluating the observe dataset after closing the observation still works
+    observed.collect()
+  }
+
+  test("observe without name") {
+    val observation = Observation(count(lit(1)))
+    df.observe(observation).collect()
+    assert(observation.get(100, TimeUnit.MILLISECONDS).getLong(0) === 4)
   }
 
   test("observation with concurrent action") {

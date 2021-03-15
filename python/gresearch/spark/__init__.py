@@ -77,14 +77,19 @@ def observe(self: DataFrame, name: str, *exprs: Column) -> DataFrame:
 
 
 class Observation:
-    def __init__(self, name: str, *exprs: Column):
-        assert isinstance(name, basestring), "name should be a string"
+    def __init__(self, *exprs: Column):
         assert exprs, "exprs should not be empty"
         assert all(isinstance(c, Column) for c in exprs), "all exprs should be Column"
-        self._name = name
+        self._name = None
         self._exprs = list(exprs)
         self._jvm = None
         self._jo = None
+
+    def with_name(self, name: str) -> 'Observation':
+        assert isinstance(name, basestring), "name should be a string"
+        observation = Observation(*self._exprs)
+        observation._name = name
+        return observation
 
     def observe(self, df: DataFrame) -> DataFrame:
         if not self._jo:
@@ -103,18 +108,25 @@ class Observation:
         jrow = self._jo.get()
         return self._to_row(jrow)
 
-    @property
-    def waitAndGet(self) -> Row:
-        if self._jo is None:
-            raise RuntimeError('call observe first')
-        jrow = self._jo.waitAndGet()
-        return self._to_row(jrow)
-
-    def waitCompleted(self, millis: Optional[int] = None) -> bool:
+    def wait_completed(self, millis: Optional[int] = None) -> bool:
         if self._jo is None:
             raise RuntimeError('call observe first')
         unit = self._jvm.java.util.concurrent.TimeUnit.MILLISECONDS
         return self._jo.waitCompleted(millis, unit)
+
+    def reset(self):
+        if self._jo is not None:
+            self._jo.reset()
+
+    def close(self):
+        if self._jo is not None:
+            self._jo.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
 
     def _to_row(self, jrow):
         field_names = jrow.schema().fieldNames()

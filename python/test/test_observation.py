@@ -54,25 +54,28 @@ class ObservationTest(SparkTest):
         ], [row.asDict() for row in actual])
 
     def test_observation(self):
-        observation = Observation(
-            'metrics',
+        with Observation(
             func.count(func.lit(1)).alias('cnt'),
             func.sum(func.col("id")).alias('sum'),
             func.mean(func.col("val")).alias('mean')
-        )
-        observed = self.df.orderBy('id').observe(observation)
-        self.assertFalse(observation.waitCompleted(1000))
+        ).with_name('metrics') as observation:
+            observed = self.df.orderBy('id').observe(observation)
+            self.assertFalse(observation.wait_completed(1000))
 
-        actual = observed.orderBy('id').collect()
-        self.assertEqual([
-            {'id': 1, 'val': 1.0, 'label': 'one'},
-            {'id': 2, 'val': 2.0, 'label': 'two'},
-            {'id': 3, 'val': 3.0, 'label': 'three'},
-        ], [row.asDict() for row in actual])
+            actual = observed.orderBy('id').collect()
+            self.assertEqual([
+                {'id': 1, 'val': 1.0, 'label': 'one'},
+                {'id': 2, 'val': 2.0, 'label': 'two'},
+                {'id': 3, 'val': 3.0, 'label': 'three'},
+            ], [row.asDict() for row in actual])
 
-        self.assertTrue(observation.waitCompleted(1000))
-        self.assertEqual(observation.waitAndGet, Row(cnt=3, sum=6, mean=2.0))
-        self.assertEqual(observation.get, Row(cnt=3, sum=6, mean=2.0))
+            self.assertTrue(observation.wait_completed(1000))
+            self.assertEqual(observation.get, Row(cnt=3, sum=6, mean=2.0))
+            observation.reset()
+
+            observed.collect()
+            self.assertTrue(observation.wait_completed(1000))
+            self.assertEqual(observation.get, Row(cnt=3, sum=6, mean=2.0))
 
 
 if __name__ == '__main__':
