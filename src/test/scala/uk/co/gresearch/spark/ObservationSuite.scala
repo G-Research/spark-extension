@@ -20,6 +20,7 @@ import org.apache.spark.sql.functions.{count, lit, mean, sum}
 import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 import org.scalatest.FunSuite
 
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 class ObservationSuite extends FunSuite with SparkTestSession {
@@ -63,7 +64,7 @@ class ObservationSuite extends FunSuite with SparkTestSession {
   }
 
   def doTestObservation(observe: (DataFrame, Observation) => DataFrame): Unit = {
-    val observation = Observation("observation", count(lit(1)), sum($"id"), mean($"id"))
+    val observation = Observation(UUID.randomUUID().toString, count(lit(1)), sum($"id"), mean($"id"))
     assertEmptyObservation(observation)
 
     val observed = observe(df, observation)
@@ -97,7 +98,7 @@ class ObservationSuite extends FunSuite with SparkTestSession {
   }
 
   test("observation with concurrent action") {
-    val observation = Observation("observation", count(lit(1)), sum($"id"), mean($"id"))
+    val observation = Observation("concurrent action", count(lit(1)), sum($"id"), mean($"id"))
     val observed = df.observe(observation)
     assertEmptyObservation(observation)
 
