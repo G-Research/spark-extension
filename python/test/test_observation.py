@@ -54,17 +54,11 @@ class ObservationTest(SparkTest):
         ], [row.asDict() for row in actual])
 
     def test_observation(self):
-        #self.assertTrue(self.df._sc._gateway.start_callback_server())
-        #listener = TaskEndListener()
-        #printer = PrintQueryExecutionListener()
-        #self.df.sql_ctx._jsc.sc().addSparkListener(listener)
-        #self.spark._jvm.org.apache.spark.sql.SQLContext(self.df.sql_ctx._jsc.sc()).sparkSession().listenerManager().register(printer)
-
         observation = Observation(
-            'metric',
-            func.count(func.lit(1)).alias('count'),
-            func.sum(func.col("id")).alias('id_sum'),
-            func.sum(func.col("val")).alias('val_sum')
+            'metrics',
+            func.count(func.lit(1)).alias('cnt'),
+            func.sum(func.col("id")).alias('sum'),
+            func.mean(func.col("val")).alias('mean')
         )
         observed = self.df.orderBy('id').observe(observation)
         self.assertFalse(observation.waitCompleted(1000))
@@ -77,8 +71,8 @@ class ObservationTest(SparkTest):
         ], [row.asDict() for row in actual])
 
         self.assertTrue(observation.waitCompleted(1000))
-        self.assertEqual(observation.waitAndGet, Row(count=3, id_sum=6, val_sum=6.0))
-        self.assertEqual(observation.get, Row(count=3, id_sum=6, val_sum=6.0))
+        self.assertEqual(observation.waitAndGet, Row(cnt=3, sum=6, mean=2.0))
+        self.assertEqual(observation.get, Row(cnt=3, sum=6, mean=2.0))
 
 
 if __name__ == '__main__':

@@ -40,7 +40,6 @@ case class Observation(name: String, expr: Column, exprs: Column*) extends Query
     try {
       if (row.isEmpty) {
         if (time.isDefined) {
-          println(s"waiting for signal: ${time.get}")
           completed.await(time.get, unit)
         } else {
           completed.await()
@@ -68,15 +67,11 @@ case class Observation(name: String, expr: Column, exprs: Column*) extends Query
     spark.listenerManager.register(this)
   }
 
-  override def onSuccess(funcName: String, qe: QueryExecution, durationNs: Long): Unit = {
-    println(s"success: $funcName $name")
+  override def onSuccess(funcName: String, qe: QueryExecution, durationNs: Long): Unit =
     onFinish(funcName, qe)
-  }
 
-  override def onFailure(funcName: String, qe: QueryExecution, exception: Exception): Unit = {
-    println(s"failure: $funcName $name")
+  override def onFailure(funcName: String, qe: QueryExecution, exception: Exception): Unit =
     onFinish(funcName, qe)
-  }
 
   def onFinish(funcName: String, qe: QueryExecution): Unit = {
     lock.lock()
