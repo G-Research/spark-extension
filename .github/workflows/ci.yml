@@ -173,26 +173,3 @@ jobs:
             target/surefire-reports/*.xml
             !target/surefire-reports/TEST-org.scalatest*.xml
             target/site/surefire-report.html
-
-  publish-test-results:
-    name: "Publish Unit Tests Results"
-    needs: test
-    runs-on: ubuntu-latest
-    # the build-and-test job might be skipped, we don't need to run this job then
-    # the action is useless on pull_request events from fork repositories
-    # as it can not create check runs or pull request comments
-    if: >
-      ( success() || failure() ) &&
-      ( github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository )
-
-    steps:
-      - name: Download Artifacts
-        uses: actions/download-artifact@v2
-        with:
-          path: artifacts
-
-      - name: Publish Unit Test Results
-        uses: docker://ghcr.io/enricomi/publish-unit-test-result-action:v1
-        with:
-          github_token: ${{ github.token }}
-          files: "artifacts/Unit Test Results */**/*.xml"
