@@ -16,13 +16,13 @@
 
 package uk.co.gresearch.spark.diff.examples
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 import uk.co.gresearch.spark.SparkTestSession
 import uk.co.gresearch.spark.diff.{DatasetDiff, DiffMode, DiffOptions}
 
 case class Value(id: Int, value: Option[String], label: Option[String])
 
-class Examples extends FunSuite with SparkTestSession {
+class Examples extends AnyFunSuite with SparkTestSession {
 
   test("issue") {
     import spark.implicits._

@@ -17,11 +17,11 @@
 package uk.co.gresearch.spark
 
 import org.apache.spark.sql._
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 import uk.co.gresearch.ExtendedAny
 import uk.co.gresearch.spark.SparkSuite.Value
 
-class SparkSuite extends FunSuite with SparkTestSession {
+class SparkSuite extends AnyFunSuite with SparkTestSession {
 
   import spark.implicits._
 

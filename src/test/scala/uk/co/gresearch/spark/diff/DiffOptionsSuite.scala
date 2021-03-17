@@ -17,10 +17,10 @@
 package uk.co.gresearch.spark.diff
 
 import org.apache.spark.sql.internal.SQLConf
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 import uk.co.gresearch.spark.SparkTestSession
 
-class DiffOptionsSuite extends FunSuite with SparkTestSession {
+class DiffOptionsSuite extends AnyFunSuite with SparkTestSession {
 
   test("diff options with empty diff column name") {
     // test the copy method (constructor), not the fluent methods

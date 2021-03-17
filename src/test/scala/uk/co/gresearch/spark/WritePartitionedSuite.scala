@@ -18,14 +18,14 @@ package uk.co.gresearch.spark
 
 import org.apache.spark.sql.Dataset
 import org.apache.spark.sql.functions.{col, reverse}
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 import uk.co.gresearch.spark.WritePartitionedSuite.Value
 
 import java.io.File
 import java.sql.Date
 import scala.io.Source
 
-class WritePartitionedSuite extends FunSuite with SparkTestSession {
+class WritePartitionedSuite extends AnyFunSuite with SparkTestSession {
 
   import spark.implicits._
 

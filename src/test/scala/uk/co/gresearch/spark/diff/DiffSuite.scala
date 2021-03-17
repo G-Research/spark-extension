@@ -19,7 +19,7 @@ package uk.co.gresearch.spark.diff
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{Dataset, Encoders, Row}
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 import uk.co.gresearch.spark.SparkTestSession
 
 case class Empty()
@@ -51,7 +51,7 @@ case class DiffAsOneSide(diff: String,
                          id: Int,
                          value: Option[String])
 
-class DiffSuite extends FunSuite with SparkTestSession {
+class DiffSuite extends AnyFunSuite with SparkTestSession {
 
   import spark.implicits._
 
