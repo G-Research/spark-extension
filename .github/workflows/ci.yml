@@ -173,3 +173,24 @@ jobs:
             target/surefire-reports/*.xml
             !target/surefire-reports/TEST-org.scalatest*.xml
             target/site/surefire-report.html
+
+  publish-test-results:
+    name: "Publish Unit Tests Results"
+    needs: test
+    runs-on: ubuntu-latest
+    if: >
+      always() && ! startsWith(github.ref, 'refs/heads/dependabot/') && (
+        github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+      )
+
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v2
+        with:
+          path: artifacts
+
+      - name: Publish Unit Test Results
+        uses: docker://ghcr.io/enricomi/publish-unit-test-result-action:v1
+        with:
+          github_token: ${{ github.token }}
+          files: "artifacts/Unit Test Results */**/*.xml"
