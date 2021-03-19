@@ -7,8 +7,8 @@ on:
       - completed
 
 jobs:
-  unit-test-results:
-    name: Unit Test Results
+  publish-unit-test-results:
+    name: Publish Unit Test Results
     runs-on: ubuntu-latest
     if: >
       github.event.workflow_run.conclusion != 'skipped' && (

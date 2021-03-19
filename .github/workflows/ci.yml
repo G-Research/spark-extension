@@ -10,7 +10,7 @@ on:
 
 jobs:
   build:
-    name: Build and Test (Spark ${{ matrix.spark-version }} Scala ${{ matrix.scala-version }})
+    name: Build (Spark ${{ matrix.spark-version }} Scala ${{ matrix.scala-version }})
     runs-on: ubuntu-latest
 
     strategy:
