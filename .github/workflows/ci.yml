@@ -324,3 +324,20 @@ jobs:
         with:
           name: Event File
           path: ${{ github.event_path }}
+
+  publish-test-results:
+    name: "Publish Unit Tests Results"
+    needs: test_success
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v2
+        with:
+          path: artifacts
+
+      - name: Publish Unit Test Results
+        uses: EnricoMi/publish-unit-test-result-action/composite@branch-publish-summary-on-fork
+        with:
+          files: "artifacts/* Test Results */**/*.xml"
