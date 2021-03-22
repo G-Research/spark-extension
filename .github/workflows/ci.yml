@@ -180,9 +180,8 @@ jobs:
     runs-on: ubuntu-latest
     if: >
       ( success() || failure() ) &&
-      ! startsWith(github.ref, 'refs/heads/dependabot/') && (
-        github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-      )
+      github.event.sender.login != 'dependabot[bot]' &&
+      ( github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository )
 
     steps:
       - name: Download Artifacts
