@@ -971,8 +971,7 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     val actual = left7.diff(right7, options, "id").orderBy("id")
 
     assert(actual.columns === Seq("diff", "id", "left_value", "left_label", "right_value", "right_label"))
-    val expected: Seq[Row] = expectedDiff7.map(row => Row(row.getString(0), row.getInt(1), row.getString(2), row.getString(4), row.getString(3), row.getString(5)))
-    assert(actual.collect() === expected)
+    assert(actual.collect() === expectedSideBySideDiff7)
   }
 
   test("diff with left-side diff mode") {
@@ -980,8 +979,7 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     val actual = left7.diff(right7, options, "id").orderBy("id")
 
     assert(actual.columns === Seq("diff", "id", "value", "label"))
-    val expected: Seq[Row] = expectedDiff7.map(row => Row(row.getString(0), row.getInt(1), row.getString(2), row.getString(4)))
-    assert(actual.collect() === expected)
+    assert(actual.collect() === expectedLeftSideDiff7)
   }
 
   test("diff with right-side diff mode") {
@@ -989,8 +987,7 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     val actual = left7.diff(right7, options, "id").orderBy("id")
 
     assert(actual.columns === Seq("diff", "id", "value", "label"))
-    val expected: Seq[Row] = expectedDiff7.map(row => Row(row.getString(0), row.getInt(1), row.getString(3), row.getString(5)))
-    assert(actual.collect() === expected)
+    assert(actual.collect() === expectedRightSideDiff7)
   }
 
   test("diff as U with left-side diff mode") {
