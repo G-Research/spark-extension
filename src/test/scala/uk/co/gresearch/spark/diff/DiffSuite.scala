@@ -105,7 +105,7 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     Value8(2, None, Some("two"), Some("user2")),
     Value8(2, Some(1), Some("two"), None),
     Value8(2, Some(2), Some("two"), None),
-    Value8(3, None, None, None),
+    Value8(3, None, None, None)
   ).toDS()
 
   lazy val right8: Dataset[Value8] = Seq(
@@ -115,7 +115,7 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     Value8(2, None, Some("two"), Some("user2")),
     Value8(2, Some(2), Some("Two"), Some("user1")),
     Value8(2, Some(3), Some("two"), Some("user2")),
-    Value8(3, None, None, None),
+    Value8(3, None, None, None)
   ).toDS()
 
   lazy val expectedDiffColumns: Seq[String] = Seq("diff", "id", "left_value", "right_value")
