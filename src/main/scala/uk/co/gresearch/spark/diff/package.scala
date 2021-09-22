@@ -233,7 +233,7 @@ package object diff {
      * Returns a new Dataset that contains the differences
      * between this and the other Dataset of the same type `T`.
      *
-     * See `diff(Dataset[T], String*`.
+     * See `diff(Dataset[T], String*)`.
      *
      * This requires an additional explicit `Encoder[U]` for the return type `Dataset[U]`.
      */
@@ -246,7 +246,7 @@ package object diff {
      * Returns a new Dataset that contains the differences
      * between this and the other Dataset of the same type `T`.
      *
-     * See `diff(Dataset[T], Seq[String], Seq[String]`.
+     * See `diff(Dataset[T], Seq[String], Seq[String])`.
      *
      * This requires an additional explicit `Encoder[U]` for the return type `Dataset[U]`.
      */
