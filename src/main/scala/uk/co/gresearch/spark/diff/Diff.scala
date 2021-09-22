@@ -239,48 +239,54 @@ class Diff(options: DiffOptions) {
 
     val pkColumns = if (idColumns.isEmpty) left.columns.toList else idColumns
     val pkColumnsCs = pkColumns.map(handleConfiguredCaseSensitivity).toSet
-    val otherColumns = left.columns.filter(col => !pkColumnsCs.contains(handleConfiguredCaseSensitivity(col)))
+    val nonPkColumns = left.columns.filter(col => !pkColumnsCs.contains(handleConfiguredCaseSensitivity(col)))
+
+    val ignoreColumnsCs = ignoreColumns.map(handleConfiguredCaseSensitivity).toSet
+    val valueColumns = nonPkColumns.filter(col => !ignoreColumnsCs(handleConfiguredCaseSensitivity(col)))
 
     val existsColumnName = Diff.distinctStringNameFor(left.columns)
-    val l = left.withColumn(existsColumnName, lit(1))
-    val r = right.withColumn(existsColumnName, lit(1))
-    val joinCondition = pkColumns.map(c => l(backticks(c)) <=> r(backticks(c))).reduce(_ && _)
-    val unChanged = otherColumns.map(c => l(backticks(c)) <=> r(backticks(c))).reduceOption(_ && _)
+    val leftWithExists = left.withColumn(existsColumnName, lit(1))
+    val rightWithExists = right.withColumn(existsColumnName, lit(1))
+    val joinCondition = pkColumns.map(c => leftWithExists(backticks(c)) <=> rightWithExists(backticks(c))).reduce(_ && _)
+    val unChanged = valueColumns.map(c => leftWithExists(backticks(c)) <=> rightWithExists(backticks(c))).reduceOption(_ && _)
     val changeCondition = not(unChanged.getOrElse(lit(true)))
 
-    val diffCondition =
-      when(l(existsColumnName).isNull, lit(options.insertDiffValue)).
-        when(r(existsColumnName).isNull, lit(options.deleteDiffValue)).
+    val diffActionColumn =
+      when(leftWithExists(existsColumnName).isNull, lit(options.insertDiffValue)).
+        when(rightWithExists(existsColumnName).isNull, lit(options.deleteDiffValue)).
         when(changeCondition, lit(options.changeDiffValue)).
         otherwise(lit(options.nochangeDiffValue)).
         as(options.diffColumn)
 
-    val diffColumns = getDiffColumns(options, pkColumns, otherColumns, left, right)
-
-    val changeColumn =
-      options.changeColumn
-        .map(changeColumn =>
-          when(l(existsColumnName).isNull || r(existsColumnName).isNull, lit(null)).
-            otherwise(
-              Some(otherColumns.toSeq)
-                .filter(_.nonEmpty)
-                .map(columns =>
-                  concat(
-                    columns.map(c =>
-                      when(l(backticks(c)) <=> r(backticks(c)), array()).otherwise(array(lit(c)))
-                    ): _*
-                  )
-                ).getOrElse(
-                  array().cast(ArrayType(StringType, containsNull = false))
-                )
-            ).
-            as(changeColumn)
-        )
+    val diffColumns = getDiffColumns(options, pkColumns, nonPkColumns, left, right)
+    val changeColumn = getChangeColumn(existsColumnName, valueColumns, leftWithExists, rightWithExists)
+        // turn this column into a sequence of one or none column so we can easily concat it below with diffActionColumn and diffColumns
         .map(Seq(_))
         .getOrElse(Seq.empty[Column])
 
-    l.join(r, joinCondition, "fullouter")
-      .select((diffCondition +: changeColumn) ++ diffColumns: _*)
+    leftWithExists.join(rightWithExists, joinCondition, "fullouter")
+      .select((diffActionColumn +: changeColumn) ++ diffColumns: _*)
+  }
+
+  def getChangeColumn(existsColumnName: String, valueColumns: Seq[String], left: Dataset[_], right: Dataset[_]): Option[Column] = {
+    options.changeColumn
+      .map(changeColumn =>
+        when(left(existsColumnName).isNull || right(existsColumnName).isNull, lit(null)).
+          otherwise(
+            Some(valueColumns.toSeq)
+              .filter(_.nonEmpty)
+              .map(columns =>
+                concat(
+                  columns.map(c =>
+                    when(left(backticks(c)) <=> right(backticks(c)), array()).otherwise(array(lit(c)))
+                  ): _*
+                )
+              ).getOrElse(
+              array().cast(ArrayType(StringType, containsNull = false))
+            )
+          ).
+          as(changeColumn)
+      )
   }
 
   def getDiffColumns[T](options: DiffOptions, pkColumns: Seq[String], otherColumns: Seq[String],
