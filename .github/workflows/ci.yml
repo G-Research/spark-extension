@@ -17,7 +17,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - spark-version: '2.4.7'
+          - spark-version: '2.4.8'
             spark-compat-version: '2.4'
             scala-version: '2.11.12'
             scala-compat-version: '2.11'
@@ -27,12 +27,12 @@ jobs:
             scala-version: '2.12.10'
             scala-compat-version: '2.12'
 
-          - spark-version: '3.0.2'
+          - spark-version: '3.0.3'
             spark-compat-version: '3.0'
             scala-version: '2.12.10'
             scala-compat-version: '2.12'
 
-          - spark-version: '3.1.1'
+          - spark-version: '3.1.2'
             spark-compat-version: '3.1'
             scala-version: '2.12.10'
             scala-compat-version: '2.12'
@@ -79,10 +79,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        spark-version: ['2.4.2', '2.4.7', '3.0.2', '3.1.1']
+        spark-version: ['2.4.2', '2.4.8', '3.0.3', '3.1.2']
         python-version: ['3.6', '3.7', '3.8']
         include:
-          - spark-version: '2.4.7'
+          - spark-version: '2.4.8'
             spark-compat-version: '2.4'
             scala-version: '2.11.12'
             scala-compat-version: '2.11'
@@ -92,19 +92,19 @@ jobs:
             scala-version: '2.12.10'
             scala-compat-version: '2.12'
 
-          - spark-version: '3.0.2'
+          - spark-version: '3.0.3'
             spark-compat-version: '3.0'
             scala-version: '2.12.10'
             scala-compat-version: '2.12'
 
-          - spark-version: '3.1.1'
+          - spark-version: '3.1.2'
             spark-compat-version: '3.1'
             scala-version: '2.12.10'
             scala-compat-version: '2.12'
         exclude:
           - spark-version: '2.4.2'
             python-version: '3.8'
-          - spark-version: '2.4.7'
+          - spark-version: '2.4.8'
             python-version: '3.8'
 
     steps:
