@@ -27,8 +27,8 @@ object Histogram {
    * Compute the histogram of a column when aggregated by aggregate columns.
    * Thresholds are expected to be provided in ascending order.
    * The result dataframe contains the aggregate and histogram columns only.
-   * For each threshold value in thresholds, there will be a column named s"≤$threshold".
-   * There will also be a final column called s">${last_threshold}", that counts the remaining
+   * For each threshold value in thresholds, there will be a column named s"≤threshold".
+   * There will also be a final column called s">last_threshold", that counts the remaining
    * values that exceed the last threshold.
    *
    * @param thresholds sequence of thresholds, must implement <= and > operators w.r.t. valueColumn
