@@ -39,7 +39,7 @@
     <encoding>UTF-8</encoding>
     <scala.compat.version>2.12</scala.compat.version>
     <scala.version>${scala.compat.version}.10</scala.version>
-    <!-- keep in-sync with python/requirements-3.0_2.12.txt -->
+    <!-- keep in-sync with python/requirements-3.1_2.12.txt -->
     <spark.compat.version>3.1</spark.compat.version>
     <spark.version>${spark.compat.version}.2</spark.version>
   </properties>
