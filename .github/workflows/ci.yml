@@ -157,6 +157,8 @@ jobs:
         run: mvn --batch-mode test
 
       - name: Python Tests
+        # no idea how we can test pyspark 3.2 with Scala 2.13
+        if: matrix.scala-compat-version != '2.13'
         env:
           PYTHONPATH: python:python/test
         run: |
