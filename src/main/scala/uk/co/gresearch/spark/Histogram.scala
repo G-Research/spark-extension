@@ -20,7 +20,7 @@ import org.apache.spark.sql.functions.{sum, when}
 import org.apache.spark.sql.{Column, DataFrame, Dataset}
 import uk.co.gresearch.ExtendedAny
 
-import scala.collection.convert.WrapAsScala
+import scala.collection.JavaConverters
 
 object Histogram {
   /**
@@ -79,6 +79,6 @@ object Histogram {
    */
   @scala.annotation.varargs
   def of[D, T](df: Dataset[D], thresholds: java.util.List[T], valueColumn: Column, aggregateColumns: Column*): DataFrame =
-    of(df, WrapAsScala.iterableAsScalaIterable(thresholds).toSeq, valueColumn, aggregateColumns: _*)
+    of(df, JavaConverters.iterableAsScalaIterable(thresholds).toSeq, valueColumn, aggregateColumns: _*)
 
 }

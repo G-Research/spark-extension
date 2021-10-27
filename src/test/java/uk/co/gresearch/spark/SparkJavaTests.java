@@ -41,9 +41,9 @@ public class SparkJavaTests {
                 .appName("Diff Java Suite")
                 .getOrCreate();
 
-        JavaValue valueOne = new JavaValue(1, "one");
-        JavaValue valueTwo = new JavaValue(2, "two");
-        JavaValue valueThree = new JavaValue(3, "three");
+        JavaValue valueOne = new JavaValue(1, "one", 1.0);
+        JavaValue valueTwo = new JavaValue(2, "two", 2.0);
+        JavaValue valueThree = new JavaValue(3, "three", 3.0);
         Encoder<JavaValue> encoder = Encoders.bean(JavaValue.class);
         dataset = spark.createDataset(Arrays.asList(valueOne, valueTwo, valueThree), encoder);
     }
@@ -68,13 +68,13 @@ public class SparkJavaTests {
 
     @Test
     public void testHistogramWithAggColumn() {
-        Dataset<Row> histogram = Histogram.of(dataset, Arrays.asList(0, 1, 2), new Column("id"), new Column("value"));
+        Dataset<Row> histogram = Histogram.of(dataset, Arrays.asList(0, 1, 2), new Column("id"), new Column("label"));
         List<Row> expected = Arrays.asList(
                 RowFactory.create("one", 0, 1, 0, 0),
                 RowFactory.create("three", 0, 0, 0, 1),
                 RowFactory.create("two", 0, 0, 1, 0)
         );
-        Assert.assertEquals(expected, histogram.sort("value").collectAsList());
+        Assert.assertEquals(expected, histogram.sort("label").collectAsList());
     }
 
     @AfterClass

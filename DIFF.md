@@ -270,8 +270,16 @@ Above [Column by Column](#column-by-column) example would look in sparse mode as
 
 ## Methods (Java)
 
+* `Dataset<Row> Differ.diff[T](Dataset<T> left, Dataset<T> right, String... idColumns)`
+* `Dataset<Row> Differ.diff[T](Dataset<T> left, Dataset<T> right, List<String> idColumns, List<String> ignoreColumns)`
+* `Dataset<U> Differ.diffAs[T, U](Dataset<T> left, Dataset<T> right, Encoder<U> diffEncoder, String... idColumns)`
+* `Dataset<U> Differ.diffAs[T, U](Dataset<T> left, Dataset<T> right, Encoder<U> diffEncoder, List<String> idColumns, List<String> ignoreColumns)`
+
+
 * `Dataset<Row> Diff.of[T](Dataset<T> left, Dataset<T> right, String... idColumns)`
+* `Dataset<Row> Diff.of[T](Dataset<T> left, Dataset<T> right, List<String> idColumns, List<String> ignoreColumns)`
 * `Dataset<U> Diff.ofAs[T, U](Dataset<T> left, Dataset<T> right, Encoder<U> diffEncoder, String... idColumns)`
+* `Dataset<U> Diff.ofAs[T, U](Dataset<T> left, Dataset<T> right, Encoder<U> diffEncoder, List<String> idColumns, List<String> ignoreColumns)`
 
 ## Methods (Python)
 

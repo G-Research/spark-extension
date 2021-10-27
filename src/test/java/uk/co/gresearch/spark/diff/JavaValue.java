@@ -20,13 +20,15 @@ import java.io.Serializable;
 
 public class JavaValue implements Serializable {
     private Integer id;
-    private String value;
+    private String label;
+    private Double score;
 
     public JavaValue() { }
 
-    public JavaValue(Integer id, String value) {
+    public JavaValue(Integer id, String label, Double score) {
         this.id = id;
-        this.value = value;
+        this.label = label;
+        this.score = score;
     }
 
     public Integer getId() {
@@ -37,11 +39,19 @@ public class JavaValue implements Serializable {
         this.id = id;
     }
 
-    public String getValue() {
-        return value;
+    public String getLabel() {
+        return label;
     }
 
-    public void setValue(String value) {
-        this.value = value;
+    public void setLabel(String label) {
+        this.label = label;
+    }
+
+    public Double getScore() {
+        return score;
+    }
+
+    public void setScore(Double score) {
+        this.score = score;
     }
 }
