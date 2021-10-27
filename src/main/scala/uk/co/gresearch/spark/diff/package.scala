@@ -81,7 +81,7 @@ package object diff {
      * The id column names are take literally, i.e. "a.field" is interpreted as "`a.field`, which is a
      * column name containing a dot. This is not interpreted as a column "a" with a field "field" (struct).
      */
-    @scala.annotation.varargs
+    // no @scala.annotation.varargs here as this implicit class is not nicely accessible from Java
     def diff(other: Dataset[T], idColumns: String*): DataFrame = {
       Diff.of(this.ds, other, idColumns: _*)
     }
@@ -156,9 +156,9 @@ package object diff {
      *
      * The schema of the returned DataFrame can be configured by the given `DiffOptions`.
      */
-    @scala.annotation.varargs
+    // no @scala.annotation.varargs here as this implicit class is not nicely accessible from Java
     def diff(other: Dataset[T], options: DiffOptions, idColumns: String*): DataFrame = {
-      new Diff(options).of(this.ds, other, idColumns: _*)
+      new Differ(options).diff(this.ds, other, idColumns: _*)
     }
 
     /**
@@ -170,7 +170,7 @@ package object diff {
      * The schema of the returned DataFrame can be configured by the given `DiffOptions`.
      */
     def diff(other: Dataset[T], options: DiffOptions, idColumns: Seq[String], ignoreColumns: Seq[String]): DataFrame = {
-      new Diff(options).of(this.ds, other, idColumns, ignoreColumns)
+      new Differ(options).diff(this.ds, other, idColumns, ignoreColumns)
     }
 
     /**
@@ -181,7 +181,7 @@ package object diff {
      *
      * This requires an additional implicit `Encoder[U]` for the return type `Dataset[U]`.
      */
-    @scala.annotation.varargs
+    // no @scala.annotation.varargs here as this implicit class is not nicely accessible from Java
     def diffAs[U](other: Dataset[T], idColumns: String*)
                  (implicit diffEncoder: Encoder[U]): Dataset[U] = {
       Diff.ofAs(this.ds, other, idColumns: _*)
@@ -209,10 +209,10 @@ package object diff {
      * This requires an additional implicit `Encoder[U]` for the return type `Dataset[U]`.
      * The schema of the returned Dataset can be configured by the given `DiffOptions`.
      */
-    @scala.annotation.varargs
+    // no @scala.annotation.varargs here as this implicit class is not nicely accessible from Java
     def diffAs[U](other: Dataset[T], options: DiffOptions, idColumns: String*)
                  (implicit diffEncoder: Encoder[U]): Dataset[U] = {
-      new Diff(options).ofAs(this.ds, other, idColumns: _*)
+      new Differ(options).diffAs(this.ds, other, idColumns: _*)
     }
 
     /**
@@ -226,7 +226,7 @@ package object diff {
      */
     def diffAs[U](other: Dataset[T], options: DiffOptions, idColumns: Seq[String], ignoreColumns: Seq[String])
                  (implicit diffEncoder: Encoder[U]): Dataset[U] = {
-      new Diff(options).ofAs(this.ds, other, idColumns, ignoreColumns)
+      new Differ(options).diffAs(this.ds, other, idColumns, ignoreColumns)
     }
 
     /**
@@ -237,7 +237,7 @@ package object diff {
      *
      * This requires an additional explicit `Encoder[U]` for the return type `Dataset[U]`.
      */
-    @scala.annotation.varargs
+    // no @scala.annotation.varargs here as this implicit class is not nicely accessible from Java
     def diffAs[U](other: Dataset[T], diffEncoder: Encoder[U], idColumns: String*): Dataset[U] = {
       Diff.ofAs(this.ds, other, diffEncoder, idColumns: _*)
     }
@@ -263,12 +263,12 @@ package object diff {
      * This requires an additional explicit `Encoder[U]` for the return type `Dataset[U]`.
      * The schema of the returned Dataset can be configured by the given `DiffOptions`.
      */
-    @scala.annotation.varargs
+    // no @scala.annotation.varargs here as this implicit class is not nicely accessible from Java
     def diffAs[U](other: Dataset[T],
                   options: DiffOptions,
                   diffEncoder: Encoder[U],
                   idColumns: String*): Dataset[U] = {
-      new Diff(options).ofAs(this.ds, other, diffEncoder, idColumns: _*)
+      new Differ(options).diffAs(this.ds, other, diffEncoder, idColumns: _*)
     }
 
     /**
@@ -285,7 +285,7 @@ package object diff {
                   diffEncoder: Encoder[U],
                   idColumns: Seq[String],
                   ignoreColumns: Seq[String]): Dataset[U] = {
-      new Diff(options).ofAs(this.ds, other, diffEncoder, idColumns, ignoreColumns)
+      new Differ(options).diffAs(this.ds, other, diffEncoder, idColumns, ignoreColumns)
     }
   }
 

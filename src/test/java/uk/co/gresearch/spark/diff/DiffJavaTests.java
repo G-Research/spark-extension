@@ -22,20 +22,14 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import scala.collection.JavaConverters;
-import scala.collection.Seq;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
-public class DiffJavaSuite {
+public class DiffJavaTests {
     private static SparkSession spark;
     private static Dataset<JavaValue> left;
     private static Dataset<JavaValue> right;
-    private static Seq<String> idColumn;
-
-    private static List<Row> expected;
 
     @BeforeClass
     public static void beforeClass() {
@@ -53,26 +47,44 @@ public class DiffJavaSuite {
 
         left = spark.createDataset(Arrays.asList(valueOne, valueTwo), encoder);
         right = spark.createDataset(Arrays.asList(valueTwo, valueThree), encoder);
+    }
 
-        List<String> idList = Collections.singletonList("id");
-        idColumn = JavaConverters.asScalaIteratorConverter(idList.iterator()).asScala().toSeq();
-
-        expected = Arrays.asList(
+    @Test
+    public void testDiffDataFrame() {
+        Dataset<Row> diff = Diff.of(left.toDF(), right.toDF(), "id");
+        List<Row> expected = Arrays.asList(
                 RowFactory.create("D", 1, "one", null),
                 RowFactory.create("N", 2, "two", "two"),
                 RowFactory.create("I", 3, null, "three")
         );
+        Assert.assertEquals(expected, diff.sort("id").collectAsList());
+    }
+
+    @Test
+    public void testDiffNoKey() {
+        Dataset<Row> diff = Diff.of(left, right);
+        List<Row> expected = Arrays.asList(
+                RowFactory.create("D", 1, "one"),
+                RowFactory.create("N", 2, "two"),
+                RowFactory.create("I", 3, "three")
+        );
+        Assert.assertEquals(expected, diff.sort("id").collectAsList());
     }
 
     @Test
     public void testDiffSingleKey() {
-        Dataset<Row> diff = Diff$.MODULE$.of(left, right, idColumn);
+        Dataset<Row> diff = Diff.of(left, right, "id");
+        List<Row> expected = Arrays.asList(
+                RowFactory.create("D", 1, "one", null),
+                RowFactory.create("N", 2, "two", "two"),
+                RowFactory.create("I", 3, null, "three")
+        );
         Assert.assertEquals(expected, diff.sort("id").collectAsList());
     }
 
     @Test
     public void testDiffMultipleKeys() {
-        Dataset<Row> diff = Diff$.MODULE$.of(left, right, "id", "value");
+        Dataset<Row> diff = Diff.of(left, right, "id", "value");
         List<Row> expected = Arrays.asList(
                 RowFactory.create("D", 1, "one"),
                 RowFactory.create("N", 2, "two"),
@@ -92,7 +104,13 @@ public class DiffJavaSuite {
                 false
         );
 
-        Dataset<Row> diff = new Diff(options).of(left, right, idColumn);
+        Differ differ = new Differ(options);
+        Dataset<Row> diff = differ.diff(left, right, "id");
+        List<Row> expected = Arrays.asList(
+                RowFactory.create("D", 1, "one", null),
+                RowFactory.create("N", 2, "two", "two"),
+                RowFactory.create("I", 3, null, "three")
+        );
         Assert.assertEquals(expected, diff.sort("id").collectAsList());
     }
 

@@ -24,7 +24,7 @@ from pyspark.sql import Row
 from py4j.java_gateway import JavaObject
 
 from spark_common import SparkTest
-from gresearch.spark.diff import Diff, DiffOptions, DiffMode
+from gresearch.spark.diff import Differ, DiffOptions, DiffMode
 
 
 class DiffTest(SparkTest):
@@ -174,47 +174,47 @@ class DiffTest(SparkTest):
         self.assertEqual(self.expected_diff_in_sparse_mode, diff)
 
     def test_diff_of(self):
-        diff = Diff().of(self.left_df, self.right_df, 'id').orderBy('id').collect()
+        diff = Differ().diff(self.left_df, self.right_df, 'id').orderBy('id').collect()
         self.assertEqual(self.expected_diff, diff)
 
     def test_diff_of_with_default_options(self):
         options = DiffOptions()
-        diff = Diff(options).of(self.left_df, self.right_df, 'id').orderBy('id').collect()
+        diff = Differ(options).diff(self.left_df, self.right_df, 'id').orderBy('id').collect()
         self.assertEqual(self.expected_diff, diff)
 
     def test_diff_of_with_options(self):
         options = DiffOptions('d', 'l', 'r', 'i', 'c', 'r', 'n', None)
-        diff = Diff(options).of(self.left_df, self.right_df, 'id').orderBy('id').collect()
+        diff = Differ(options).diff(self.left_df, self.right_df, 'id').orderBy('id').collect()
         self.assertEqual(self.expected_diff_with_options, diff)
 
     def test_diff_of_with_changes(self):
         options = DiffOptions().with_change_column('changes')
-        diff = Diff(options).of(self.left_df, self.right_df, 'id').orderBy('id').collect()
+        diff = Differ(options).diff(self.left_df, self.right_df, 'id').orderBy('id').collect()
         self.assertEqual(self.expected_diff_with_changes, diff)
 
     def test_dataframe_diff_of_in_diff_mode_column_by_column(self):
         options = DiffOptions().with_diff_mode(DiffMode.ColumnByColumn)
-        diff = Diff(options).of(self.left_df, self.right_df, 'id').orderBy('id').collect()
+        diff = Differ(options).diff(self.left_df, self.right_df, 'id').orderBy('id').collect()
         self.assertEqual(self.expected_diff_in_column_by_column_mode, diff)
 
     def test_dataframe_diff_of_in_diff_mode_side_by_side(self):
         options = DiffOptions().with_diff_mode(DiffMode.SideBySide)
-        diff = Diff(options).of(self.left_df, self.right_df, 'id').orderBy('id').collect()
+        diff = Differ(options).diff(self.left_df, self.right_df, 'id').orderBy('id').collect()
         self.assertEqual(self.expected_diff_in_side_by_side_mode, diff)
 
     def test_dataframe_diff_of_in_diff_mode_left_side(self):
         options = DiffOptions().with_diff_mode(DiffMode.LeftSide)
-        diff = Diff(options).of(self.left_df, self.right_df, 'id').orderBy('id').collect()
+        diff = Differ(options).diff(self.left_df, self.right_df, 'id').orderBy('id').collect()
         self.assertEqual(self.expected_diff_in_left_side_mode, diff)
 
     def test_dataframe_diff_of_in_diff_mode_right_side(self):
         options = DiffOptions().with_diff_mode(DiffMode.RightSide)
-        diff = Diff(options).of(self.left_df, self.right_df, 'id').orderBy('id').collect()
+        diff = Differ(options).diff(self.left_df, self.right_df, 'id').orderBy('id').collect()
         self.assertEqual(self.expected_diff_in_right_side_mode, diff)
 
     def test_dataframe_diff_with_sparse_mode(self):
         options = DiffOptions().with_sparse_mode(True)
-        diff = Diff(options).of(self.left_df, self.right_df, 'id').orderBy('id').collect()
+        diff = Differ(options).diff(self.left_df, self.right_df, 'id').orderBy('id').collect()
         self.assertEqual(self.expected_diff_in_sparse_mode, diff)
 
     def test_diff_options_default(self):
