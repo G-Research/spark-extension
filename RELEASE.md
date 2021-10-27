@@ -9,7 +9,7 @@ as described below.
 
 The following steps release a snapshot and test it. Test all versions listed [further down](#releasing-master-for-other-environments).
 
-- Set the version with `./set-version.sh`, e.g. `./set-version.sh 2.4.6 2.11.12`
+- Set the version with `./set-version.sh`, e.g. `./set-version.sh 3.0.0 2.11.12`
 - Release a snapshot (make sure the version in the `pom.xml` file ends with `SNAPSHOT`): `mvn clean deploy`
 - Test the released snapshot: `./test-release.sh`
 
@@ -37,14 +37,12 @@ Follow this procedure to release a new version:
 
 Once you have released the new version, release from the same tag for all other Spark and Scala environments as well:
 - Release for these environments:
-  - Spark 2.4 with Scala 2.11 and 2.12
   - Spark 3.0 and 3.1 with 2.12 (3.1 already released above, should be the tagged version)
 - Always use the latest Spark version per Spark minor version
-  - Test Spark 2.4 with Scala 2.12 against Spark 2.4.2
-- Use Scala 2.11.12 and 2.12.10 specifically
+- Use Scala 2.12.10 specifically
 - Release process:
   - Checkout the release tag, e.g. `git checkout v1.0.0`
-  - Set the version in the `pom.xml` file via `set-version.sh`, e.g. `./set-version.sh 2.4.6 2.11.12`
+  - Set the version in the `pom.xml` file via `set-version.sh`, e.g. `./set-version.sh 3.0.0 2.12.10`
   - Review the `pom.xml` file changes: `git diff pom.xml`
   - Release the version with `mvn clean deploy`
   - Inspect and test the staged version. Use `./test-release.sh` or the `spark-examples` project for that.
