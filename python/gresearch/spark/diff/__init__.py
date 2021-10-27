@@ -344,9 +344,9 @@ class DiffOptions:
         )
 
 
-class Diff:
+class Differ:
     """
-    Differ class to diff two Datasets. See Diff.of(…) for details.
+    Differ class to diff two Datasets. See Differ.of(…) for details.
 
     :param options: options for the diffing process
     :type options: DiffOptions
@@ -356,9 +356,9 @@ class Diff:
 
     def _to_java(self, jvm: JVMView) -> JavaObject:
         jdo = self._options._to_java(jvm)
-        return jvm.uk.co.gresearch.spark.diff.Diff(jdo)
+        return jvm.uk.co.gresearch.spark.diff.Differ(jdo)
 
-    def of(self, left: DataFrame, right: DataFrame, *id_columns: str) -> DataFrame:
+    def diff(self, left: DataFrame, right: DataFrame, *id_columns: str) -> DataFrame:
         """
         Returns a new DataFrame that contains the differences between the two DataFrames.
         
@@ -383,7 +383,7 @@ class Diff:
           df1 = spark.createDataFrame([(1, "one"), (2, "two"), (3, "three")], ["id", "value"])
           df2 = spark.createDataFrame([(1, "one"), (2, "Two"), (4, "four")], ["id", "value"])
        
-          df1.diff(df2).show()
+          differ.diff(df1, df2).show()
        
           // output:
           // +----+---+-----+
@@ -396,7 +396,7 @@ class Diff:
           // |   I|  4| four|
           // +----+---+-----+
        
-          df1.diff(df2, "id").show()
+          differ.diff(df1, df2, "id").show()
        
           // output:
           // +----+---+----------+-----------+
@@ -422,8 +422,8 @@ class Diff:
         :rtype DataFrame
         """
         jvm = left._sc._jvm
-        jdiff = self._to_java(jvm)
-        jdf = jdiff.of(left._jdf, right._jdf, _to_seq(jvm, list(id_columns)))
+        jdiffer = self._to_java(jvm)
+        jdf = jdiffer.diff(left._jdf, right._jdf, _to_seq(jvm, list(id_columns)))
         return DataFrame(jdf, left.sql_ctx)
 
 
@@ -487,7 +487,7 @@ def diff(self: DataFrame, other: DataFrame, *id_columns: str) -> DataFrame:
     :return: the diff DataFrame
     :rtype DataFrame
     """
-    return Diff().of(self, other, *id_columns)
+    return Differ().diff(self, other, *id_columns)
 
 
 def diff_with_options(self: DataFrame, other: DataFrame, options: DiffOptions, *id_columns: str) -> DataFrame:
@@ -507,7 +507,7 @@ def diff_with_options(self: DataFrame, other: DataFrame, options: DiffOptions, *
     :return: the diff DataFrame
     :rtype DataFrame
     """
-    return Diff(options).of(self, other, *id_columns)
+    return Differ(options).diff(self, other, *id_columns)
 
 
 DataFrame.diff = diff

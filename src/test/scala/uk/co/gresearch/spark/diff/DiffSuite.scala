@@ -1173,75 +1173,75 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
 
   test("diff with ignored and change columns") {
     val options = DiffOptions.default.withChangeColumn("changed")
-    val diff = new Diff(options)
+    val differ = new Differ(options)
 
     assertIgnoredColumns(left8.diff(right8, options, Seq("id", "seq"), Seq("meta")), expectedDiff8WithChanges, changedColumn = options.changeColumn)
-    assertIgnoredColumns(diff.of(left8, right8, Seq("id", "seq"), Seq("meta")), expectedDiff8WithChanges, changedColumn = options.changeColumn)
+    assertIgnoredColumns(differ.diff(left8, right8, Seq("id", "seq"), Seq("meta")), expectedDiff8WithChanges, changedColumn = options.changeColumn)
   }
 
   test("diff with ignored columns and column-by-column diff mode") {
     val options = DiffOptions.default.withDiffMode(DiffMode.ColumnByColumn)
-    val diff = new Diff(options)
+    val differ = new Differ(options)
 
     assertIgnoredColumns(left8.diff(right8, options, Seq("id", "seq"), Seq("meta")), expectedDiff8)
-    assertIgnoredColumns(diff.of(left8, right8, Seq("id", "seq"), Seq("meta")), expectedDiff8)
+    assertIgnoredColumns(differ.diff(left8, right8, Seq("id", "seq"), Seq("meta")), expectedDiff8)
   }
 
   test("diff with ignored columns and side-by-side diff mode") {
     val options = DiffOptions.default.withDiffMode(DiffMode.SideBySide)
-    val diff = new Diff(options)
+    val differ = new Differ(options)
 
     assertIgnoredColumns(left8.diff(right8, options, Seq("id", "seq"), Seq("meta")), expectedSideBySideDiff8, diffColumns = Seq("left_value", "left_meta", "right_value", "right_meta"))
-    assertIgnoredColumns(diff.of(left8, right8, Seq("id", "seq"), Seq("meta")), expectedSideBySideDiff8, diffColumns = Seq("left_value", "left_meta", "right_value", "right_meta"))
+    assertIgnoredColumns(differ.diff(left8, right8, Seq("id", "seq"), Seq("meta")), expectedSideBySideDiff8, diffColumns = Seq("left_value", "left_meta", "right_value", "right_meta"))
   }
 
   test("diff with ignored columns and left-side diff mode") {
     val options = DiffOptions.default.withDiffMode(DiffMode.LeftSide)
-    val diff = new Diff(options)
+    val differ = new Differ(options)
 
     assertIgnoredColumns(left8.diff(right8, options, Seq("id", "seq"), Seq("meta")), expectedLeftSideDiff8, diffColumns = Seq("value", "meta"))
-    assertIgnoredColumns(diff.of(left8, right8, Seq("id", "seq"), Seq("meta")), expectedLeftSideDiff8, diffColumns = Seq("value", "meta"))
+    assertIgnoredColumns(differ.diff(left8, right8, Seq("id", "seq"), Seq("meta")), expectedLeftSideDiff8, diffColumns = Seq("value", "meta"))
   }
 
   test("diff with ignored columns and right-side diff mode") {
     val options = DiffOptions.default.withDiffMode(DiffMode.RightSide)
-    val diff = new Diff(options)
+    val differ = new Differ(options)
 
     assertIgnoredColumns(left8.diff(right8, options, Seq("id", "seq"), Seq("meta")), expectedRightSideDiff8, diffColumns = Seq("value", "meta"))
-    assertIgnoredColumns(diff.of(left8, right8, Seq("id", "seq"), Seq("meta")), expectedRightSideDiff8, diffColumns = Seq("value", "meta"))
+    assertIgnoredColumns(differ.diff(left8, right8, Seq("id", "seq"), Seq("meta")), expectedRightSideDiff8, diffColumns = Seq("value", "meta"))
   }
 
   test("diff with ignored columns, column-by-column diff and sparse mode") {
     val options = DiffOptions.default.withDiffMode(DiffMode.ColumnByColumn).withSparseMode(true)
-    val diff = new Diff(options)
+    val differ = new Differ(options)
 
     assertIgnoredColumns(left8.diff(right8, options, Seq("id", "seq"), Seq("meta")), expectedSparseDiff8)
-    assertIgnoredColumns(diff.of(left8, right8, Seq("id", "seq"), Seq("meta")), expectedSparseDiff8)
+    assertIgnoredColumns(differ.diff(left8, right8, Seq("id", "seq"), Seq("meta")), expectedSparseDiff8)
   }
 
   test("diff with ignored columns, side-by-side diff and sparse mode") {
     val options = DiffOptions.default.withDiffMode(DiffMode.SideBySide).withSparseMode(true)
-    val diff = new Diff(options)
+    val differ = new Differ(options)
 
     assertIgnoredColumns(left8.diff(right8, options, Seq("id", "seq"), Seq("meta")), expectedSideBySideSparseDiff8, diffColumns = Seq("left_value", "left_meta", "right_value", "right_meta"))
-    assertIgnoredColumns(diff.of(left8, right8, Seq("id", "seq"), Seq("meta")), expectedSideBySideSparseDiff8, diffColumns = Seq("left_value", "left_meta", "right_value", "right_meta"))
+    assertIgnoredColumns(differ.diff(left8, right8, Seq("id", "seq"), Seq("meta")), expectedSideBySideSparseDiff8, diffColumns = Seq("left_value", "left_meta", "right_value", "right_meta"))
   }
 
   test("diff with ignored columns, left-side diff and sparse mode") {
     val options = DiffOptions.default.withDiffMode(DiffMode.LeftSide).withSparseMode(true)
-    val diff = new Diff(options)
+    val differ = new Differ(options)
 
     val expected = expectedSparseDiff8.map(r => Row(r.get(0), r.get(1), r.get(2), r.get(3), r.get(5)))
     assertIgnoredColumns(left8.diff(right8, options, Seq("id", "seq"), Seq("meta")), expectedLeftSideSparseDiff8, diffColumns = Seq("value", "meta"))
-    assertIgnoredColumns(diff.of(left8, right8, Seq("id", "seq"), Seq("meta")), expectedLeftSideSparseDiff8, diffColumns = Seq("value", "meta"))
+    assertIgnoredColumns(differ.diff(left8, right8, Seq("id", "seq"), Seq("meta")), expectedLeftSideSparseDiff8, diffColumns = Seq("value", "meta"))
   }
 
   test("diff with ignored columns, right-side diff and sparse mode") {
     val options = DiffOptions.default.withDiffMode(DiffMode.RightSide).withSparseMode(true)
-    val diff = new Diff(options)
+    val differ = new Differ(options)
 
     assertIgnoredColumns(left8.diff(right8, options, Seq("id", "seq"), Seq("meta")), expectedRightSideSparseDiff8, diffColumns = Seq("value", "meta"))
-    assertIgnoredColumns(diff.of(left8, right8, Seq("id", "seq"), Seq("meta")), expectedRightSideSparseDiff8, diffColumns = Seq("value", "meta"))
+    assertIgnoredColumns(differ.diff(left8, right8, Seq("id", "seq"), Seq("meta")), expectedRightSideSparseDiff8, diffColumns = Seq("value", "meta"))
   }
 
   test("diff with ignored columns case-insensitive") {

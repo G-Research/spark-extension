@@ -146,13 +146,6 @@ class HistogramSuite extends AnyFunSuite with SparkTestSession {
     assert(actual === expectedHistogram)
   }
 
-  test("histogram with out-of-order thresholds") {
-    val histogram = ints.histogram(Seq(0, -200, 100, -100, 200), $"value", $"id")
-    val actual = histogram.orderBy($"id").collect().toSeq.map(_.toSeq)
-    assert(histogram.schema === expectedSchema)
-    assert(actual === expectedHistogram)
-  }
-
   test("histogram with no thresholds") {
     val exception = intercept[IllegalArgumentException] {
       ints.histogram(Seq.empty[Int], $"value", $"id")

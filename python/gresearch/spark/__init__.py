@@ -51,9 +51,8 @@ def histogram(self: DataFrame,
     value_column = col(value_column)
     aggregate_columns = [col(column) for column in aggregate_columns]
 
-    ordering = _get_scala_object(jvm, 'scala.math.Ordering${}'.format(t))
     hist = _get_scala_object(jvm, 'uk.co.gresearch.spark.Histogram')
-    jdf = hist.of(self._jdf, _to_seq(jvm, thresholds), value_column, _to_seq(jvm, aggregate_columns), ordering)
+    jdf = hist.of(self._jdf, _to_seq(jvm, thresholds), value_column, _to_seq(jvm, aggregate_columns))
     return DataFrame(jdf, self.sql_ctx)
 
 

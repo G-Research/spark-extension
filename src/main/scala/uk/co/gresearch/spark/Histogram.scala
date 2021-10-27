@@ -20,7 +20,7 @@ import org.apache.spark.sql.functions.{sum, when}
 import org.apache.spark.sql.{Column, DataFrame, Dataset}
 import uk.co.gresearch.ExtendedAny
 
-import scala.annotation.tailrec
+import scala.collection.JavaConverters
 
 object Histogram {
   /**
@@ -31,16 +31,14 @@ object Histogram {
    * There will also be a final column called s">last_threshold", that counts the remaining
    * values that exceed the last threshold.
    *
-   * @param thresholds sequence of thresholds, must implement <= and > operators w.r.t. valueColumn
-   * @param valueColumn histogram is computed for values of this column
+   * @param df               dataset to compute histogram from
+   * @param thresholds       sequence of thresholds in ascending order, must implement <= and > operators w.r.t. valueColumn
+   * @param valueColumn      histogram is computed for values of this column
    * @param aggregateColumns histogram is computed against these columns
    * @tparam T type of histogram thresholds
    * @return dataframe with aggregate and histogram columns
    */
-  @tailrec
-  def of[D, T: Ordering](df: Dataset[D], thresholds: Seq[T], valueColumn: Column, aggregateColumns: Column*): DataFrame = {
-    import df.sparkSession.implicits._
-
+  def of[D, T](df: Dataset[D], thresholds: Seq[T], valueColumn: Column, aggregateColumns: Column*): DataFrame = {
     if (thresholds.isEmpty)
       throw new IllegalArgumentException("Thresholds must not be empty")
 
@@ -49,23 +47,38 @@ object Histogram {
     if (bins.exists(s => s.head == s.last))
       throw new IllegalArgumentException(s"Thresholds must not contain duplicates: ${thresholds.mkString(",")}")
 
-    val ordering = implicitly[Ordering[T]]
-    if (bins.exists(s => ordering.gt(s.head, s.last)))
-      of(df, thresholds.sorted, valueColumn, aggregateColumns: _*)
-    else
-      df.toDF()
-        .withColumn(s"≤${thresholds.head}", when(valueColumn <= thresholds.head, 1).otherwise(0))
-        .call(
-          bins.foldLeft(_) { case (df, bin) =>
-            df.withColumn(s"≤${bin.last}", when(valueColumn > bin.head && $"value" <= bin.last, 1).otherwise(0))
-          })
-        .withColumn(s">${thresholds.last}", when(valueColumn > thresholds.last, 1).otherwise(0))
-        .groupBy(aggregateColumns: _*)
-        .agg(
-          Some(thresholds.head).map(t => sum(backticks(s"≤$t")).as(s"≤$t")).get,
-          thresholds.tail.map(t => sum(backticks(s"≤$t")).as(s"≤$t")) :+
-            sum(backticks(s">${thresholds.last}")).as(s">${thresholds.last}") :_*
-        )
+    df.toDF()
+      .withColumn(s"≤${thresholds.head}", when(valueColumn <= thresholds.head, 1).otherwise(0))
+      .call(
+        bins.foldLeft(_) { case (df, bin) =>
+          df.withColumn(s"≤${bin.last}", when(valueColumn > bin.head && valueColumn <= bin.last, 1).otherwise(0))
+        })
+      .withColumn(s">${thresholds.last}", when(valueColumn > thresholds.last, 1).otherwise(0))
+      .groupBy(aggregateColumns: _*)
+      .agg(
+        Some(thresholds.head).map(t => sum(backticks(s"≤$t")).as(s"≤$t")).get,
+        thresholds.tail.map(t => sum(backticks(s"≤$t")).as(s"≤$t")) :+
+          sum(backticks(s">${thresholds.last}")).as(s">${thresholds.last}"): _*
+      )
   }
+
+  /**
+   * Compute the histogram of a column when aggregated by aggregate columns.
+   * Thresholds are expected to be provided in ascending order.
+   * The result dataframe contains the aggregate and histogram columns only.
+   * For each threshold value in thresholds, there will be a column named s"≤$threshold".
+   * There will also be a final column called s">${last_threshold}", that counts the remaining
+   * values that exceed the last threshold.
+   *
+   * @param df               dataset to compute histogram from
+   * @param thresholds       sequence of thresholds in ascending order, must implement <= and > operators w.r.t. valueColumn
+   * @param valueColumn      histogram is computed for values of this column
+   * @param aggregateColumns histogram is computed against these columns
+   * @tparam T type of histogram thresholds
+   * @return dataframe with aggregate and histogram columns
+   */
+  @scala.annotation.varargs
+  def of[D, T](df: Dataset[D], thresholds: java.util.List[T], valueColumn: Column, aggregateColumns: Column*): DataFrame =
+    of(df, JavaConverters.iterableAsScalaIterable(thresholds).toSeq, valueColumn, aggregateColumns: _*)
 
 }

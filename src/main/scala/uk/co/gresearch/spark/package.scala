@@ -42,8 +42,9 @@ package object spark {
    * @param strings more strings
    * @return
    */
-  def backticks(string: String, strings: String*): String = (string +: strings)
-    .map(s => if (s.contains(".") && !s.startsWith("`") && !s.endsWith("`")) s"`$s`" else s).mkString(".")
+  @scala.annotation.varargs
+  def backticks(string: String, strings: String*): String =
+    Backticks.column_name(string, strings: _*)
 
   /**
    * Implicit class to extend a Spark Dataset.
