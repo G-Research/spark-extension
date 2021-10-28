@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 - Add support for Spark 3.2 and Scala 2.13
+- Support to ignore columns in diff API (#63)
 
 ### Removed
 - Removed support for Spark 2.4
