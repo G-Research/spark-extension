@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [UNRELEASED] - YYYY-MM-DD
+
+### Added
+
+- Support to ignore columns in diff API (#63)
+
 ## [1.3.3] - 2020-12-17
 
 ### Added
