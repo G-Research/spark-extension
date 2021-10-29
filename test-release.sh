@@ -11,13 +11,13 @@ echo
 echo "Testing Spark $spark and Scala $scala_compat"
 echo
 
-if [ ! -e "spark-$spark" ]
+if [ ! -e "spark-$spark-$scala_compat" ]
 then
 	wget --progress=dot:giga https://archive.apache.org/dist/spark/spark-$spark/spark-$spark-bin-hadoop2.7.tgz -O - | tar -xzC .
 	ln -s spark-$spark-bin-hadoop2.7 spark-$spark
 fi
 
-spark-$spark/bin/spark-shell --packages uk.co.gresearch.spark:spark-extension_$scala_compat:$version --repositories https://oss.sonatype.org/content/groups/staging/ < test-release.scala
+spark-$spark-$scala_compat/bin/spark-shell --packages uk.co.gresearch.spark:spark-extension_$scala_compat:$version --repositories https://oss.sonatype.org/content/groups/staging/ < test-release.scala
 
 if [ ! -e "venv" ]
 then
@@ -28,7 +28,7 @@ then
 fi
 
 source venv/bin/activate
-spark-$spark/bin/spark-submit --packages uk.co.gresearch.spark:spark-extension_$scala_compat:$version test-release.py
+spark-$spark-$scala_compat/bin/spark-submit --packages uk.co.gresearch.spark:spark-extension_$scala_compat:$version test-release.py
 deactivate
 
 echo -e "\u001b[32;1mSUCCESS\u001b[0m"
