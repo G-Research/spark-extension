@@ -3,7 +3,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [UNRELEASED] - YYYY-MM-DD
+## [2.0.0] - 2021-10-29
 
 ### Added
 - Add support for Spark 3.2 and Scala 2.13
