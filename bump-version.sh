@@ -63,6 +63,9 @@ next=$(next_version "$version" "$branch")
 echo "Bump version to $next"
 sed -i "1,10s/$version/$next-SNAPSHOT/" pom.xml examples/scala/pom.xml
 
+echo "this sed is not working"
+exit 1
+
 # commit changes to local repo
 echo
 echo "Committing release to local git"

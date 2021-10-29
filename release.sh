@@ -84,4 +84,5 @@ echo "Creating release packages"
 
 echo
 
-./bump.sh
+# not workings
+#./bump.sh
