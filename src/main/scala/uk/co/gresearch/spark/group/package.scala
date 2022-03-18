@@ -77,7 +77,7 @@ package object group {
     private val key = iter.head._1
 
     private def identicalKeys(one: K, two: K): Boolean =
-      one == null && two == null || one != null && two != null && ordering.compare(one, two) == 0
+      one == null && two == null || one != null && two != null && ordering.equiv(one, two)
 
     override def hasNext: Boolean = iter.hasNext && identicalKeys(iter.head._1, key)
 
