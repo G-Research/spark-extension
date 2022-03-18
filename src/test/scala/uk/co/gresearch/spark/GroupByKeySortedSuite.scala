@@ -29,7 +29,7 @@ case class State(key: Int) {
   }
 }
 
-class TestSortedGroup extends AnyFunSpec with SparkTestSession {
+class GroupByKeySortedSuite extends AnyFunSpec with SparkTestSession {
 
   import spark.implicits._
 

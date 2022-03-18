@@ -47,31 +47,39 @@ package object group {
     private var currentGroup: Option[Iterator[V]] = None
 
     override def hasNext: Boolean = {
-      if (currentGroup.isDefined) {
-        // consume current group
-        val it = currentGroup.get
-        while (it.hasNext) it.next
-      }
+      if (currentKey.isEmpty) {
+        if (currentGroup.isDefined) {
+          // consume current group
+          val it = currentGroup.get
+          while (it.hasNext) it.next
+          currentGroup = None
+        }
 
-      val isNext = values.hasNext
-      if (isNext) {
-        currentKey = Some(values.head._1)
-        currentGroup = Some(new GroupIterator(values))
-      } else {
-        currentKey = None
-        currentGroup = None
+        if (values.hasNext) {
+          currentKey = Some(values.head._1)
+          currentGroup = Some(new GroupIterator(values))
+        }
       }
-      isNext
+      currentKey.isDefined
     }
 
-    override def next(): (K, Iterator[V]) = (currentKey.get, currentGroup.get)
+    override def next(): (K, Iterator[V]) = {
+      try {
+        (currentKey.get, currentGroup.get)
+      } finally {
+        currentKey = None
+      }
+    }
   }
 
   class GroupIterator[K: Ordering, V](iter: BufferedIterator[(K, V)]) extends Iterator[V] {
     private val ordering = implicitly[Ordering[K]]
     private val key = iter.head._1
 
-    override def hasNext: Boolean = iter.hasNext && ordering.compare(iter.head._1, key) == 0
+    private def identicalKeys(one: K, two: K): Boolean =
+      one == null && two == null || one != null && two != null && ordering.compare(one, two) == 0
+
+    override def hasNext: Boolean = iter.hasNext && identicalKeys(iter.head._1, key)
 
     override def next(): V = iter.next._2
   }
