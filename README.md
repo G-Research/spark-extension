@@ -5,6 +5,9 @@ This project provides extensions to the [Apache Spark project](https://spark.apa
 **[Diff](DIFF.md):** A `diff` transformation for `Dataset`s that computes the differences between
 two datasets, i.e. which rows to _add_, _delete_ or _change_ to get from one dataset to the other.
 
+**[SortedGroups](GROUP.md):** A `groupByKey` transformation that groups rows by a key while providing a sorted iterator for each group.
+Similar to `Dataset.groupByKey.flatMapGroups`, but with order guarantees for the iterator.
+
 **[Histogram](HISTOGRAM.md):** A `histogram` transformation that computes the histogram DataFrame for a value column.
 
 **[Partitioned Writing](PARTITIONING.md):** The `writePartitionedBy` action writes your `Dataset` partitioned and efficiently laid out with a single operation.
