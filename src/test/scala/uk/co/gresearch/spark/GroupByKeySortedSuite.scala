@@ -43,16 +43,15 @@ class GroupByKeySortedSuite extends AnyFunSpec with SparkTestSession {
     Val(2, 3, 2.3),
 
     Val(3, 1, 3.1),
-  ).toDS().repartition(4).cache()
+  ).reverse.toDS().repartition(3).cache()
 
   describe("test dataset") {
     it("is randomly partitioned") {
       val partitions: Array[List[Val]] = ds.mapPartitions(it => Iterator(it.toList)).collect()
       assert(partitions === Array(
-        List(Val(3, 1, 3.1), Val(2, 1, 2.1)),
-        List(Val(1, 3, 1.3), Val(2, 3, 2.3)),
-        List(Val(2, 2, 2.2)),
-        List(Val(1, 2, 1.2), Val(1, 1, 1.1))
+        List(Val(1, 3, 1.3), Val(2, 1, 2.1)),
+        List(Val(1, 2, 1.2), Val(2, 2, 2.2), Val(2, 3, 2.3)),
+        List(Val(3, 1, 3.1), Val(1, 1, 1.1))
       ))
     }
   }
