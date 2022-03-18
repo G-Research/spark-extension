@@ -16,7 +16,7 @@
 
 package uk.co.gresearch.spark
 
-import org.apache.spark.sql.{AnalysisException, Dataset}
+import org.apache.spark.sql.{AnalysisException, Dataset, DataFrame}
 import org.apache.spark.sql.types.{IntegerType, LongType, StringType, StructField, StructType}
 import org.scalatest.funsuite.AnyFunSuite
 
@@ -64,32 +64,32 @@ class HistogramSuite extends AnyFunSuite with SparkTestSession {
     Seq(4, 0, 0, 1, 0, 0, 0)
   )
   val expectedSchema: StructType = StructType(Seq(
-    StructField("id", IntegerType, nullable=false),
-    StructField("≤-200", LongType, nullable=true),
-    StructField("≤-100", LongType, nullable=true),
-    StructField("≤0", LongType, nullable=true),
-    StructField("≤100", LongType, nullable=true),
-    StructField("≤200", LongType, nullable=true),
-    StructField(">200", LongType, nullable=true)
+    StructField("id", IntegerType, nullable = false),
+    StructField("≤-200", LongType, nullable = true),
+    StructField("≤-100", LongType, nullable = true),
+    StructField("≤0", LongType, nullable = true),
+    StructField("≤100", LongType, nullable = true),
+    StructField("≤200", LongType, nullable = true),
+    StructField(">200", LongType, nullable = true)
   ))
   val expectedSchema2: StructType = StructType(Seq(
-    StructField("id", IntegerType, nullable=false),
-    StructField("title", StringType, nullable=true),
-    StructField("≤-200", LongType, nullable=true),
-    StructField("≤-100", LongType, nullable=true),
-    StructField("≤0", LongType, nullable=true),
-    StructField("≤100", LongType, nullable=true),
-    StructField("≤200", LongType, nullable=true),
-    StructField(">200", LongType, nullable=true)
+    StructField("id", IntegerType, nullable = false),
+    StructField("title", StringType, nullable = true),
+    StructField("≤-200", LongType, nullable = true),
+    StructField("≤-100", LongType, nullable = true),
+    StructField("≤0", LongType, nullable = true),
+    StructField("≤100", LongType, nullable = true),
+    StructField("≤200", LongType, nullable = true),
+    StructField(">200", LongType, nullable = true)
   ))
   val expectedDoubleSchema: StructType = StructType(Seq(
-    StructField("id", IntegerType, nullable=false),
-    StructField("≤-200.0", LongType, nullable=true),
-    StructField("≤-100.0", LongType, nullable=true),
-    StructField("≤0.0", LongType, nullable=true),
-    StructField("≤100.0", LongType, nullable=true),
-    StructField("≤200.0", LongType, nullable=true),
-    StructField(">200.0", LongType, nullable=true)
+    StructField("id", IntegerType, nullable = false),
+    StructField("≤-200.0", LongType, nullable = true),
+    StructField("≤-100.0", LongType, nullable = true),
+    StructField("≤0.0", LongType, nullable = true),
+    StructField("≤100.0", LongType, nullable = true),
+    StructField("≤200.0", LongType, nullable = true),
+    StructField(">200.0", LongType, nullable = true)
   ))
 
   test("histogram with no aggregate columns") {
@@ -157,9 +157,9 @@ class HistogramSuite extends AnyFunSuite with SparkTestSession {
     val histogram = ints.histogram(Seq(0), $"value", $"id")
     val actual = histogram.orderBy($"id").collect().toSeq.map(_.toSeq)
     assert(histogram.schema === StructType(Seq(
-      StructField("id", IntegerType, nullable=false),
-      StructField("≤0", LongType, nullable=true),
-      StructField(">0", LongType, nullable=true)
+      StructField("id", IntegerType, nullable = false),
+      StructField("≤0", LongType, nullable = true),
+      StructField(">0", LongType, nullable = true)
     ))
     )
     assert(actual === Seq(
@@ -189,6 +189,20 @@ class HistogramSuite extends AnyFunSuite with SparkTestSession {
       ints.histogram(intThresholds, $"value", $"does-not-exist")
     }
     assert(exception.getMessage.startsWith("cannot resolve '`does-not-exist`' given input columns: ["))
+  }
+
+  test("histogram with int values on DataFrame") {
+    val histogram = ints.toDF().histogram(intThresholds, $"value", $"id")
+    val actual = histogram.orderBy($"id").collect().toSeq.map(_.toSeq)
+    assert(histogram.schema === expectedSchema)
+    assert(actual === expectedHistogram)
+  }
+
+  test("histogram with double values on DataFrame") {
+    val histogram = doubles.toDF().histogram(doubleThresholds, $"value", $"id")
+    val actual = histogram.orderBy($"id").collect().toSeq.map(_.toSeq)
+    assert(histogram.schema === expectedDoubleSchema)
+    assert(actual === expectedHistogram)
   }
 
 }

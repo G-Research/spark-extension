@@ -81,7 +81,7 @@ class WritePartitionedSuite extends AnyFunSuite with SparkTestSession {
 
   test("write with one partition") {
     withTempPath { dir =>
-      values.writePartitionedBy(Seq($"id"), Seq($"date"), partitions=Some(1)).csv(dir.getAbsolutePath)
+      values.writePartitionedBy(Seq($"id"), Seq($"date"), partitions = Some(1)).csv(dir.getAbsolutePath)
       val partitions = dir.list().filter(_.startsWith("id=")).sorted
       assert(partitions === Seq("id=1", "id=2", "id=3", "id=4"))
       val files = partitions.flatMap { partition =>
@@ -186,6 +186,18 @@ class WritePartitionedSuite extends AnyFunSuite with SparkTestSession {
           case "id=4" => assert(lines === Seq("ruof"))
         }
       }
+
+    }
+  }
+  test("write dataframe") {
+    withTempPath { dir =>
+      values.toDF().writePartitionedBy(Seq($"id", $"date")).csv(dir.getAbsolutePath)
+      val ids = dir.list().filter(_.startsWith("id=")).sorted
+      assert(ids === Seq("id=1", "id=2", "id=3", "id=4"))
+      val dates = ids.flatMap { id =>
+        new File(dir, id).list().filter(file => file.startsWith("date="))
+      }.toSet
+      assert(dates === Set("date=2020-07-01", "date=2020-07-04", "date=2020-07-02", "date=2020-07-03"))
     }
   }
 
