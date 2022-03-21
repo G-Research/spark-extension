@@ -110,8 +110,9 @@ All those above constructs can be replaced with a single meaningful operation:
 
 
 
-
+<!--
 # Other Approaches
 
 problems with `repartition()` instead of `repartitionByRange()`
 problems with `repartitionByRange(cols).write.partitionBy(cols)`
+-->
