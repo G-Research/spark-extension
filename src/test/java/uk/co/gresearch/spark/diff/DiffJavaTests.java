@@ -123,7 +123,8 @@ public class DiffJavaTests {
                 "I", "C", "D", "N",
                 scala.Option.apply(null),
                 DiffMode.ColumnByColumn(),
-                false
+                false,
+                Column::$less$eq$greater
         );
 
         Differ differ = new Differ(options);
@@ -145,7 +146,8 @@ public class DiffJavaTests {
                 "I", "C", "D", "N",
                 scala.Option.apply(null),
                 DiffMode.ColumnByColumn(),
-                false
+                false,
+                Column::$less$eq$greater
         );
 
         Differ differ = new Differ(options);
@@ -166,10 +168,7 @@ public class DiffJavaTests {
         DiffOptions options = new DiffOptions(
                 "action",
                 "before", "after",
-                "+", "~", "-", "=",
-                scala.Option.apply(null),
-                DiffMode.ColumnByColumn(),
-                false
+                "+", "~", "-", "="
         );
 
         Differ differ = new Differ(options);

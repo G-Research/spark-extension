@@ -16,9 +16,10 @@
 
 package uk.co.gresearch.spark.diff
 
+import org.apache.spark.sql.catalyst.expressions.AttributeReference
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.{Dataset, Encoders, Row}
+import org.apache.spark.sql.{Column, Dataset, Encoders, Row}
 import org.scalatest.funsuite.AnyFunSuite
 import uk.co.gresearch.spark.SparkTestSession
 
@@ -31,6 +32,7 @@ case class Value5(first_id: Int, id: String)
 case class Value6(id: Int, label: String)
 case class Value7(id: Int, value: Option[String], label: Option[String])
 case class Value8(id: Int, seq: Option[Int], value: Option[String], meta: Option[String])
+case class Value9(id: Int, value: Double, meta: Map[String, String])
 
 case class DiffAs(diff: String,
                   id: Int,
@@ -116,6 +118,22 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     Value8(2, Some(2), Some("Two"), Some("user1")),
     Value8(2, Some(3), Some("two"), Some("user2")),
     Value8(3, None, None, None)
+  ).toDS()
+
+  lazy val left9: Dataset[Value9] = Seq(
+    Value9(1, 1.0, Map("one" -> "1")),
+    Value9(2, 2.0, Map("two" -> "2.0")),
+    Value9(3, 3.0, Map("three" -> "3.0")),
+    Value9(4, 4.000000000001, Map.empty),
+    Value9(5, 5.0, Map.empty),
+  ).toDS()
+
+  lazy val right9: Dataset[Value9] = Seq(
+    Value9(1, 1.0, Map("one" -> "1")),
+    Value9(2, 2.001, Map("two" -> "2.0")),
+    Value9(3, 3.0, Map("three" -> "3.1")),
+    Value9(4, 4.0, Map.empty),
+    Value9(6, 6.0, Map.empty),
   ).toDS()
 
   lazy val expectedDiffColumns: Seq[String] = Seq("diff", "id", "left_value", "right_value")
@@ -1274,4 +1292,55 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     assert(intercept[IllegalArgumentException](f).getMessage === s"requirement failed: $expected")
   }
 
+  def customOrdering(column: Column): Option[Ordering[Any]] = {
+    column.expr match {
+      case e: AttributeReference => e.name match {
+        case "value" => Some(DoubleEpsilonOrdering(0.000001).asInstanceOf[Ordering[Any]])
+        case _ => None
+      }
+      case _ => None
+    }
+  }
+
+  test("diff with custom comparison (doubles)") {
+    val options = DiffOptions.default.withComparator(Comparators(customOrdering).compare)
+    val actual = left9.toDF().select($"id", $"value")
+      .diff(right9.toDF().select($"id", $"value"), options, "id")
+      .orderBy("id")
+    assert(actual.collect() === Seq(
+      Row("N", 1, 1.0, 1.0),
+      Row("C", 2, 2.0, 2.001),
+      Row("N", 3, 3.0, 3.0),
+      Row("N", 4, 4.000000000001, 4.0),
+      Row("D", 5, 5.0, null),
+      Row("I", 6, null, 6.0)
+    ))
+  }
+
+  test("diff with custom comparison (map)") {
+    val options = DiffOptions.default.withComparator(_ <=> _)
+    val actual = left9.toDF().select($"id", $"meta")
+      .diff(right9.toDF().select($"id", $"meta"), options)
+      .orderBy("id")
+    assert(actual.collect() === Seq())
+  }
+
+  test("diff with custom comparison") {
+    val actual = left9.diff(right9).orderBy("id")
+    assert(actual.collect() === Seq())
+  }
+
+}
+
+case class  DoubleEpsilonOrdering(epsilon: Double) extends Ordering[Double] {
+  override def compare(x: Double, y: Double): Int = {
+    val delta = math.min(math.abs(x), math.abs(y)) * epsilon
+    if (math.abs(x - y) <= delta) {
+      0
+    } else if (x < y) {
+      -1
+    } else {
+      1
+    }
+  }
 }

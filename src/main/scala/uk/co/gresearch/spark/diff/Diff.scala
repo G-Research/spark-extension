@@ -307,8 +307,9 @@ class Differ(options: DiffOptions) {
     val existsColumnName = Diff.distinctStringNameFor(left.columns)
     val leftWithExists = left.withColumn(existsColumnName, lit(1))
     val rightWithExists = right.withColumn(existsColumnName, lit(1))
-    val joinCondition = pkColumns.map(c => leftWithExists(backticks(c)) <=> rightWithExists(backticks(c))).reduce(_ && _)
-    val unChanged = valueColumns.map(c => leftWithExists(backticks(c)) <=> rightWithExists(backticks(c))).reduceOption(_ && _)
+    val comparator = options.comparator
+    val joinCondition = pkColumns.map(c => comparator(leftWithExists(backticks(c)), rightWithExists(backticks(c)))).reduce(_ && _)
+    val unChanged = valueColumns.map(c => comparator(leftWithExists(backticks(c)), rightWithExists(backticks(c)))).reduceOption(_ && _)
     val changeCondition = not(unChanged.getOrElse(lit(true)))
 
     val diffActionColumn =

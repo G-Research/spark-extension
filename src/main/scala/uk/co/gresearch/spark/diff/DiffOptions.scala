@@ -16,6 +16,14 @@
 
 package uk.co.gresearch.spark.diff
 
+import org.apache.spark.sql.Column
+import org.apache.spark.sql.catalyst.InternalRow
+import org.apache.spark.sql.catalyst.expressions.codegen.Block.BlockHelper
+import org.apache.spark.sql.catalyst.expressions.codegen.{CodegenContext, ExprCode, FalseLiteral}
+import org.apache.spark.sql.catalyst.expressions.{BinaryComparison, BinaryExpression, Expression, ImplicitCastInputTypes}
+import org.apache.spark.sql.catalyst.util.TypeUtils
+import org.apache.spark.sql.functions.lit
+import org.apache.spark.sql.types.{AbstractDataType, AnyDataType, DataType, NullType, BooleanType}
 import uk.co.gresearch.spark.diff
 import uk.co.gresearch.spark.diff.DiffMode.{Default, DiffMode}
 
@@ -86,12 +94,16 @@ case class DiffOptions(diffColumn: String,
                        nochangeDiffValue: String,
                        changeColumn: Option[String] = None,
                        diffMode: DiffMode = Default,
-                       sparseMode: Boolean = false) {
-
+                       sparseMode: Boolean = false,
+                       comparator: (Column, Column) => Column = _ <=> _) {
   require(leftColumnPrefix.nonEmpty, "Left column prefix must not be empty")
   require(rightColumnPrefix.nonEmpty, "Right column prefix must not be empty")
   require(handleConfiguredCaseSensitivity(leftColumnPrefix) != handleConfiguredCaseSensitivity(rightColumnPrefix),
     s"Left and right column prefix must be distinct: $leftColumnPrefix")
+
+  // apply comparator on two values to assert the result column expression's type
+  require(comparator(lit(1), lit(2)).expr.isInstanceOf[BinaryExpression],
+    "Comparator has to be a binary expression / boolean condition")
 
   val diffValues = Seq(insertDiffValue, changeDiffValue, deleteDiffValue, nochangeDiffValue)
   require(diffValues.distinct.length == diffValues.length,
@@ -100,15 +112,27 @@ case class DiffOptions(diffColumn: String,
   require(!changeColumn.map(handleConfiguredCaseSensitivity).contains(handleConfiguredCaseSensitivity(diffColumn)),
     s"Change column name must be different to diff column: $diffColumn")
 
+  def this(diffColumn: String,
+           leftColumnPrefix: String,
+           rightColumnPrefix: String,
+           insertDiffValue: String,
+           changeDiffValue: String,
+           deleteDiffValue: String,
+           nochangeDiffValue: String) =
+    this(
+      diffColumn, leftColumnPrefix, rightColumnPrefix,
+      insertDiffValue, changeDiffValue, deleteDiffValue, nochangeDiffValue,
+      changeColumn = None  // this argument is used to call into case class constructor, not this apply method
+    )
+
   /**
    * Fluent method to change the diff column name.
    * Returns a new immutable DiffOptions instance with the new diff column name.
    * @param diffColumn new diff column name
    * @return new immutable DiffOptions instance
    */
-  def withDiffColumn(diffColumn: String): DiffOptions = {
+  def withDiffColumn(diffColumn: String): DiffOptions =
     this.copy(diffColumn = diffColumn)
-  }
 
   /**
    * Fluent method to change the prefix of columns from the left Dataset.
@@ -116,9 +140,8 @@ case class DiffOptions(diffColumn: String,
    * @param leftColumnPrefix new column prefix
    * @return new immutable DiffOptions instance
    */
-  def withLeftColumnPrefix(leftColumnPrefix: String): DiffOptions = {
+  def withLeftColumnPrefix(leftColumnPrefix: String): DiffOptions =
     this.copy(leftColumnPrefix = leftColumnPrefix)
-  }
 
   /**
    * Fluent method to change the prefix of columns from the right Dataset.
@@ -126,9 +149,8 @@ case class DiffOptions(diffColumn: String,
    * @param rightColumnPrefix new column prefix
    * @return new immutable DiffOptions instance
    */
-  def withRightColumnPrefix(rightColumnPrefix: String): DiffOptions = {
+  def withRightColumnPrefix(rightColumnPrefix: String): DiffOptions =
     this.copy(rightColumnPrefix = rightColumnPrefix)
-  }
 
   /**
    * Fluent method to change the value of inserted rows in the diff column.
@@ -136,9 +158,8 @@ case class DiffOptions(diffColumn: String,
    * @param insertDiffValue new diff value
    * @return new immutable DiffOptions instance
    */
-  def withInsertDiffValue(insertDiffValue: String): DiffOptions = {
+  def withInsertDiffValue(insertDiffValue: String): DiffOptions =
     this.copy(insertDiffValue = insertDiffValue)
-  }
 
   /**
    * Fluent method to change the value of changed rows in the diff column.
@@ -146,9 +167,8 @@ case class DiffOptions(diffColumn: String,
    * @param changeDiffValue new diff value
    * @return new immutable DiffOptions instance
    */
-  def withChangeDiffValue(changeDiffValue: String): DiffOptions = {
+  def withChangeDiffValue(changeDiffValue: String): DiffOptions =
     this.copy(changeDiffValue = changeDiffValue)
-  }
 
   /**
    * Fluent method to change the value of deleted rows in the diff column.
@@ -156,9 +176,8 @@ case class DiffOptions(diffColumn: String,
    * @param deleteDiffValue new diff value
    * @return new immutable DiffOptions instance
    */
-  def withDeleteDiffValue(deleteDiffValue: String): DiffOptions = {
+  def withDeleteDiffValue(deleteDiffValue: String): DiffOptions =
     this.copy(deleteDiffValue = deleteDiffValue)
-  }
 
   /**
    * Fluent method to change the value of un-changed rows in the diff column.
@@ -166,9 +185,8 @@ case class DiffOptions(diffColumn: String,
    * @param nochangeDiffValue new diff value
    * @return new immutable DiffOptions instance
    */
-  def withNochangeDiffValue(nochangeDiffValue: String): DiffOptions = {
+  def withNochangeDiffValue(nochangeDiffValue: String): DiffOptions =
     this.copy(nochangeDiffValue = nochangeDiffValue)
-  }
 
   /**
    * Fluent method to change the change column name.
@@ -176,37 +194,41 @@ case class DiffOptions(diffColumn: String,
    * @param changeColumn new change column name
    * @return new immutable DiffOptions instance
    */
-  def withChangeColumn(changeColumn: String): DiffOptions = {
+  def withChangeColumn(changeColumn: String): DiffOptions =
     this.copy(changeColumn = Some(changeColumn))
-  }
 
   /**
    * Fluent method to remove change column.
    * Returns a new immutable DiffOptions instance without a change column.
    * @return new immutable DiffOptions instance
    */
-  def withoutChangeColumn(): DiffOptions = {
+  def withoutChangeColumn(): DiffOptions =
     this.copy(changeColumn = None)
-  }
 
   /**
    * Fluent method to change the diff mode.
    * Returns a new immutable DiffOptions instance with the new diff mode.
    * @return new immutable DiffOptions instance
    */
-  def withDiffMode(diffMode: DiffMode): DiffOptions = {
+  def withDiffMode(diffMode: DiffMode): DiffOptions =
     this.copy(diffMode = diffMode)
-  }
 
   /**
    * Fluent method to change the sparse mode.
    * Returns a new immutable DiffOptions instance with the new sparse mode.
    * @return new immutable DiffOptions instance
    */
-  def withSparseMode(sparseMode: Boolean): DiffOptions = {
+  def withSparseMode(sparseMode: Boolean): DiffOptions =
     this.copy(sparseMode = sparseMode)
-  }
 
+  /**
+   * Fluent method to change the comparator for the diff operation.
+   * Returns a new immutable DiffOptions instance with the new comparator.
+   * @param comparator new comparator
+   * @return new immutable DiffOptions instance
+   */
+  def withComparator(comparator: (Column, Column) => Column): DiffOptions =
+    this.copy(comparator = comparator)
 }
 
 object DiffOptions {
@@ -214,4 +236,42 @@ object DiffOptions {
    * Default diffing options.
    */
   val default: DiffOptions = DiffOptions("diff", "left", "right", "I", "C", "D", "N", None, Default, false)
+}
+
+case class Comparators(func: Column => Option[Ordering[Any]]) {
+  def compare(left: Column, right: Column): Column = {
+    val customOrdering: Option[Ordering[Any]] = func(left)
+    val comparator = Comparator(left.expr, right.expr, customOrdering)
+    new Column(comparator.asInstanceOf[Expression])
+  }
+}
+
+case class Comparator(left: Expression, right: Expression, customOrdering: Option[Ordering[Any]]) extends BinaryExpression {
+  // override def symbol: String = "<" + customOrdering.map(_.toString).getOrElse("=") + ">"
+
+  override def dataType: DataType = BooleanType
+
+  override def eval(input: InternalRow): Any = {
+    val input1 = left.eval(input)
+    val input2 = right.eval(input)
+    if (input1 == null && input2 == null) {
+      true
+    } else if (input1 == null || input2 == null) {
+      false
+    } else if (customOrdering.isDefined) {
+      customOrdering.get.equiv(input1, input2)
+    } else {
+      TypeUtils.getInterpretedOrdering(left.dataType).equiv(input1, input2)
+    }
+  }
+
+  override def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = {
+    val eval1 = left.genCode(ctx)
+    val eval2 = right.genCode(ctx)
+    val orderingObj = customOrdering.getOrElse(TypeUtils.getInterpretedOrdering(left.dataType))
+    val ordering = ctx.addReferenceObj("ordering", orderingObj)
+    ev.copy(code = eval1.code + eval2.code + code"""
+        boolean ${ev.value} = (${eval1.isNull} && ${eval2.isNull}) ||
+           (!${eval1.isNull} && !${eval2.isNull} && $ordering.equiv(${eval1.value}, ${eval2.value}));""", isNull = FalseLiteral)
+  }
 }
