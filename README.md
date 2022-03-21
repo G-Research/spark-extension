@@ -7,6 +7,8 @@ two datasets, i.e. which rows to _add_, _delete_ or _change_ to get from one dat
 
 **[Histogram](HISTOGRAM.md):** A `histogram` transformation that computes the histogram DataFrame for a value column.
 
+**[Partitioned Writing](PARTITIONING.md):** The `writePartitionedBy` action writes your `Dataset` partitioned and efficiently laid out with a single operation.
+
 **[Fluent method call](CONDITIONAL.md):** `T.call(transformation: T => R): R`: Turns a transformation `T => R`, that is not part of `T` into a fluent method call on `T`.
 This allows writing fluent code like:
 

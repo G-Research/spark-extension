@@ -1,6 +1,3 @@
-- [Partitioned Writing](PARTITIONING.md): The `writePartitionedBy` action writes your `Dataset`
-partitioned and efficiently laid out with a single operation.
-
 # Partitioned Writing
 
 If you have ever used `Dataset[T].write.partitionBy`, here is how you can minimize the number of
