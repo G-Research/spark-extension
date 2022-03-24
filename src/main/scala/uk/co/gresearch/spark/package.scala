@@ -17,7 +17,7 @@
 package uk.co.gresearch
 
 import org.apache.spark.sql._
-import org.apache.spark.sql.catalyst.encoders.{ExpressionEncoder, RowEncoder}
+import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.catalyst.expressions.NamedExpression
 import org.apache.spark.sql.functions.col
 import uk.co.gresearch.spark.group.SortedGroupByKeyValueDataset
