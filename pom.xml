@@ -37,9 +37,9 @@
     <maven.compiler.source>${java.version}</maven.compiler.source>
     <maven.compiler.target>${java.version}</maven.compiler.target>
     <encoding>UTF-8</encoding>
-    <scala.compat.version>2.12</scala.compat.version>
-    <scala.version>${scala.compat.version}.10</scala.version>
-    <!-- keep in-sync with python/requirements-3.2_2.12.txt -->
+    <scala.compat.version>2.13</scala.compat.version>
+    <scala.version>${scala.compat.version}.5</scala.version>
+    <!-- keep in-sync with python/requirements-3.2_2.13.txt -->
     <spark.compat.version>3.2</spark.compat.version>
     <spark.version>${spark.compat.version}.0</spark.version>
   </properties>
