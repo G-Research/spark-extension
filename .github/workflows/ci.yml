@@ -109,6 +109,13 @@ jobs:
           - spark-version: '3.1.2'
             scala-compat-version: '2.13'
 
+          - spark-version: '3.2.0'
+            scala-compat-version: '2.13'
+            python-version: '3.6'
+          - spark-version: '3.2.0'
+            scala-compat-version: '2.13'
+            python-version: '3.7'
+
           - spark-version: '3.3.0-SNAPSHOT'
             python-version: '3.6'
           - spark-version: '3.3.0-SNAPSHOT'
