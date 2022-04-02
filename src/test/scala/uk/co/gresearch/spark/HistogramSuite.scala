@@ -181,14 +181,20 @@ class HistogramSuite extends AnyFunSuite with SparkTestSession {
     val exception = intercept[AnalysisException] {
       ints.histogram(Seq(0, -200, 100, -100, 200), $"does-not-exist", $"id")
     }
-    assert(exception.getMessage.startsWith("cannot resolve '`does-not-exist`' given input columns: [id, title, value]"))
+    assert(
+      exception.getMessage.startsWith("cannot resolve '`does-not-exist`' given input columns: [id, title, value]") ||
+        exception.getMessage.startsWith("Column '`does-not-exist`' does not exist. Did you mean one of the following? [title, id, value]")
+    )
   }
 
   test("histogram with non-existing aggregate column") {
     val exception = intercept[AnalysisException] {
       ints.histogram(intThresholds, $"value", $"does-not-exist")
     }
-    assert(exception.getMessage.startsWith("cannot resolve '`does-not-exist`' given input columns: ["))
+    assert(
+      exception.getMessage.startsWith("cannot resolve '`does-not-exist`' given input columns: [") ||
+        exception.getMessage.startsWith("Column '`does-not-exist`' does not exist. Did you mean one of the following? [")
+    )
   }
 
   test("histogram with int values on DataFrame") {
