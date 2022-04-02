@@ -91,31 +91,6 @@ jobs:
             !target/*-javadoc.jar
             !target/site
 
-      - name: Checkout PySpark sources
-        id: pyspark-sources
-        uses: actions/checkout@v3
-        if: contains(matrix.spark-version, 'SNAPSHOT') || matrix.scala-compat-version != '2.12'
-        with:
-          repository: apache/spark.git
-          path: spark
-
-      - name: Create PySpark package
-        if: steps.pyspark-sources.outcome == 'success'
-        run: |
-          cd spark
-          ./dev/change-scala-version.sh ${{ matrix.scala-compat-version }}
-          ./build/mvn -Pscala-${{ matrix.scala-compat-version }} -DskipTests clean package
-          cd python
-          python setup.py sdist
-
-      - name: Upload PySpark package
-        if: steps.pyspark-sources.outcome == 'success'
-        uses: actions/upload-artifact@v2
-        with:
-          name: PySpark-${{ matrix.spark-version }}-${{ matrix.scala-version }}
-          path: |
-            spark/python/dist/*.tar.gz
-
   test:
     name: Test (Spark ${{ matrix.spark-version }} Scala ${{ matrix.scala-version }} Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
@@ -201,30 +176,26 @@ jobs:
           distribution: 'zulu'
 
       - name: Cache Pip packages
+        # pyspark is not available for snapshots or scala other than 2.12
+        # we would have to compile spark from sources for this, not worth it
+        if: contains(matrix.spark-version, 'SNAPSHOT') || matrix.scala-compat-version != '2.12'
         uses: actions/cache@v3
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-test-${{ matrix.python-version }}-${{ hashFiles('requirements.txt') }}
 
       - name: Setup Python
+        # pyspark is not available for snapshots or scala other than 2.12
+        # we would have to compile spark from sources for this, not worth it
+        if: contains(matrix.spark-version, 'SNAPSHOT') || matrix.scala-compat-version != '2.12'
         uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Fetch PySpark Artifact
-        id: pyspark-package
-        if: contains(matrix.spark-version, 'SNAPSHOT') || matrix.scala-compat-version != '2.12'
-        uses: actions/download-artifact@v2
-        with:
-          name: PySpark-${{ matrix.spark-version }}-${{ matrix.scala-version }}
-          path: .
-
-      - name: Install PySpark snapshot
-        if: steps.pyspark-package.outcome == 'success'
-        run: |
-          pip install PySpark-${{ matrix.spark-version }}-${{ matrix.scala-version }}/*.tar.gz
-
       - name: Install Python dependencies
+        # pyspark is not available for snapshots or scala other than 2.12
+        # we would have to compile spark from sources for this, not worth it
+        if: contains(matrix.spark-version, 'SNAPSHOT') || matrix.scala-compat-version != '2.12'
         run: |
           python -m pip install --upgrade pip
           pip install pypandoc
@@ -235,6 +206,9 @@ jobs:
         run: mvn --batch-mode test
 
       - name: Python Tests
+        # pyspark is not available for snapshots or scala other than 2.12
+        # we would have to compile spark from sources for this, not worth it
+        if: contains(matrix.spark-version, 'SNAPSHOT') || matrix.scala-compat-version != '2.12'
         env:
           PYTHONPATH: python:python/test
         run: |
