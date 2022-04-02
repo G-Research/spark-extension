@@ -103,8 +103,8 @@ jobs:
         if: steps.pyspark-sources.outcome == 'success'
         run: |
           cd spark
-          ./dev/change-scala-version.sh ${{ scala-compat-version }}
-          ./build/mvn -Pscala-${{ scala-compat-version }} -DskipTests clean package
+          ./dev/change-scala-version.sh ${{ matrix.scala-compat-version }}
+          ./build/mvn -Pscala-${{ matrix.scala-compat-version }} -DskipTests clean package
           cd python
           python setup.py sdist
 
