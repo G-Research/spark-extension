@@ -81,29 +81,6 @@ class GroupByKeySortedSuite extends AnyFunSpec with SparkTestSession {
       assert(actual === expected)
     }
 
-    it("should flatMapSortedGroupsWithKeys") {
-      val actual = ds
-        .groupByKeySorted(v => v.id)(v => v.seq)
-        .flatMapSortedGroupsWithKeys((key, it) => it.zipWithIndex.map(v => (key, v._2, v._1)))
-        .collect()
-        .sortBy(v => (v._1, v._2._1, v._2._2))
-
-      val expected = Seq(
-        // (key, (key, group index, value))
-        (1, (1, 0, Val(1, 1, 1.1))),
-        (1, (1, 1, Val(1, 2, 1.2))),
-        (1, (1, 2, Val(1, 3, 1.3))),
-
-        (2, (2, 0, Val(2, 1, 2.1))),
-        (2, (2, 1, Val(2, 2, 2.2))),
-        (2, (2, 2, Val(2, 3, 2.3))),
-
-        (3, (3, 0, Val(3, 1, 3.1))),
-      )
-
-      assert(actual === expected)
-    }
-
     it("should flatMapSortedGroups with state") {
       val actual = ds
         .groupByKeySorted(v => v.id)(v => v.seq)
@@ -122,29 +99,6 @@ class GroupByKeySortedSuite extends AnyFunSpec with SparkTestSession {
         (Val(2, 3, 2.3), 2 + 1 + 2 + 3),
 
         (Val(3, 1, 3.1), 3 + 1),
-      )
-
-      assert(actual === expected)
-    }
-
-    it("should flatMapSortedGroupsWithKey with state") {
-      val actual = ds
-        .groupByKeySorted(v => v.id)(v => v.seq)
-        .flatMapSortedGroupsWithKey(key => State(key))((state, v) => Iterator((v, state.add(v.seq))))
-        .collect()
-        .sortBy(v => (v._1, v._2._1.id, v._2._1.seq))
-
-      val expected = Seq(
-        // (key, (value, state))
-        (1, (Val(1, 1, 1.1), 1 + 1)),
-        (1, (Val(1, 2, 1.2), 1 + 1 + 2)),
-        (1, (Val(1, 3, 1.3), 1 + 1 + 2 + 3)),
-
-        (2, (Val(2, 1, 2.1), 2 + 1)),
-        (2, (Val(2, 2, 2.2), 2 + 1 + 2)),
-        (2, (Val(2, 3, 2.3), 2 + 1 + 2 + 3)),
-
-        (3, (Val(3, 1, 3.1), 3 + 1)),
       )
 
       assert(actual === expected)
@@ -252,29 +206,6 @@ class GroupByKeySortedSuite extends AnyFunSpec with SparkTestSession {
       assert(actual === expected)
     }
 
-    it("should flatMapSortedGroupsWithKeys") {
-      val actual = df
-        .groupByKeySorted(v => v.getInt(0))(v => v.getInt(1))
-        .flatMapSortedGroupsWithKeys((key, it) => it.zipWithIndex.map(v => (key, v._2, valueRowToTuple(v._1))))
-        .collect()
-        .sorted
-
-      val expected = Seq(
-        // (key, (key, group index, value))
-        (1, (1, 0, (1, 1, 1.1))),
-        (1, (1, 1, (1, 2, 1.2))),
-        (1, (1, 2, (1, 3, 1.3))),
-
-        (2, (2, 0, (2, 1, 2.1))),
-        (2, (2, 1, (2, 2, 2.2))),
-        (2, (2, 2, (2, 3, 2.3))),
-
-        (3, (3, 0, (3, 1, 3.1))),
-      )
-
-      assert(actual === expected)
-    }
-
     it("should flatMapSortedGroups with state") {
       val actual = df
         .groupByKeySorted(v => v.getInt(0))(v => v.getInt(1))
@@ -293,29 +224,6 @@ class GroupByKeySortedSuite extends AnyFunSpec with SparkTestSession {
         ((2, 3, 2.3), 2 + 1 + 2 + 3),
 
         ((3, 1, 3.1), 3 + 1),
-      )
-
-      assert(actual === expected)
-    }
-
-    it("should flatMapSortedGroupsWithKey with state") {
-      val actual = df
-        .groupByKeySorted(v => v.getInt(0))(v => v.getInt(1))
-        .flatMapSortedGroupsWithKey(key => State(key))((state, v) => Iterator((valueRowToTuple(v), state.add(v.getInt(1)))))
-        .collect()
-        .sorted
-
-      val expected = Seq(
-        // (key, (value, state))
-        (1, ((1, 1, 1.1), 1 + 1)),
-        (1, ((1, 2, 1.2), 1 + 1 + 2)),
-        (1, ((1, 3, 1.3), 1 + 1 + 2 + 3)),
-
-        (2, ((2, 1, 2.1), 2 + 1)),
-        (2, ((2, 2, 2.2), 2 + 1 + 2)),
-        (2, ((2, 3, 2.3), 2 + 1 + 2 + 3)),
-
-        (3, ((3, 1, 3.1), 3 + 1)),
       )
 
       assert(actual === expected)

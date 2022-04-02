@@ -19,23 +19,10 @@ package object group {
     def flatMapSortedGroups[W: Encoder](func: (K, Iterator[V]) => TraversableOnce[W]): Dataset[W] =
       ds.mapPartitions(new GroupedIterator(_).flatMap(v => func(v._1, v._2)))
 
-    def flatMapSortedGroupsWithKeys[W: Encoder](func: (K, Iterator[V]) => TraversableOnce[W]): Dataset[(K, W)] = {
-      implicit val encoder: Encoder[(K, W)] = Encoders.tuple(implicitly[Encoder[K]], implicitly[Encoder[W]])
-      ds.mapPartitions(new GroupedIterator(_).flatMap(v => func(v._1, v._2).map(w => (v._1, w))))
-    }
-
-    def flatMapSortedGroups[S, W: Encoder](s: K => S)(f: (S, V) => TraversableOnce[W]): Dataset[W] = {
+    def flatMapSortedGroups[S, W: Encoder](s: K => S)(func: (S, V) => TraversableOnce[W]): Dataset[W] = {
       ds.mapPartitions(new GroupedIterator(_).flatMap { case (k, it) =>
         val state = s(k)
-        it.flatMap(v => f(state, v))
-      })
-    }
-
-    def flatMapSortedGroupsWithKey[S, W: Encoder](s: K => S)(f: (S, V) => TraversableOnce[W]): Dataset[(K, W)] = {
-      implicit val encoder: Encoder[(K, W)] = Encoders.tuple(implicitly[Encoder[K]], implicitly[Encoder[W]])
-      ds.mapPartitions(new GroupedIterator(_).flatMap { case (k, it) =>
-        val state = s(k)
-        it.flatMap(v => f(state, v).map(w => (k, w)))
+        it.flatMap(v => func(state, v))
       })
     }
 
