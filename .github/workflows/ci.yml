@@ -47,7 +47,7 @@ jobs:
           git diff
 
       - name: Cache Maven packages
-        uses: actions/cache@v3.0.1
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: ${{ runner.os }}-mvn-build-${{ matrix.spark-version }}-${{ matrix.scala-version }}-${{ hashFiles('pom.xml') }}
@@ -124,7 +124,7 @@ jobs:
           path: .
 
       - name: Cache Maven packages
-        uses: actions/cache@v3.0.1
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: ${{ runner.os }}-mvn-build-${{ matrix.spark-version }}-${{ matrix.scala-version }}-${{ hashFiles('pom.xml') }}
@@ -136,7 +136,7 @@ jobs:
           distribution: 'zulu'
 
       - name: Cache Pip packages
-        uses: actions/cache@v3.0.1
+        uses: actions/cache@v3
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-test-${{ matrix.python-version }}-${{ hashFiles('requirements.txt') }}
