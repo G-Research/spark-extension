@@ -105,8 +105,19 @@ jobs:
         exclude:
           - spark-version: '3.0.3'
             scala-compat-version: '2.13'
+
           - spark-version: '3.1.2'
             scala-compat-version: '2.13'
+
+          - spark-version: '3.3.0-SNAPSHOT'
+            python-version: '3.6'
+          - spark-version: '3.3.0-SNAPSHOT'
+            python-version: '3.7'
+
+          - spark-version: '3.4.0-SNAPSHOT'
+            python-version: '3.6'
+          - spark-version: '3.4.0-SNAPSHOT'
+            python-version: '3.7'
         include:
           - spark-version: '3.0.3'
             spark-compat-version: '3.0'
