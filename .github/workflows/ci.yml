@@ -37,6 +37,26 @@ jobs:
             scala-version: '2.13.5'
             scala-compat-version: '2.13'
 
+          - spark-version: '3.3.0-SNAPSHOT'
+            spark-compat-version: '3.3'
+            scala-version: '2.12.10'
+            scala-compat-version: '2.12'
+
+          - spark-version: '3.3.0-SNAPSHOT'
+            spark-compat-version: '3.3'
+            scala-version: '2.13.5'
+            scala-compat-version: '2.13'
+
+          - spark-version: '3.4.0-SNAPSHOT'
+            spark-compat-version: '3.4'
+            scala-version: '2.12.10'
+            scala-compat-version: '2.12'
+
+          - spark-version: '3.4.0-SNAPSHOT'
+            spark-compat-version: '3.4'
+            scala-version: '2.13.5'
+            scala-compat-version: '2.13'
+
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -146,7 +166,27 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Checkout PySpark sources
+        uses: actions/checkout@v3
+        # no idea how we can test pyspark with Scala 2.13
+        if: contains(matrix.spark-version, 'SNAPSHOT') && matrix.scala-compat-version != '2.13'
+        with:
+          repository: https://github.com/apache/spark.git
+          path: spark
+
+      - name: Install PySpark snapshot
+        # no idea how we can test pyspark with Scala 2.13
+        if: contains(matrix.spark-version, 'SNAPSHOT') && matrix.scala-compat-version != '2.13'
+        run: |
+          cd spark
+          ./build/mvn -DskipTests clean package
+          cd python
+          python setup.py sdist
+          pip install dist/*.tar.gzrm -rf spark
+
       - name: Install Python dependencies
+        # no idea how we can test pyspark with Scala 2.13
+        if: matrix.scala-compat-version != '2.13'
         run: |
           python -m pip install --upgrade pip
           pip install pypandoc
@@ -157,7 +197,7 @@ jobs:
         run: mvn --batch-mode test
 
       - name: Python Tests
-        # no idea how we can test pyspark 3.2 with Scala 2.13
+        # no idea how we can test pyspark with Scala 2.13
         if: matrix.scala-compat-version != '2.13'
         env:
           PYTHONPATH: python:python/test
