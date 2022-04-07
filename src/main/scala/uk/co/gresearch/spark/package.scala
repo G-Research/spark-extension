@@ -17,8 +17,10 @@
 package uk.co.gresearch
 
 import org.apache.spark.sql._
+import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.catalyst.expressions.NamedExpression
 import org.apache.spark.sql.functions.col
+import uk.co.gresearch.spark.group.SortedGroupByDataset
 
 package object spark {
 
@@ -49,10 +51,10 @@ package object spark {
   /**
    * Implicit class to extend a Spark Dataset.
    *
-   * @param df dataset or dataframe
-   * @tparam D inner type of dataset
+   * @param ds dataset
+   * @tparam T inner type of dataset
    */
-  implicit class ExtendedDataset[D](df: Dataset[D]) {
+  implicit class ExtendedDataset[T: Encoder](ds: Dataset[T]) {
     /**
      * Compute the histogram of a column when aggregated by aggregate columns.
      * Thresholds are expected to be provided in ascending order.
@@ -68,7 +70,7 @@ package object spark {
      * @return dataframe with aggregate and histogram columns
      */
     def histogram[T: Ordering](thresholds: Seq[T], valueColumn: Column, aggregateColumns: Column*): DataFrame =
-      Histogram.of(df, thresholds, valueColumn, aggregateColumns: _*)
+      Histogram.of(ds, thresholds, valueColumn, aggregateColumns: _*)
 
     /**
      * Writes the Dataset / DataFrame via DataFrameWriter.partitionBy. In addition to partitionBy,
@@ -81,7 +83,7 @@ package object spark {
      * {{{
      *   df.writePartitionedBy(Seq("a"), Seq("b"), Seq("c"), Some(10), Seq($"a", concat($"b", $"c")))
      * }}}
-
+     *
      * is equivalent to:
      * {{{
      *   df.repartitionByRange(10, $"a", $"b")
@@ -91,10 +93,10 @@ package object spark {
      *     .partitionBy("a")
      * }}}
      *
-     * @param partitionColumns columns used for partitioning
-     * @param moreFileColumns columns where individual values are written to a single file
-     * @param moreFileOrder additional columns to sort partition files
-     * @param partitions optional number of partition files
+     * @param partitionColumns  columns used for partitioning
+     * @param moreFileColumns   columns where individual values are written to a single file
+     * @param moreFileOrder     additional columns to sort partition files
+     * @param partitions        optional number of partition files
      * @param writtenProjection additional transformation to be applied before calling write
      * @return configured DataFrameWriter
      */
@@ -113,7 +115,7 @@ package object spark {
       val partitionColumnNames = partitionColumnsMap.keys.map(col).toSeq
       val rangeColumns = partitionColumnNames ++ moreFileColumns
       val sortColumns = partitionColumnNames ++ moreFileColumns ++ moreFileOrder
-      df.toDF
+      ds.toDF
         .call(ds => partitionColumnsMap.foldLeft(ds) { case (ds, (name, col)) => ds.withColumn(name, col) })
         .when(partitions.isEmpty).call(_.repartitionByRange(rangeColumns: _*))
         .when(partitions.isDefined).call(_.repartitionByRange(partitions.get, rangeColumns: _*))
@@ -122,6 +124,34 @@ package object spark {
         .write
         .partitionBy(partitionColumnsMap.keys.toSeq: _*)
     }
+
+    def groupBySorted[K: Ordering : Encoder](cols: Column*)(order: Column*): SortedGroupByDataset[K, T] = {
+      implicit val encoder: Encoder[(K, T)] = Encoders.tuple(implicitly[Encoder[K]], implicitly[Encoder[T]])
+      SortedGroupByDataset(ds, cols, order, None)
+    }
+
+    def groupBySorted[K: Ordering : Encoder](partitions: Int)(cols: Column*)(order: Column*): SortedGroupByDataset[K, T] = {
+      implicit val encoder: Encoder[(K, T)] = Encoders.tuple(implicitly[Encoder[K]], implicitly[Encoder[T]])
+      SortedGroupByDataset(ds, cols, order, Some(partitions))
+    }
+
+    def groupByKeySorted[K: Ordering : Encoder, O: Encoder](key: T => K, partitions: Int)(order: T => O): SortedGroupByDataset[K, T] =
+      groupByKeySorted(key, Some(partitions))(order)
+
+    def groupByKeySorted[K: Ordering : Encoder, O: Encoder](key: T => K, partitions: Int)(order: T => O, reverse: Boolean): SortedGroupByDataset[K, T] =
+      groupByKeySorted(key, Some(partitions))(order, reverse)
+
+    def groupByKeySorted[K: Ordering : Encoder, O: Encoder](key: T => K, partitions: Option[Int] = None)(order: T => O, reverse: Boolean = false): SortedGroupByDataset[K, T] = {
+      SortedGroupByDataset(ds, key, order, partitions, reverse)
+    }
+
   }
+
+  /**
+   * Implicit class to extend a Spark Dataframe, which is a Dataset[Row].
+   *
+   * @param df dataframe
+   */
+  implicit class ExtendedDataframe(df: DataFrame) extends ExtendedDataset[Row](df)(RowEncoder(df.schema))
 
 }
