@@ -44,9 +44,9 @@ then
 fi
 
 ./set-version.sh 3.0.3 2.12.10 && mvn clean deploy && ./test-release.sh || exit 1
-./set-version.sh 3.1.2 2.12.10 && mvn clean deploy && ./test-release.sh || exit 1
-./set-version.sh 3.2.0 2.12.10 && mvn clean deploy && ./test-release.sh || exit 1
-./set-version.sh 3.2.0 2.13.5  && mvn clean deploy && ./test-release.sh || exit 1
+./set-version.sh 3.1.3 2.12.10 && mvn clean deploy && ./test-release.sh || exit 1
+./set-version.sh 3.2.1 2.12.10 && mvn clean deploy && ./test-release.sh || exit 1
+./set-version.sh 3.2.1 2.13.5  && mvn clean deploy && ./test-release.sh || exit 1
 
 # all SNAPSHOT versions build, test and complete the example, releasing
 
@@ -78,9 +78,9 @@ echo
 # create release
 echo "Creating release packages"
 ./set-version.sh 3.0.3 2.12.10 && mvn clean deploy -Dsign && mvn nexus-staging:release
-./set-version.sh 3.1.2 2.12.10 && mvn clean deploy -Dsign && mvn nexus-staging:release
-./set-version.sh 3.2.0 2.12.10 && mvn clean deploy -Dsign && mvn nexus-staging:release
-./set-version.sh 3.2.0 2.13.5 && mvn clean deploy -Dsign && mvn nexus-staging:release
+./set-version.sh 3.1.3 2.12.10 && mvn clean deploy -Dsign && mvn nexus-staging:release
+./set-version.sh 3.2.1 2.12.10 && mvn clean deploy -Dsign && mvn nexus-staging:release
+./set-version.sh 3.2.1 2.13.5 && mvn clean deploy -Dsign && mvn nexus-staging:release
 
 echo
 
