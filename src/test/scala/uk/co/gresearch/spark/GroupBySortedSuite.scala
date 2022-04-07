@@ -16,15 +16,16 @@
 
 package uk.co.gresearch.spark
 
-import org.apache.spark.sql.catalyst.analysis.UnresolvedStar
-import org.apache.spark.sql.catalyst.expressions.CreateStruct
-import org.apache.spark.sql.functions.{col, expr}
-import org.apache.spark.sql.{Column, Dataset, Encoder, Encoders, Row, TypedColumn}
+import org.apache.spark.sql.{DataFrame, Dataset, Row}
 import org.scalatest.funspec.AnyFunSpec
+import uk.co.gresearch.spark.GroupBySortedSuite.{valueRowToTuple, valueToTuple}
+import uk.co.gresearch.spark.group.SortedGroupByDataset
+
+import scala.language.implicitConversions
 
 case class Val(id: Int, seq: Int, value: Double)
-case class State(key: Int) {
-  var sum: Int = key
+case class State(init: Int) {
+  var sum: Int = init
 
   def add(i: Int): Int = {
     sum = sum + i
@@ -32,7 +33,7 @@ case class State(key: Int) {
   }
 }
 
-class GroupByKeySortedSuite extends AnyFunSpec with SparkTestSession {
+class GroupBySortedSuite extends AnyFunSpec with SparkTestSession {
 
   import spark.implicits._
 
@@ -40,6 +41,7 @@ class GroupByKeySortedSuite extends AnyFunSpec with SparkTestSession {
     Val(1, 1, 1.1),
     Val(1, 2, 1.2),
     Val(1, 3, 1.3),
+    Val(1, 3, 1.31),
 
     Val(2, 1, 2.1),
     Val(2, 2, 2.2),
@@ -52,192 +54,63 @@ class GroupByKeySortedSuite extends AnyFunSpec with SparkTestSession {
     it("is randomly partitioned") {
       val partitions: Array[List[Val]] = ds.mapPartitions(it => Iterator(it.toList)).collect()
       assert(partitions === Array(
-        List(Val(1, 3, 1.3), Val(2, 1, 2.1)),
-        List(Val(1, 2, 1.2), Val(2, 2, 2.2), Val(2, 3, 2.3)),
-        List(Val(3, 1, 3.1), Val(1, 1, 1.1))
+        List(Val(1,3,1.31), Val(1,1,1.1)),
+        List(Val(1,2,1.2), Val(1,3,1.3), Val(2,1,2.1)),
+        List(Val(3,1,3.1), Val(2,2,2.2), Val(2,3,2.3))
       ))
     }
   }
 
   describe("ds.groupBySorted") {
-
-    it("should select") {
-      val cols = Seq($"id", $"seq")
-      val key = new Column(CreateStruct(cols.map(_.expr))).as("key").as[(Int, Int)]
-      val value = new Column(CreateStruct(Seq(UnresolvedStar(None)))).as[Val]
-
-      ds.select(key, value).show()
-    }
-
-    it("should flatMapSortedGroups") {
-      // groupBySorted needs an implicit encoder for the groupBy columns expressions
-      //implicit val encoder: Encoder[Int] = Encoders.scalaInt
-      //implicit val ordering: Ordering[(Int, Int)] = Ordering.Tuple2[Int, Int]
-      //implicit val ordering: Ordering[Int] = Ordering.Int
-      val actual = ds
-        .groupBySorted($"id", $"seq")($"value")(Ordering.Tuple2[Int, Int], Encoders.tuple(Encoders.scalaInt, Encoders.scalaInt))
-        //.groupBySorted($"id")($"value")
-        .flatMapSortedGroups((key, it) => it.zipWithIndex.map(v => (key, v._2, v._1)))
-        .collect()
-        .sortBy(v => (v._1, v._2))
-
-      val expected = Seq(
-        // (key, group index, value)
-        (1, 0, Val(1, 1, 1.1)),
-        (1, 1, Val(1, 2, 1.2)),
-        (1, 2, Val(1, 3, 1.3)),
-
-        (2, 0, Val(2, 1, 2.1)),
-        (2, 1, Val(2, 2, 2.2)),
-        (2, 2, Val(2, 3, 2.3)),
-
-        (3, 0, Val(3, 1, 3.1)),
-      )
-
-      assert(actual === expected)
-    }
-
+    testGroupByIdSortBySeq(ds.groupBySorted($"id")($"seq", $"value"))
+    testGroupByIdSortBySeqDesc(ds.groupBySorted($"id")($"seq".desc, $"value".desc))
+    testGroupByIdSortBySeqWithPartitionNum(ds.groupBySorted(10)($"id")($"seq", $"value"))
+    testGroupByIdSortBySeqDescWithPartitionNum(ds.groupBySorted(10)($"id")($"seq".desc, $"value".desc))
+    testGroupByIdSeqSortByValue(ds.groupBySorted($"id", $"seq")($"value"))
   }
 
   describe("ds.groupByKeySorted") {
+    testGroupByIdSortBySeq(ds.groupByKeySorted(v => v.id)(v => (v.seq, v.value)))
+    testGroupByIdSortBySeqDesc(ds.groupByKeySorted(v => v.id)(v => (v.seq, v.value), reverse = true))
+    testGroupByIdSortBySeqWithPartitionNum(ds.groupByKeySorted(v => v.id, partitions = Some(10))(v => (v.seq, v.value)))
+    testGroupByIdSortBySeqDescWithPartitionNum(ds.groupByKeySorted(v => v.id, partitions = Some(10))(v => (v.seq, v.value), reverse = true))
+    testGroupByIdSeqSortByValue(ds.groupByKeySorted(v => (v.id, v.seq))(v => v.value))
+  }
 
-    it("should flatMapSortedGroups") {
-      val actual = ds
-        .groupByKeySorted(v => v.id)(v => v.seq)
-        .flatMapSortedGroups((key, it) => it.zipWithIndex.map(v => (key, v._2, v._1)))
-        .collect()
-        .sortBy(v => (v._1, v._2))
+  val df: DataFrame = ds.toDF()
 
-      val expected = Seq(
-        // (key, group index, value)
-        (1, 0, Val(1, 1, 1.1)),
-        (1, 1, Val(1, 2, 1.2)),
-        (1, 2, Val(1, 3, 1.3)),
-
-        (2, 0, Val(2, 1, 2.1)),
-        (2, 1, Val(2, 2, 2.2)),
-        (2, 2, Val(2, 3, 2.3)),
-
-        (3, 0, Val(3, 1, 3.1)),
-      )
-
-      assert(actual === expected)
-    }
-
-    it("should flatMapSortedGroups with state") {
-      val actual = ds
-        .groupByKeySorted(v => v.id)(v => v.seq)
-        .flatMapSortedGroups(key => State(key))((state, v) => Iterator((v, state.add(v.seq))))
-        .collect()
-        .sortBy(v => (v._1.id, v._1.seq))
-
-      val expected = Seq(
-        // (value, state)
-        (Val(1, 1, 1.1), 1 + 1),
-        (Val(1, 2, 1.2), 1 + 1 + 2),
-        (Val(1, 3, 1.3), 1 + 1 + 2 + 3),
-
-        (Val(2, 1, 2.1), 2 + 1),
-        (Val(2, 2, 2.2), 2 + 1 + 2),
-        (Val(2, 3, 2.3), 2 + 1 + 2 + 3),
-
-        (Val(3, 1, 3.1), 3 + 1),
-      )
-
-      assert(actual === expected)
-    }
-
-    /**
-     *  it("should flatMapSortedGroups with partition num") {
-     *  val actual = ds
-     *  .groupByKeySorted(key = v => v.id, partitions = Some(10))(v => v.seq)
-     *  .flatMapSortedGroups((key, it) => it.zipWithIndex.map(v => (key, v._2, v._1)))
-     *  .collect()
-     *  .sortBy(v => (v._1, v._2))
-     *
-     *  val expected = Seq(
-     *  // (key, group index, value)
-     *  (1, 0, Val(1, 1, 1.1)),
-     *  (1, 1, Val(1, 2, 1.2)),
-     *  (1, 2, Val(1, 3, 1.3)),
-     *
-     *  (2, 0, Val(2, 1, 2.1)),
-     *  (2, 1, Val(2, 2, 2.2)),
-     *  (2, 2, Val(2, 3, 2.3)),
-     *
-     *  (3, 0, Val(3, 1, 3.1)),
-     *  )
-     *
-     *  assert(actual === expected)
-     *  }
-     */
-    it("should flatMapSortedGroups reverse") {
-      val actual = ds
-        .groupByKeySorted(key = v => v.id)(order = v => v.seq, reverse = true)
-        .flatMapSortedGroups((key, it) => it.zipWithIndex.map(v => (key, v._2, v._1)))
-        .collect()
-        .sortBy(v => (v._1, v._2))
-
-      val expected = Seq(
-        // (key, group index, value)
-        (1, 0, Val(1, 3, 1.3)),
-        (1, 1, Val(1, 2, 1.2)),
-        (1, 2, Val(1, 1, 1.1)),
-
-        (2, 0, Val(2, 3, 2.3)),
-        (2, 1, Val(2, 2, 2.2)),
-        (2, 2, Val(2, 1, 2.1)),
-
-        (3, 0, Val(3, 1, 3.1)),
-      )
-
-      assert(actual === expected)
-    }
-
-    /**
-     *  it("should flatMapSortedGroups with partition num and reverse") {
-     *  val actual = ds
-     *  .groupByKeySorted(key = v => v.id, partitions = Some(10))(order = v => v.seq, reverse = true)
-     *  .flatMapSortedGroups((key, it) => it.zipWithIndex.map(v => (key, v._2, v._1)))
-     *  .collect()
-     *  .sortBy(v => (v._1, v._2))
-     *
-     *  val expected = Seq(
-     *  // (key, group index, value)
-     *  (1, 0, Val(1, 1, 1.1)),
-     *  (1, 1, Val(1, 2, 1.2)),
-     *  (1, 2, Val(1, 3, 1.3)),
-     *
-     *  (2, 0, Val(2, 1, 2.1)),
-     *  (2, 1, Val(2, 2, 2.2)),
-     *  (2, 2, Val(2, 3, 2.3)),
-     *
-     *  (3, 0, Val(3, 1, 3.1)),
-     *  )
-     *
-     *  assert(actual === expected)
-     *  }
-     */
+  describe("df.groupBySorted") {
+    testGroupByIdSortBySeq(df.groupBySorted($"id")($"seq", $"value"))
+    testGroupByIdSortBySeqDesc(df.groupBySorted($"id")($"seq".desc, $"value".desc))
+    testGroupByIdSortBySeqWithPartitionNum(df.groupBySorted(10)($"id")($"seq", $"value"))
+    testGroupByIdSortBySeqDescWithPartitionNum(df.groupBySorted(10)($"id")($"seq".desc, $"value".desc))
+    testGroupByIdSeqSortByValue(df.groupBySorted($"id", $"seq")($"value"))
   }
 
   describe("df.groupByKeySorted") {
+    testGroupByIdSortBySeq(df.groupByKeySorted(v => v.getInt(0))(v => (v.getInt(1), v.getDouble(2))))
+    testGroupByIdSortBySeqDesc(df.groupByKeySorted(v => v.getInt(0))(v => (v.getInt(1), v.getDouble(2)), reverse = true))
+    testGroupByIdSortBySeqWithPartitionNum(df.groupByKeySorted(v => v.getInt(0), partitions = Some(10))(v => (v.getInt(1), v.getDouble(2))))
+    testGroupByIdSortBySeqDescWithPartitionNum(df.groupByKeySorted(v => v.getInt(0), partitions = Some(10))(v => (v.getInt(1), v.getDouble(2)), reverse = true))
+    testGroupByIdSeqSortByValue(df.groupByKeySorted(v => (v.getInt(0), v.getInt(1)))(v => v.getDouble(2)))
+  }
 
-    val df = ds.toDF()
 
-    def valueRowToTuple(value: Row): (Int, Int, Double) = (value.getInt(0), value.getInt(1), value.getDouble(2))
+  def testGroupByIdSortBySeq[T](ds: SortedGroupByDataset[Int, T])
+                               (implicit asTuple: T => (Int, Int, Double)): Unit = {
 
     it("should flatMapSortedGroups") {
-      val actual = df
-        .groupByKeySorted(v => v.getInt(0))(v => v.getInt(1))
-        .flatMapSortedGroups((key, it) => it.zipWithIndex.map(v => (key, v._2, valueRowToTuple(v._1))))
+      val actual = ds
+        .flatMapSortedGroups((key, it) => it.zipWithIndex.map(v => (key, v._2, asTuple(v._1))))
         .collect()
-        .sorted
+        .sortBy(v => (v._1, v._2))
 
       val expected = Seq(
         // (key, group index, value)
         (1, 0, (1, 1, 1.1)),
         (1, 1, (1, 2, 1.2)),
         (1, 2, (1, 3, 1.3)),
+        (1, 3, (1, 3, 1.31)),
 
         (2, 0, (2, 1, 2.1)),
         (2, 1, (2, 2, 2.2)),
@@ -250,17 +123,17 @@ class GroupByKeySortedSuite extends AnyFunSpec with SparkTestSession {
     }
 
     it("should flatMapSortedGroups with state") {
-      val actual = df
-        .groupByKeySorted(v => v.getInt(0))(v => v.getInt(1))
-        .flatMapSortedGroups(key => State(key))((state, v) => Iterator((valueRowToTuple(v), state.add(v.getInt(1)))))
+      val actual = ds
+        .flatMapSortedGroups(key => State(key))((state, v) => Iterator((asTuple(v), state.add(asTuple(v)._2))))
         .collect()
-        .sorted
+        .sortBy(v => (v._1._1, v._1._2))
 
       val expected = Seq(
         // (value, state)
         ((1, 1, 1.1), 1 + 1),
         ((1, 2, 1.2), 1 + 1 + 2),
         ((1, 3, 1.3), 1 + 1 + 2 + 3),
+        ((1, 3, 1.31), 1 + 1 + 2 + 3 + 3),
 
         ((2, 1, 2.1), 2 + 1),
         ((2, 2, 2.2), 2 + 1 + 2),
@@ -271,6 +144,157 @@ class GroupByKeySortedSuite extends AnyFunSpec with SparkTestSession {
 
       assert(actual === expected)
     }
+
   }
 
+  def testGroupByIdSortBySeqDesc[T](ds: SortedGroupByDataset[Int, T])
+                                   (implicit asTuple: T => (Int, Int, Double)): Unit = {
+    it("should flatMapSortedGroups reverse") {
+      val actual = ds
+        .flatMapSortedGroups((key, it) => it.zipWithIndex.map(v => (key, v._2, asTuple(v._1))))
+        .collect()
+        .sortBy(v => (v._1, v._2))
+
+      val expected = Seq(
+        // (key, group index, value)
+        (1, 0, (1, 3, 1.31)),
+        (1, 1, (1, 3, 1.3)),
+        (1, 2, (1, 2, 1.2)),
+        (1, 3, (1, 1, 1.1)),
+
+        (2, 0, (2, 3, 2.3)),
+        (2, 1, (2, 2, 2.2)),
+        (2, 2, (2, 1, 2.1)),
+
+        (3, 0, (3, 1, 3.1)),
+      )
+
+      assert(actual === expected)
+    }
+
+  }
+
+  def testGroupByIdSortBySeqWithPartitionNum[T](ds: SortedGroupByDataset[Int, T], partitions: Int = 10)
+                                               (implicit asTuple: T => (Int, Int, Double)): Unit = {
+
+    it("should flatMapSortedGroups with partition num") {
+      val grouped = ds
+        .flatMapSortedGroups((key, it) => it.zipWithIndex.map(v => (key, v._2, asTuple(v._1))))
+      val actual = grouped
+        .collect()
+        .sortBy(v => (v._1, v._2))
+
+      val expected = Seq(
+        // (key, group index, value)
+        (1, 0, (1, 1, 1.1)),
+        (1, 1, (1, 2, 1.2)),
+        (1, 2, (1, 3, 1.3)),
+        (1, 3, (1, 3, 1.31)),
+
+        (2, 0, (2, 1, 2.1)),
+        (2, 1, (2, 2, 2.2)),
+        (2, 2, (2, 3, 2.3)),
+
+        (3, 0, (3, 1, 3.1)),
+      )
+
+      val partitionSizes = grouped.mapPartitions(it => Iterator.single(it.length)).collect()
+      assert(partitionSizes.length === partitions)
+      assert(partitionSizes.sum === actual.length)
+      assert(actual === expected)
+    }
+
+  }
+
+  def testGroupByIdSortBySeqDescWithPartitionNum[T](ds: SortedGroupByDataset[Int, T], partitions: Int = 10)
+                                                   (implicit asTuple: T => (Int, Int, Double)): Unit = {
+    it("should flatMapSortedGroups with partition num and reverse") {
+      val grouped = ds
+        .flatMapSortedGroups((key, it) => it.zipWithIndex.map(v => (key, v._2, asTuple(v._1))))
+      val actual = grouped
+        .collect()
+        .sortBy(v => (v._1, v._2))
+
+      val expected = Seq(
+        // (key, group index, value)
+        (1, 0, (1, 3, 1.31)),
+        (1, 1, (1, 3, 1.3)),
+        (1, 2, (1, 2, 1.2)),
+        (1, 3, (1, 1, 1.1)),
+
+        (2, 0, (2, 3, 2.3)),
+        (2, 1, (2, 2, 2.2)),
+        (2, 2, (2, 1, 2.1)),
+
+        (3, 0, (3, 1, 3.1)),
+      )
+
+      val partitionSizes = grouped.mapPartitions(it => Iterator.single(it.length)).collect()
+      assert(partitionSizes.length === partitions)
+      assert(partitionSizes.sum === actual.length)
+      assert(actual === expected)
+    }
+  }
+
+  def testGroupByIdSeqSortByValue[T](ds: SortedGroupByDataset[(Int, Int), T])
+                                    (implicit asTuple: T => (Int, Int, Double)): Unit = {
+
+    it("should flatMapSortedGroups with tuple key") {
+      val actual = ds
+        .flatMapSortedGroups((key, it) => it.zipWithIndex.map(v => (key, v._2, asTuple(v._1))))
+        .collect()
+        .sortBy(v => (v._1, v._2))
+
+      val expected = Seq(
+        // (key, group index, value)
+        ((1, 1), 0, (1, 1, 1.1)),
+
+        ((1, 2), 0, (1, 2, 1.2)),
+
+        ((1, 3), 0, (1, 3, 1.3)),
+        ((1, 3), 1, (1, 3, 1.31)),
+
+        ((2, 1), 0, (2, 1, 2.1)),
+
+        ((2, 2), 0, (2, 2, 2.2)),
+
+        ((2, 3), 0, (2, 3, 2.3)),
+
+        ((3, 1), 0, (3, 1, 3.1)),
+      )
+
+      assert(actual === expected)
+    }
+
+    it("should flatMapSortedGroups with tuple key and state") {
+      val actual = ds
+        .flatMapSortedGroups(key => State(key._1))((state, v) => Iterator((asTuple(v), state.add(asTuple(v)._2))))
+        .collect()
+        .sortBy(v => (v._1._1, v._1._2))
+
+      val expected = Seq(
+        // (value, state)
+        ((1, 1, 1.1), 1 + 1),
+        ((1, 2, 1.2), 1 + 2),
+        ((1, 3, 1.3), 1 + 3),
+        ((1, 3, 1.31), 1 + 3 + 3),
+
+        ((2, 1, 2.1), 2 + 1),
+        ((2, 2, 2.2), 2 + 2),
+        ((2, 3, 2.3), 2 + 3),
+
+        ((3, 1, 3.1), 3 + 1),
+      )
+
+      assert(actual === expected)
+    }
+
+  }
+
+}
+
+
+object GroupBySortedSuite {
+  implicit def valueToTuple(value: Val): (Int, Int, Double) = (value.id, value.seq, value.value)
+  implicit def valueRowToTuple(value: Row): (Int, Int, Double) = (value.getInt(0), value.getInt(1), value.getDouble(2))
 }

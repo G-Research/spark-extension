@@ -20,7 +20,7 @@ import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.catalyst.expressions.NamedExpression
 import org.apache.spark.sql.functions.col
-import uk.co.gresearch.spark.group.{SortedGroupByDataset, SortedGroupByKeyValueDataset}
+import uk.co.gresearch.spark.group.SortedGroupByDataset
 
 package object spark {
 
@@ -125,19 +125,24 @@ package object spark {
         .partitionBy(partitionColumnsMap.keys.toSeq: _*)
     }
 
-    def groupBySorted[K: Ordering : Encoder](cols: Column*)(order: Column*): SortedGroupByDataset[K, T] =
+    def groupBySorted[K: Ordering : Encoder](cols: Column*)(order: Column*): SortedGroupByDataset[K, T] = {
+      implicit val encoder: Encoder[(K, T)] = Encoders.tuple(implicitly[Encoder[K]], implicitly[Encoder[T]])
       SortedGroupByDataset(ds, cols, order, None)
+    }
 
-    def groupByKeySorted[K: Ordering : Encoder, O: Encoder](key: T => K, partitions: Int)(order: T => O): SortedGroupByKeyValueDataset[K, T, O] =
+    def groupBySorted[K: Ordering : Encoder](partitions: Int)(cols: Column*)(order: Column*): SortedGroupByDataset[K, T] = {
+      implicit val encoder: Encoder[(K, T)] = Encoders.tuple(implicitly[Encoder[K]], implicitly[Encoder[T]])
+      SortedGroupByDataset(ds, cols, order, Some(partitions))
+    }
+
+    def groupByKeySorted[K: Ordering : Encoder, O: Encoder](key: T => K, partitions: Int)(order: T => O): SortedGroupByDataset[K, T] =
       groupByKeySorted(key, Some(partitions))(order)
 
-    def groupByKeySorted[K: Ordering : Encoder, O: Encoder](key: T => K, partitions: Int)(order: T => O, reverse: Boolean): SortedGroupByKeyValueDataset[K, T, O] =
+    def groupByKeySorted[K: Ordering : Encoder, O: Encoder](key: T => K, partitions: Int)(order: T => O, reverse: Boolean): SortedGroupByDataset[K, T] =
       groupByKeySorted(key, Some(partitions))(order, reverse)
 
-    def groupByKeySorted[K: Ordering : Encoder, O: Encoder](key: T => K, partitions: Option[Int] = None)(order: T => O, reverse: Boolean = false): SortedGroupByKeyValueDataset[K, T, O] = {
-      implicit val encoder: Encoder[(K, T, O)] = Encoders.tuple(implicitly[Encoder[K]], implicitly[Encoder[T]], implicitly[Encoder[O]])
-      val kvs = ds.map(v => (key(v), v, order(v)))
-      SortedGroupByKeyValueDataset(kvs, partitions, reverse)
+    def groupByKeySorted[K: Ordering : Encoder, O: Encoder](key: T => K, partitions: Option[Int] = None)(order: T => O, reverse: Boolean = false): SortedGroupByDataset[K, T] = {
+      SortedGroupByDataset(ds, key, order, partitions, reverse)
     }
 
   }
