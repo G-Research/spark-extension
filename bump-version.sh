@@ -55,16 +55,15 @@ function next_version {
 }
 
 # get release and next version
-version=$(grep --max-count=1 "<version>.*</version>" pom.xml | sed -E -e "s/\s*<[^>]+>//g" -e "s/-SNAPSHOT//" -e "s/-[0-9.]+//g")
+version=$(grep --max-count=1 "<version>.*</version>" pom.xml | sed -E -e "s/\s*<[^>]+>//g")
+spark_version="${version/*-/}"
+pkg_version="${version/-*/}"
 branch=$(git rev-parse --abbrev-ref HEAD)
-next=$(next_version "$version" "$branch")
+next="$(next_version "$pkg_version" "$branch")-$spark_version"
 
 # bump the version
 echo "Bump version to $next"
-sed -i "1,10s/$version/$next-SNAPSHOT/" pom.xml examples/scala/pom.xml
-
-echo "this sed is not working"
-exit 1
+sed -i "1,10s/$version/$next-SNAPSHOT/" pom.xml
 
 # commit changes to local repo
 echo
