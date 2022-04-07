@@ -1,7 +1,7 @@
 # Sorted Groups
 
 Spark provides the ability to group rows by an arbitrary key,
-and the providing an iterator for each of these groups.
+while then providing an iterator for each of these groups.
 This allows to iterate over groups that are too large to fit into memory:
 
 ```scala
