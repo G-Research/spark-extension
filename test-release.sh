@@ -13,8 +13,17 @@ echo
 
 if [ ! -e "spark-$spark-$scala_compat" ]
 then
-	wget --progress=dot:giga https://archive.apache.org/dist/spark/spark-$spark/spark-$spark-bin-hadoop2.7.tgz -O - | tar -xzC .
-	ln -s spark-$spark-bin-hadoop2.7 spark-$spark
+	if [ "$scala_compat" == "2.12" ]
+	then
+		hadoop="hadoop2.7"
+	elif [ "$scala_compat" == "2.13" ]
+	then
+		hadoop="hadoop3.2-scala2.13"
+	else
+		hadoop="without-hadoop"
+	fi
+	wget --progress=dot:giga https://archive.apache.org/dist/spark/spark-$spark/spark-$spark-bin-$hadoop.tgz -O - | tar -xzC .
+	ln -s spark-$spark-bin-$hadoop spark-$spark-$scala_compat
 fi
 
 spark-$spark-$scala_compat/bin/spark-shell --packages uk.co.gresearch.spark:spark-extension_$scala_compat:$version --repositories https://oss.sonatype.org/content/groups/staging/ < test-release.scala
