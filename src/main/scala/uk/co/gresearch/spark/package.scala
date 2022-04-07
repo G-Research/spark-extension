@@ -20,7 +20,7 @@ import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.catalyst.expressions.NamedExpression
 import org.apache.spark.sql.functions.col
-import uk.co.gresearch.spark.group.SortedGroupByKeyValueDataset
+import uk.co.gresearch.spark.group.{SortedGroupByDataset, SortedGroupByKeyValueDataset}
 
 package object spark {
 
@@ -124,6 +124,9 @@ package object spark {
         .write
         .partitionBy(partitionColumnsMap.keys.toSeq: _*)
     }
+
+    def groupBySorted[K: Ordering : Encoder](cols: Column*)(order: Column*): SortedGroupByDataset[K, T] =
+      SortedGroupByDataset(ds, cols, order, None)
 
     def groupByKeySorted[K: Ordering : Encoder, O: Encoder](key: T => K, partitions: Int)(order: T => O): SortedGroupByKeyValueDataset[K, T, O] =
       groupByKeySorted(key, Some(partitions))(order)

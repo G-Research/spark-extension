@@ -16,7 +16,10 @@
 
 package uk.co.gresearch.spark
 
-import org.apache.spark.sql.{Dataset, Row}
+import org.apache.spark.sql.catalyst.analysis.UnresolvedStar
+import org.apache.spark.sql.catalyst.expressions.CreateStruct
+import org.apache.spark.sql.functions.{col, expr}
+import org.apache.spark.sql.{Column, Dataset, Encoder, Encoders, Row, TypedColumn}
 import org.scalatest.funspec.AnyFunSpec
 
 case class Val(id: Int, seq: Int, value: Double)
@@ -54,6 +57,46 @@ class GroupByKeySortedSuite extends AnyFunSpec with SparkTestSession {
         List(Val(3, 1, 3.1), Val(1, 1, 1.1))
       ))
     }
+  }
+
+  describe("ds.groupBySorted") {
+
+    it("should select") {
+      val cols = Seq($"id", $"seq")
+      val key = new Column(CreateStruct(cols.map(_.expr))).as("key").as[(Int, Int)]
+      val value = new Column(CreateStruct(Seq(UnresolvedStar(None)))).as[Val]
+
+      ds.select(key, value).show()
+    }
+
+    it("should flatMapSortedGroups") {
+      // groupBySorted needs an implicit encoder for the groupBy columns expressions
+      //implicit val encoder: Encoder[Int] = Encoders.scalaInt
+      //implicit val ordering: Ordering[(Int, Int)] = Ordering.Tuple2[Int, Int]
+      //implicit val ordering: Ordering[Int] = Ordering.Int
+      val actual = ds
+        .groupBySorted($"id", $"seq")($"value")(Ordering.Tuple2[Int, Int], Encoders.tuple(Encoders.scalaInt, Encoders.scalaInt))
+        //.groupBySorted($"id")($"value")
+        .flatMapSortedGroups((key, it) => it.zipWithIndex.map(v => (key, v._2, v._1)))
+        .collect()
+        .sortBy(v => (v._1, v._2))
+
+      val expected = Seq(
+        // (key, group index, value)
+        (1, 0, Val(1, 1, 1.1)),
+        (1, 1, Val(1, 2, 1.2)),
+        (1, 2, Val(1, 3, 1.3)),
+
+        (2, 0, Val(2, 1, 2.1)),
+        (2, 1, Val(2, 2, 2.2)),
+        (2, 2, Val(2, 3, 2.3)),
+
+        (3, 0, Val(3, 1, 3.1)),
+      )
+
+      assert(actual === expected)
+    }
+
   }
 
   describe("ds.groupByKeySorted") {
