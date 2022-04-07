@@ -1,8 +1,8 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>uk.co.gresearch.spark</groupId>
-  <artifactId>spark-extension_2.12</artifactId>
-  <version>2.1.0-3.2-SNAPSHOT</version>
+  <artifactId>spark-extension_2.13</artifactId>
+  <version>2.1.0-3.2</version>
   <name>Spark Extension</name>
   <description>A library that provides useful extensions to Apache Spark.</description>
   <inceptionYear>2020</inceptionYear>
@@ -38,10 +38,10 @@
     <maven.compiler.target>${java.version}</maven.compiler.target>
     <encoding>UTF-8</encoding>
     <scala.compat.version>2.13</scala.compat.version>
-    <scala.version>${scala.compat.version}.8</scala.version>
+    <scala.version>${scala.compat.version}.5</scala.version>
     <!-- keep in-sync with python/requirements-3.2_2.13.txt -->
     <spark.compat.version>3.2</spark.compat.version>
-    <spark.version>${spark.compat.version}.0</spark.version>
+    <spark.version>${spark.compat.version}.1</spark.version>
   </properties>
 
   <dependencies>

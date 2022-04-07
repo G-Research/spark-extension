@@ -57,7 +57,7 @@ has the following semantics: `spark-extension_{SCALA_COMPAT_VERSION}-{VERSION}-{
 Add this line to your `build.sbt` file:
 
 ```sbt
-libraryDependencies += "uk.co.gresearch.spark" %% "spark-extension" % "2.0.0-3.2"
+libraryDependencies += "uk.co.gresearch.spark" %% "spark-extension" % "2.1.0-3.2"
 ```
 
 ### Maven
@@ -68,7 +68,7 @@ Add this dependency to your `pom.xml` file:
 <dependency>
   <groupId>uk.co.gresearch.spark</groupId>
   <artifactId>spark-extension_2.12</artifactId>
-  <version>2.0.0-3.2</version>
+  <version>2.1.0-3.2</version>
 </dependency>
 ```
 
@@ -77,7 +77,7 @@ Add this dependency to your `pom.xml` file:
 Launch a Spark Shell with the Spark Extension dependency (version ≥1.1.0) as follows:
 
 ```shell script
-spark-shell --packages uk.co.gresearch.spark:spark-extension_2.12:2.0.0-3.2
+spark-shell --packages uk.co.gresearch.spark:spark-extension_2.12:2.1.0-3.2
 ```
 
 Note: Pick the right Scala version (here 2.12) and Spark version (here 3.2) depending on your Spark Shell version.
@@ -87,7 +87,7 @@ Note: Pick the right Scala version (here 2.12) and Spark version (here 3.2) depe
 Launch the Python Spark REPL with the Spark Extension dependency (version ≥1.1.0) as follows:
 
 ```shell script
-pyspark --packages uk.co.gresearch.spark:spark-extension_2.12:2.0.0-3.2
+pyspark --packages uk.co.gresearch.spark:spark-extension_2.12:2.1.0-3.2
 ```
 
 Note: Pick the right Scala version and Spark version depending on your PySpark version.
@@ -95,7 +95,7 @@ Note: Pick the right Scala version and Spark version depending on your PySpark v
 Run your Python scripts that use PySpark via `spark-submit`:
 
 ```shell script
-spark-submit --packages uk.co.gresearch.spark:spark-extension_2.12:2.0.0-3.2 [script.py]
+spark-submit --packages uk.co.gresearch.spark:spark-extension_2.12:2.1.0-3.2 [script.py]
 ```
 
 Note: Pick the right Scala version (here 2.12) and Spark version (here 3.2) depending on your Spark version.
