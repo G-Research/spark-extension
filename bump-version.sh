@@ -59,16 +59,16 @@ version=$(grep --max-count=1 "<version>.*</version>" pom.xml | sed -E -e "s/\s*<
 spark_version="${version/*-/}"
 pkg_version="${version/-*/}"
 branch=$(git rev-parse --abbrev-ref HEAD)
-next="$(next_version "$pkg_version" "$branch")-$spark_version"
+next_pkg_version="$(next_version "$pkg_version" "$branch")"
 
 # bump the version
-echo "Bump version to $next"
-sed -i "1,10s/$version/$next-SNAPSHOT/" pom.xml
+echo "Bump version to $next_pkg_version"
+sed -i "1,10s/$version/$next_pkg_version-$spark_version-SNAPSHOT/" pom.xml
 
 # commit changes to local repo
 echo
 echo "Committing release to local git"
-git commit -a -m "Post-release version bump to $next"
+git commit -a -m "Post-release version bump to $next_pkg_version"
 git show HEAD
 echo
 
