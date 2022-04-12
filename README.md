@@ -100,6 +100,18 @@ spark-submit --packages uk.co.gresearch.spark:spark-extension_2.12:2.1.0-3.2 [sc
 
 Note: Pick the right Scala version (here 2.12) and Spark version (here 3.2) depending on your Spark version.
 
+### Your favorite Data Science notebook
+
+There are plenty of [Data Science notebooks](https://datasciencenotebook.org/) around. To use this library,
+add **a jar dependency** to your notebook using these **Maven coordinates**:
+
+    uk.co.gresearch.spark:spark-extension_2.12:2.1.0-3.2
+
+Or [download the jar](https://mvnrepository.com/artifact/uk.co.gresearch.spark/spark-extension) and place it
+on a filesystem where it is accessible by the notebook, and reference that jar file directly.
+
+Check the documentation of your favorite notebook to learn how to add jars to your Spark environment.
+
 ## Build
 
 You can build this project against different versions of Spark and Scala.
