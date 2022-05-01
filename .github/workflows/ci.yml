@@ -176,7 +176,7 @@ jobs:
           git diff
 
       - name: Fetch Binaries Artifact
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: Binaries-${{ matrix.spark-version }}-${{ matrix.scala-version }}
           path: .
