@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [NOT RELEASED] - YYYY-MM-DD
+
+### Removed
+- Removed support for Pyton 3.6
+
 ## [2.1.0] - 2022-04-07
 
 ### Added
