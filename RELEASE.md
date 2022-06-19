@@ -36,10 +36,15 @@ Follow this procedure to release a new version:
 ## Releasing master for other environments
 
 Once you have released the new version, release from the same tag for all other Spark and Scala environments as well:
-- Release for these environments:
-  - Spark 3.0 and 3.1 with 2.12 (3.1 already released above, should be the tagged version)
+- Release for these environments, one of these has been released above, that should be the tagged version:
+|Spark|Scala|
+|:----|:----|
+|3.0  |2.12.10 and 2.13.1|
+|3.1  |2.12.10 and 2.13.4|
+|3.2  |2.12.15 and 2.13.5|
+|3.3  |2.12.15 and 2.13.8|
+|3.4  |2.12.16 and 2.13.8|
 - Always use the latest Spark version per Spark minor version
-- Use Scala 2.12.10 and 2.13.5 specifically
 - Release process:
   - Checkout the release tag, e.g. `git checkout v1.0.0`
   - Set the version in the `pom.xml` file via `set-version.sh`, e.g. `./set-version.sh 3.0.0 2.12.10`
