@@ -183,7 +183,8 @@ class HistogramSuite extends AnyFunSuite with SparkTestSession {
     }
     assert(
       exception.getMessage.startsWith("cannot resolve '`does-not-exist`' given input columns: [id, title, value]") ||
-        exception.getMessage.startsWith("Column '`does-not-exist`' does not exist. Did you mean one of the following? [title, id, value]")
+        exception.getMessage.startsWith("Column '`does-not-exist`' does not exist. Did you mean one of the following? [title, id, value]") ||
+        exception.getMessage.startsWith("[UNRESOLVED_COLUMN] A column or function parameter with name `does-not-exist` cannot be resolved. Did you mean one of the following? [`title`, `id`, `value`]")
     )
   }
 
@@ -193,7 +194,8 @@ class HistogramSuite extends AnyFunSuite with SparkTestSession {
     }
     assert(
       exception.getMessage.startsWith("cannot resolve '`does-not-exist`' given input columns: [") ||
-        exception.getMessage.startsWith("Column '`does-not-exist`' does not exist. Did you mean one of the following? [")
+        exception.getMessage.startsWith("Column '`does-not-exist`' does not exist. Did you mean one of the following? [") ||
+        exception.getMessage.startsWith("[UNRESOLVED_COLUMN] A column or function parameter with name `does-not-exist` cannot be resolved. Did you mean one of the following? [")
     )
   }
 
