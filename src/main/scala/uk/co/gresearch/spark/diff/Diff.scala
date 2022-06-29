@@ -19,7 +19,7 @@ package uk.co.gresearch.spark.diff
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.{ArrayType, StringType}
 import org.apache.spark.sql.{Column, DataFrame, Dataset, Encoder}
-import uk.co.gresearch.spark.backticks
+import uk.co.gresearch.spark.{backticks, distinctPrefixFor}
 import uk.co.gresearch.spark.diff.DiffMode.DiffMode
 
 import scala.collection.JavaConverters
@@ -304,7 +304,7 @@ class Differ(options: DiffOptions) {
     val ignoreColumnsCs = ignoreColumns.map(handleConfiguredCaseSensitivity).toSet
     val valueColumns = nonPkColumns.filter(col => !ignoreColumnsCs(handleConfiguredCaseSensitivity(col)))
 
-    val existsColumnName = Diff.distinctStringNameFor(left.columns)
+    val existsColumnName = distinctPrefixFor(left.columns) + "exists"
     val leftWithExists = left.withColumn(existsColumnName, lit(1))
     val rightWithExists = right.withColumn(existsColumnName, lit(1))
     val joinCondition = pkColumns.map(c => leftWithExists(backticks(c)) <=> rightWithExists(backticks(c))).reduce(_ && _)
@@ -467,15 +467,6 @@ class Differ(options: DiffOptions) {
  */
 object Diff {
   val default = new Differ(DiffOptions.default)
-
-  /**
-   * Provides a string  that is distinct w.r.t. the given strings.
-   * @param existing strings
-   * @return distinct string w.r.t. existing
-   */
-  private[diff] def distinctStringNameFor(existing: Seq[String]): String = {
-    "_" * (existing.map(_.length).reduceOption(_ max _).getOrElse(0) + 1)
-  }
 
   /**
    * Returns a new DataFrame that contains the differences between the two Datasets

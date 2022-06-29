@@ -19,10 +19,23 @@ package uk.co.gresearch
 import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.catalyst.expressions.NamedExpression
-import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions
+import org.apache.spark.sql.functions.{coalesce, col, lit, max, monotonically_increasing_id, spark_partition_id, sum}
+import org.apache.spark.sql.expressions.Window
+import org.apache.spark.storage.StorageLevel
+import org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK
 import uk.co.gresearch.spark.group.SortedGroupByDataset
 
 package object spark {
+
+  /**
+   * Provides a prefix that makes any string distinct w.r.t. the given strings.
+   * @param existing strings
+   * @return distinct prefix
+   */
+  private[spark] def distinctPrefixFor(existing: Seq[String]): String = {
+    "_" * (existing.map(_.takeWhile(_ == '_').length).reduceOption(_ max _).getOrElse(0) + 1)
+  }
 
   /**
    * Encloses the given strings with backticks if needed. Multiple strings will be enclosed individually and
@@ -145,6 +158,111 @@ package object spark {
       SortedGroupByDataset(ds, key, order, partitions, reverse)
     }
 
+    @scala.annotation.varargs
+    def withRowNumbers(cols: Column*): DataFrame =
+      addRowNumbers(cols=cols)
+
+    @scala.annotation.varargs
+    def withRowNumbers(rowNumberColumnName: String, cols: Column*): DataFrame =
+      addRowNumbers(rowNumberColumnName=rowNumberColumnName, cols=cols)
+
+    @scala.annotation.varargs
+    def withRowNumbers(storageLevel: StorageLevel, cols: Column*): DataFrame =
+      addRowNumbers(storageLevel=storageLevel, cols=cols)
+
+    @scala.annotation.varargs
+    def withRowNumbers(unpersistHandle: UnpersistHandle, cols: Column*): DataFrame =
+      addRowNumbers(unpersistHandle=unpersistHandle, cols=cols)
+
+    @scala.annotation.varargs
+    def withRowNumbers(rowNumberColumnName: String,
+                       storageLevel: StorageLevel,
+                       cols: Column*): DataFrame =
+      addRowNumbers(rowNumberColumnName=rowNumberColumnName, storageLevel=storageLevel, cols=cols)
+
+    @scala.annotation.varargs
+    def withRowNumbers(rowNumberColumnName: String,
+                       unpersistHandle: UnpersistHandle,
+                       cols: Column*): DataFrame =
+      addRowNumbers(rowNumberColumnName=rowNumberColumnName, unpersistHandle=unpersistHandle, cols=cols)
+
+    @scala.annotation.varargs
+    def withRowNumbers(storageLevel: StorageLevel,
+                       unpersistHandle: UnpersistHandle,
+                       cols: Column*): DataFrame =
+      addRowNumbers(storageLevel=storageLevel, unpersistHandle=unpersistHandle, cols=cols)
+
+    @scala.annotation.varargs
+    def withRowNumbers(rowNumberColumnName: String,
+                       storageLevel: StorageLevel,
+                       unpersistHandle: UnpersistHandle,
+                       cols: Column*): DataFrame =
+      addRowNumbers(rowNumberColumnName, storageLevel, unpersistHandle, cols)
+
+    private def addRowNumbers(rowNumberColumnName: String = "row_number",
+                              storageLevel: StorageLevel = StorageLevel.MEMORY_AND_DISK,
+                              unpersistHandle: UnpersistHandle = UnpersistHandle.Noop,
+                              cols: Seq[Column] = Seq.empty): DataFrame = {
+      // define some column names that do not exist in ds
+      val prefix = distinctPrefixFor(ds.columns)
+      val monoIdColumnName = prefix + "mono_id"
+      val partitionIdColumnName = prefix + "partition_id"
+      val localRowNumberColumnName = prefix + "local_row_number"
+      val maxLocalRowNumberColumnName = prefix + "max_local_row_number"
+      val cumRowNumbersColumnName = prefix + "cum_row_numbers"
+      val partitionOffsetColumnName = prefix + "partition_offset"
+
+      // if no order is given, we preserve existing order
+      val dfOrdered = if (cols.isEmpty) ds.withColumn(monoIdColumnName, monotonically_increasing_id()) else ds.orderBy(cols: _*)
+      val order = if (cols.isEmpty) Seq(col(monoIdColumnName)) else cols
+
+      // add partition ids and local row numbers
+      val localRowNumberWindow = Window.partitionBy(partitionIdColumnName).orderBy(order: _*)
+      val dfWithPartitionId = dfOrdered
+        .withColumn(partitionIdColumnName, spark_partition_id())
+        .persist(storageLevel)
+      unpersistHandle.setDataFrame(dfWithPartitionId)
+      val dfWithLocalRowNumbers = dfWithPartitionId
+        .withColumn(localRowNumberColumnName, functions.row_number().over(localRowNumberWindow))
+
+      // compute row offset for the partitions
+      val cumRowNumbersWindow = Window.orderBy(partitionIdColumnName)
+        .rowsBetween(Window.unboundedPreceding, Window.currentRow)
+      val partitionOffsets = dfWithLocalRowNumbers
+        .groupBy(partitionIdColumnName)
+        .agg(max(localRowNumberColumnName).alias(maxLocalRowNumberColumnName))
+        .withColumn(cumRowNumbersColumnName, sum(maxLocalRowNumberColumnName).over(cumRowNumbersWindow))
+        .select(col(partitionIdColumnName) + 1 as partitionIdColumnName, col(cumRowNumbersColumnName).as(partitionOffsetColumnName))
+
+      // compute global row number by adding local row number with partition offset
+      val partitionOffsetColumn = coalesce(col(partitionOffsetColumnName), lit(0))
+      dfWithLocalRowNumbers.join(partitionOffsets, Seq(partitionIdColumnName), "left")
+        .withColumn(rowNumberColumnName, col(localRowNumberColumnName) + partitionOffsetColumn)
+        .drop(monoIdColumnName, partitionIdColumnName, localRowNumberColumnName, partitionOffsetColumnName)
+    }
+
+  }
+
+  class UnpersistHandle {
+    var df: Option[DataFrame] = None
+
+    def setDataFrame(dataframe: DataFrame): Unit = {
+      if (df.isDefined) throw new IllegalStateException("DataFrame has been set already. It cannot be reused once used with withRowNumbers.")
+      this.df = Some(dataframe)
+    }
+
+    def apply(): Unit = {
+      this.df.getOrElse(throw new IllegalStateException("DataFrame has to be set first")).unpersist()
+    }
+
+    def apply(blocking: Boolean): Unit = {
+      this.df.getOrElse(throw new IllegalStateException("DataFrame has to be set first")).unpersist(blocking)
+    }
+  }
+
+  object UnpersistHandle {
+    def apply(): UnpersistHandle = new UnpersistHandle()
+    def Noop = new UnpersistHandle()
   }
 
   /**
