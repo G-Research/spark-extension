@@ -330,14 +330,14 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
 
     val unpersist = UnpersistHandle()
     val df = spark.emptyDataFrame
-    assert(spark.sharedState.cacheManager.lookupCachedData(spark.emptyDataFrame).isDefined === false)
+    assert(cacheManager.lookupCachedData(spark.emptyDataFrame).isDefined === false)
 
     df.cache()
-    assert(spark.sharedState.cacheManager.lookupCachedData(spark.emptyDataFrame).isDefined === true)
+    assert(cacheManager.lookupCachedData(spark.emptyDataFrame).isDefined === true)
 
     unpersist.setDataFrame(df)
     unpersist(blocking = true)
-    assert(spark.sharedState.cacheManager.lookupCachedData(spark.emptyDataFrame).isDefined === false)
+    assert(cacheManager.lookupCachedData(spark.emptyDataFrame).isDefined === false)
 
     // calling this twice does not throw any errors
     unpersist()
