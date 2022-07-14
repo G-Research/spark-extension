@@ -79,7 +79,7 @@ df.withRowNumbers($"id".desc, $"value").show()
 
 In Java:
 ```java
-RowNumbers.withOrderColumns(df.col("id").desc()).of(df).show();
+RowNumbers.withOrderColumns(df.col("id").desc(), df.col("value")).of(df).show();
 // +---+-----+----------+
 // | id|value|row_number|
 // +---+-----+----------+
@@ -92,7 +92,7 @@ RowNumbers.withOrderColumns(df.col("id").desc()).of(df).show();
 
 In Python:
 ```python
-df.with_row_numbers(order=df.id.desc()).show()
+df.with_row_numbers(order=[df.id.desc(), df.value]).show()
 # +---+-----+----------+
 # | id|value|row_number|
 # +---+-----+----------+
