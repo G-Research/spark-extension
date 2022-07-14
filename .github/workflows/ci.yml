@@ -215,7 +215,7 @@ jobs:
           pip install -r python/requirements-${{ matrix.spark-compat-version }}_${{ matrix.scala-compat-version }}.txt
           pip install pytest
 
-      - name: Scala Tests
+      - name: Scala and Java Tests
         run: mvn --batch-mode test
 
       - name: Python Tests
