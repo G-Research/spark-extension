@@ -12,11 +12,13 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from typing import List, Any
-from typing import Union
+from typing import List, Any, Union, List, Optional, Sequence
 
 from py4j.java_gateway import JVMView, JavaObject
 from pyspark.sql import DataFrame
+from pyspark.sql.column import Column, _to_seq, _to_list, _to_java_column
+from pyspark.sql.session import SparkSession
+from pyspark.storagelevel import StorageLevel
 
 
 def _to_seq(jvm: JVMView, list: List[Any]) -> JavaObject:
@@ -57,3 +59,50 @@ def histogram(self: DataFrame,
 
 
 DataFrame.histogram = histogram
+
+
+class UnpersistHandle:
+    def __init__(self, handle):
+        self._handle = handle
+
+    def __call__(self, blocking: Optional[bool] = None):
+        if self._handle is not None:
+            if blocking is None:
+                self._handle.apply()
+            else:
+                self._handle.apply(blocking)
+
+
+def unpersist_handle(self: SparkSession) -> UnpersistHandle:
+    jvm = self._sc._jvm
+    handle = jvm.uk.co.gresearch.spark.UnpersistHandle()
+    return UnpersistHandle(handle)
+
+
+SparkSession.unpersist_handle = unpersist_handle
+
+
+def with_row_numbers(self: DataFrame,
+                     storage_level: StorageLevel = StorageLevel.MEMORY_AND_DISK,
+                     unpersist_handle: Optional[UnpersistHandle] = None,
+                     row_number_column_name: str = "row_number",
+                     order: Union[str, Column, List[Union[str, Column]]] = [],
+                     ascending: Union[bool, List[bool]] = True) -> DataFrame:
+    jvm = self._sc._jvm
+    jsl = self._sc._getJavaStorageLevel(storage_level)
+    juho = _get_scala_object(jvm, 'uk.co.gresearch.spark.UnpersistHandle')
+    juh = unpersist_handle._handle if unpersist_handle else juho.Noop()
+    jcols = self._sort_cols([order], {'ascending': ascending}) if not isinstance(order, list) or order else jvm.PythonUtils.toSeq([])
+
+    row_numners = _get_scala_object(jvm, 'uk.co.gresearch.spark.RowNumbers')
+    jdf = row_numners \
+        .withRowNumberColumnName(row_number_column_name) \
+        .withStorageLevel(jsl) \
+        .withUnpersistHandle(juh) \
+        .withOrderColumns(jcols) \
+        .of(self._jdf)
+
+    return DataFrame(jdf, self.sql_ctx)
+
+
+DataFrame.with_row_numbers = with_row_numbers

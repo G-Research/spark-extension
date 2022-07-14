@@ -20,9 +20,19 @@ import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.catalyst.expressions.NamedExpression
 import org.apache.spark.sql.functions.col
+import org.apache.spark.storage.StorageLevel
 import uk.co.gresearch.spark.group.SortedGroupByDataset
 
 package object spark {
+
+  /**
+   * Provides a prefix that makes any string distinct w.r.t. the given strings.
+   * @param existing strings
+   * @return distinct prefix
+   */
+  private[spark] def distinctPrefixFor(existing: Seq[String]): String = {
+    "_" * (existing.map(_.takeWhile(_ == '_').length).reduceOption(_ max _).getOrElse(0) + 1)
+  }
 
   /**
    * Encloses the given strings with backticks if needed. Multiple strings will be enclosed individually and
@@ -42,7 +52,6 @@ package object spark {
    *
    * @param string  a string
    * @param strings more strings
-   * @return
    */
   @scala.annotation.varargs
   def backticks(string: String, strings: String*): String =
@@ -125,26 +134,200 @@ package object spark {
         .partitionBy(partitionColumnsMap.keys.toSeq: _*)
     }
 
+    /**
+     * Groups the Dataset and sorts the groups using the specified columns, so we can run
+     * further process the sorted groups. See [[SortedGroupByDataset]] for all the available
+     * functions.
+     *
+     * {{{
+     *   // Enumerate elements in the sorted group
+     *   ds.groupBySorted($"department")($"salery")
+     *     .flatMapSortedGroups((key, it) => it.zipWithIndex)
+     * }}}
+     *
+     * @param cols grouping columns
+     * @param order sort columns
+     */
     def groupBySorted[K: Ordering : Encoder](cols: Column*)(order: Column*): SortedGroupByDataset[K, T] = {
       implicit val encoder: Encoder[(K, T)] = Encoders.tuple(implicitly[Encoder[K]], implicitly[Encoder[T]])
       SortedGroupByDataset(ds, cols, order, None)
     }
 
+    /**
+     * Groups the Dataset and sorts the groups using the specified columns, so we can run
+     * further process the sorted groups. See [[SortedGroupByDataset]] for all the available
+     * functions.
+     *
+     * {{{
+     *   // Enumerate elements in the sorted group
+     *   ds.groupBySorted(10)($"department")($"salery")
+     *     .flatMapSortedGroups((key, it) => it.zipWithIndex)
+     * }}}
+     *
+     * @param partitions number of partitions
+     * @param cols grouping columns
+     * @param order sort columns
+     */
     def groupBySorted[K: Ordering : Encoder](partitions: Int)(cols: Column*)(order: Column*): SortedGroupByDataset[K, T] = {
       implicit val encoder: Encoder[(K, T)] = Encoders.tuple(implicitly[Encoder[K]], implicitly[Encoder[T]])
       SortedGroupByDataset(ds, cols, order, Some(partitions))
     }
 
+    /**
+     * Groups the Dataset and sorts the groups using the specified columns, so we can run
+     * further process the sorted groups. See [[SortedGroupByDataset]] for all the available
+     * functions.
+     *
+     * {{{
+     *   // Enumerate elements in the sorted group
+     *   ds.groupByKeySorted(row => row.getInt(0), 10)(row => row.getInt(1))
+     *     .flatMapSortedGroups((key, it) => it.zipWithIndex)
+     * }}}
+     *
+     * @param partitions number of partitions
+     * @param key grouping key
+     * @param order sort key
+     */
     def groupByKeySorted[K: Ordering : Encoder, O: Encoder](key: T => K, partitions: Int)(order: T => O): SortedGroupByDataset[K, T] =
       groupByKeySorted(key, Some(partitions))(order)
 
+    /**
+     * Groups the Dataset and sorts the groups using the specified columns, so we can run
+     * further process the sorted groups. See [[SortedGroupByDataset]] for all the available
+     * functions.
+     *
+     * {{{
+     *   // Enumerate elements in the sorted group
+     *   ds.groupByKeySorted(row => row.getInt(0), 10)(row => row.getInt(1), true)
+     *     .flatMapSortedGroups((key, it) => it.zipWithIndex)
+     * }}}
+     *
+     * @param partitions number of partitions
+     * @param key grouping key
+     * @param order sort key
+     * @param reverse sort reverse order
+     */
     def groupByKeySorted[K: Ordering : Encoder, O: Encoder](key: T => K, partitions: Int)(order: T => O, reverse: Boolean): SortedGroupByDataset[K, T] =
       groupByKeySorted(key, Some(partitions))(order, reverse)
 
+    /**
+     * Groups the Dataset and sorts the groups using the specified columns, so we can run
+     * further process the sorted groups. See [[SortedGroupByDataset]] for all the available
+     * functions.
+     *
+     * {{{
+     *   // Enumerate elements in the sorted group
+     *   ds.groupByKeySorted(row => row.getInt(0))(row => row.getInt(1), true)
+     *     .flatMapSortedGroups((key, it) => it.zipWithIndex)
+     * }}}
+     *
+     * @param partitions optional number of partitions
+     * @param key grouping key
+     * @param order sort key
+     * @param reverse sort reverse order
+     */
     def groupByKeySorted[K: Ordering : Encoder, O: Encoder](key: T => K, partitions: Option[Int] = None)(order: T => O, reverse: Boolean = false): SortedGroupByDataset[K, T] = {
       SortedGroupByDataset(ds, key, order, partitions, reverse)
     }
 
+    /**
+     * Adds a global continuous row number starting at 1.
+     *
+     * See [[ExtendedDataset#withRowNumbers(String, StorageLevel, UnpersistHandle, Column*)]] for details.
+     */
+    def withRowNumbers(order: Column*): DataFrame =
+      RowNumbers.withOrderColumns(order: _*).of(ds)
+
+    /**
+     * Adds a global continuous row number starting at 1.
+     *
+     * See [[ExtendedDataset#withRowNumbers(String, StorageLevel, UnpersistHandle, Column*)]] for details.
+     */
+    def withRowNumbers(rowNumberColumnName: String, order: Column*): DataFrame =
+      RowNumbers.withRowNumberColumnName(rowNumberColumnName).withOrderColumns(order).of(ds)
+
+    /**
+     * Adds a global continuous row number starting at 1.
+     *
+     * See [[ExtendedDataset#withRowNumbers(String, StorageLevel, UnpersistHandle, Column*)]] for details.
+     */
+    def withRowNumbers(storageLevel: StorageLevel, order: Column*): DataFrame =
+      RowNumbers.withStorageLevel(storageLevel).withOrderColumns(order).of(ds)
+
+    /**
+     * Adds a global continuous row number starting at 1.
+     *
+     * See [[ExtendedDataset#withRowNumbers(String, StorageLevel, UnpersistHandle, Column*)]] for details.
+     */
+    def withRowNumbers(unpersistHandle: UnpersistHandle, order: Column*): DataFrame =
+      RowNumbers.withUnpersistHandle(unpersistHandle).withOrderColumns(order).of(ds)
+
+    /**
+     * Adds a global continuous row number starting at 1.
+     *
+     * See [[ExtendedDataset#withRowNumbers(String, StorageLevel, UnpersistHandle, Column*)]] for details.
+     */
+    def withRowNumbers(rowNumberColumnName: String,
+                       storageLevel: StorageLevel,
+                       order: Column*): DataFrame =
+      RowNumbers.withRowNumberColumnName(rowNumberColumnName).withStorageLevel(storageLevel).withOrderColumns(order).of(ds)
+
+    /**
+     * Adds a global continuous row number starting at 1.
+     *
+     * See [[ExtendedDataset#withRowNumbers(String, StorageLevel, UnpersistHandle, Column*)]] for details.
+     */
+    def withRowNumbers(rowNumberColumnName: String,
+                       unpersistHandle: UnpersistHandle,
+                       order: Column*): DataFrame =
+      RowNumbers.withRowNumberColumnName(rowNumberColumnName).withUnpersistHandle(unpersistHandle).withOrderColumns(order).of(ds)
+
+    /**
+     * Adds a global continuous row number starting at 1.
+     *
+     * See [[ExtendedDataset#withRowNumbers(String, StorageLevel, UnpersistHandle, Column*)]] for details.
+     */
+    def withRowNumbers(storageLevel: StorageLevel,
+                       unpersistHandle: UnpersistHandle,
+                       order: Column*): DataFrame =
+      RowNumbers.withStorageLevel(storageLevel).withUnpersistHandle(unpersistHandle).withOrderColumns(order).of(ds)
+
+    /**
+     * Adds a global continuous row number starting at 1, after sorting rows by the given columns.
+     * When no columns are given, the existing order is used.
+     *
+     * Hence, the following examples are equivalent:
+     * {{{
+     *   ds.withRowNumbers($"a".desc, $"b")
+     *   ds.orderBy($"a".desc, $"b").withRowNumbers()
+     * }}}
+     *
+     * The column name of the column with the row numbers can be set via the `rowNumberColumnName` argument.
+     *
+     * To avoid some known issues optimizing the query plan, this function has to internally call
+     * `Dataset.persist(StorageLevel)` on an intermediate DataFrame. The storage level of that cached
+     * DataFrame can be set via `storageLevel`, where the default is `StorageLevel.MEMORY_AND_DISK`.
+     *
+     * That cached intermediate DataFrame can be un-persisted / un-cached as follows:
+     * {{{
+     *   import uk.co.gresearch.spark.UnpersistHandle
+     *
+     *   val unpersist = UnpersistHandle()
+     *   ds.withRowNumbers(unpersist).show()
+     *   unpersist()
+     * }}}
+     *
+     * @param rowNumberColumnName name of the row number column
+     * @param storageLevel storage level of the cached intermediate DataFrame
+     * @param unpersistHandle handle to un-persist intermediate DataFrame
+     * @param order columns to order dataframe before assigning row numbers
+     * @return dataframe with row numbers
+     */
+    def withRowNumbers(rowNumberColumnName: String,
+                       storageLevel: StorageLevel,
+                       unpersistHandle: UnpersistHandle,
+                       order: Column*): DataFrame =
+      RowNumbers.withRowNumberColumnName(rowNumberColumnName).withStorageLevel(storageLevel).withUnpersistHandle(unpersistHandle).withOrderColumns(order).of(ds)
   }
 
   /**

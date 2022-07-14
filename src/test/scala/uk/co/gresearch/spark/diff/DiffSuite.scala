@@ -20,7 +20,7 @@ import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{Dataset, Encoders, Row}
 import org.scalatest.funsuite.AnyFunSuite
-import uk.co.gresearch.spark.SparkTestSession
+import uk.co.gresearch.spark.{SparkTestSession, distinctPrefixFor, _}
 
 case class Empty()
 case class Value(id: Int, value: Option[String])
@@ -237,11 +237,14 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     )
   )
 
-  test("distinct string for") {
-    assert(Diff.distinctStringNameFor(Seq.empty[String]) === "_")
-    assert(Diff.distinctStringNameFor(Seq("a")) === "__")
-    assert(Diff.distinctStringNameFor(Seq("abc")) === "____")
-    assert(Diff.distinctStringNameFor(Seq("a", "bc", "def")) === "____")
+  test("distinct prefix for") {
+    assert(distinctPrefixFor(Seq.empty[String]) === "_")
+    assert(distinctPrefixFor(Seq("a")) === "_")
+    assert(distinctPrefixFor(Seq("abc")) === "_")
+    assert(distinctPrefixFor(Seq("a", "bc", "def")) === "_")
+    assert(distinctPrefixFor(Seq("_a")) === "__")
+    assert(distinctPrefixFor(Seq("_abc")) === "__")
+    assert(distinctPrefixFor(Seq("a", "_bc", "__def")) === "___")
   }
 
   test("diff dataframe with duplicate columns") {
