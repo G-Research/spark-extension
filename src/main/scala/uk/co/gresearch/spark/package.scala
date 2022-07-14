@@ -157,44 +157,44 @@ package object spark {
 
     @scala.annotation.varargs
     def withRowNumbers(order: Column*): DataFrame =
-      RowNumbers.of(ds.toDF(), orderColumns=order)
+      RowNumbers.withOrderColumns(order: _*).of(ds)
 
     @scala.annotation.varargs
     def withRowNumbers(rowNumberColumnName: String, order: Column*): DataFrame =
-      RowNumbers.of(ds.toDF(), rowNumberColumnName=rowNumberColumnName, orderColumns=order)
+      RowNumbers.withRowNumberColumnName(rowNumberColumnName).withOrderColumns(order).of(ds)
 
     @scala.annotation.varargs
     def withRowNumbers(storageLevel: StorageLevel, order: Column*): DataFrame =
-      RowNumbers.of(ds.toDF(), storageLevel=storageLevel, orderColumns=order)
+      RowNumbers.withStorageLevel(storageLevel).withOrderColumns(order).of(ds)
 
     @scala.annotation.varargs
     def withRowNumbers(unpersistHandle: UnpersistHandle, order: Column*): DataFrame =
-      RowNumbers.of(ds.toDF(), unpersistHandle=unpersistHandle, orderColumns=order)
+      RowNumbers.withUnpersistHandle(unpersistHandle).withOrderColumns(order).of(ds)
 
     @scala.annotation.varargs
     def withRowNumbers(rowNumberColumnName: String,
                        storageLevel: StorageLevel,
                        order: Column*): DataFrame =
-      RowNumbers.of(ds.toDF(), rowNumberColumnName=rowNumberColumnName, storageLevel=storageLevel, orderColumns=order)
+      RowNumbers.withRowNumberColumnName(rowNumberColumnName).withStorageLevel(storageLevel).withOrderColumns(order).of(ds)
 
     @scala.annotation.varargs
     def withRowNumbers(rowNumberColumnName: String,
                        unpersistHandle: UnpersistHandle,
                        order: Column*): DataFrame =
-      RowNumbers.of(ds.toDF(), rowNumberColumnName=rowNumberColumnName, unpersistHandle=unpersistHandle, orderColumns=order)
+      RowNumbers.withRowNumberColumnName(rowNumberColumnName).withUnpersistHandle(unpersistHandle).withOrderColumns(order).of(ds)
 
     @scala.annotation.varargs
     def withRowNumbers(storageLevel: StorageLevel,
                        unpersistHandle: UnpersistHandle,
                        order: Column*): DataFrame =
-      RowNumbers.of(ds.toDF(), storageLevel=storageLevel, unpersistHandle=unpersistHandle, orderColumns=order)
+      RowNumbers.withStorageLevel(storageLevel).withUnpersistHandle(unpersistHandle).withOrderColumns(order).of(ds)
 
     @scala.annotation.varargs
     def withRowNumbers(rowNumberColumnName: String,
                        storageLevel: StorageLevel,
                        unpersistHandle: UnpersistHandle,
                        order: Column*): DataFrame =
-      RowNumbers.of(ds.toDF(), rowNumberColumnName, storageLevel, unpersistHandle, order)
+      RowNumbers.withRowNumberColumnName(rowNumberColumnName).withStorageLevel(storageLevel).withUnpersistHandle(unpersistHandle).withOrderColumns(order).of(ds)
   }
 
   /**

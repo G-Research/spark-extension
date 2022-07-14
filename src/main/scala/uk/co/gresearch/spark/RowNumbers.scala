@@ -5,12 +5,24 @@ import org.apache.spark.sql.{Column, DataFrame, Dataset, functions}
 import org.apache.spark.sql.functions.{coalesce, col, lit, max, monotonically_increasing_id, spark_partition_id, sum}
 import org.apache.spark.storage.StorageLevel
 
-object RowNumbers {
-  def of[D](df: Dataset[D],
-            rowNumberColumnName: String = "row_number",
-            storageLevel: StorageLevel = StorageLevel.MEMORY_AND_DISK,
-            unpersistHandle: UnpersistHandle = UnpersistHandle.Noop,
-            orderColumns: Seq[Column] = Seq.empty): DataFrame = {
+case class RowNumbersFunc(rowNumberColumnName: String = "row_number",
+                          storageLevel: StorageLevel = StorageLevel.MEMORY_AND_DISK,
+                          unpersistHandle: UnpersistHandle = UnpersistHandle.Noop,
+                          orderColumns: Seq[Column] = Seq.empty) {
+
+  def withRowNumberColumnName(rowNumberColumnName: String): RowNumbersFunc =
+    this.copy(rowNumberColumnName = rowNumberColumnName)
+
+  def withStorageLevel(storageLevel: StorageLevel): RowNumbersFunc =
+    this.copy(storageLevel = storageLevel)
+
+  def withUnpersistHandle(unpersistHandle: UnpersistHandle): RowNumbersFunc =
+    this.copy(unpersistHandle = unpersistHandle)
+
+  def withOrderColumns(orderColumns: Seq[Column]): RowNumbersFunc =
+    this.copy(orderColumns = orderColumns)
+
+  def of[D](df: Dataset[D]): DataFrame = {
     // define some column names that do not exist in ds
     val prefix = distinctPrefixFor(df.columns)
     val monoIdColumnName = prefix + "mono_id"
@@ -48,6 +60,26 @@ object RowNumbers {
       .withColumn(rowNumberColumnName, col(localRowNumberColumnName) + partitionOffsetColumn)
       .drop(monoIdColumnName, partitionIdColumnName, localRowNumberColumnName, partitionOffsetColumnName)
   }
+
+}
+
+object RowNumbers {
+  def default(): RowNumbersFunc = RowNumbersFunc()
+
+  def withRowNumberColumnName(rowNumberColumnName: String): RowNumbersFunc =
+    default().withRowNumberColumnName(rowNumberColumnName)
+
+  def withStorageLevel(storageLevel: StorageLevel): RowNumbersFunc =
+    default().withStorageLevel(storageLevel)
+
+  def withUnpersistHandle(unpersistHandle: UnpersistHandle): RowNumbersFunc =
+    default().withUnpersistHandle(unpersistHandle)
+
+  @scala.annotation.varargs
+  def withOrderColumns(orderColumns: Column*): RowNumbersFunc =
+    default().withOrderColumns(orderColumns)
+
+  def of[D](ds: Dataset[D]): DataFrame = default().of(ds)
 }
 
 class UnpersistHandle {
@@ -67,7 +99,13 @@ class UnpersistHandle {
   }
 }
 
+class NoopUnpersistHandle extends UnpersistHandle{
+  override def setDataFrame(dataframe: DataFrame): Unit = {}
+  override def apply(): Unit = {}
+  override def apply(blocking: Boolean): Unit = {}
+}
+
 object UnpersistHandle {
   def apply(): UnpersistHandle = new UnpersistHandle()
-  def Noop = new UnpersistHandle()
+  val Noop = new NoopUnpersistHandle()
 }

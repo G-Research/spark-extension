@@ -18,6 +18,8 @@ package uk.co.gresearch.spark;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.sql.*;
+import org.apache.spark.sql.execution.CacheManager;
+import org.apache.spark.storage.StorageLevel;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -75,6 +77,97 @@ public class SparkJavaTests {
                 RowFactory.create("two", 0, 0, 1, 0)
         );
         Assert.assertEquals(expected, histogram.sort("label").collectAsList());
+    }
+
+    @Test
+    public void testRowNumbers() {
+        Dataset<Row> withRowNumbers = RowNumbers.of(dataset);
+        List<Row> expected = Arrays.asList(
+                RowFactory.create(1, "one", 1.0, 1),
+                RowFactory.create(2, "two", 2.0, 2),
+                RowFactory.create(3, "three", 3.0, 3)
+        );
+        Assert.assertEquals(expected, withRowNumbers.orderBy("id").collectAsList());
+    }
+
+    @Test
+    public void testRowNumbersOrderOneColumn() {
+        Dataset<Row> withRowNumbers = RowNumbers.withOrderColumns(dataset.col("id").desc()).of(dataset);
+        List<Row> expected = Arrays.asList(
+                RowFactory.create(1, "one", 1.0, 3),
+                RowFactory.create(2, "two", 2.0, 2),
+                RowFactory.create(3, "three", 3.0, 1)
+        );
+        Assert.assertEquals(expected, withRowNumbers.orderBy("id").collectAsList());
+    }
+
+    @Test
+    public void testRowNumbersOrderTwoColumns() {
+        Dataset<Row> withRowNumbers = RowNumbers.withOrderColumns(dataset.col("id"), dataset.col("label")).of(dataset);
+        List<Row> expected = Arrays.asList(
+                RowFactory.create(1, "one", 1.0, 1),
+                RowFactory.create(2, "two", 2.0, 2),
+                RowFactory.create(3, "three", 3.0, 3)
+        );
+        Assert.assertEquals(expected, withRowNumbers.orderBy("id").collectAsList());
+    }
+
+    @Test
+    public void testRowNumbersOrderDesc() {
+        Dataset<Row> withRowNumbers = RowNumbers.withOrderColumns(dataset.col("id").desc()).of(dataset);
+        List<Row> expected = Arrays.asList(
+                RowFactory.create(1, "one", 1.0, 3),
+                RowFactory.create(2, "two", 2.0, 2),
+                RowFactory.create(3, "three", 3.0, 1)
+        );
+        Assert.assertEquals(expected, withRowNumbers.orderBy("id").collectAsList());
+    }
+
+    @Test
+    public void testRowNumbersUnpersist() {
+        CacheManager cacheManager = SparkJavaTests.spark.sharedState().cacheManager();
+        cacheManager.clearCache();
+        Assert.assertTrue(cacheManager.isEmpty());
+
+        UnpersistHandle unpersist = new UnpersistHandle();
+        Dataset<Row> withRowNumbers = RowNumbers.withUnpersistHandle(unpersist).of(dataset);
+        List<Row> expected = Arrays.asList(
+                RowFactory.create(1, "one", 1.0, 1),
+                RowFactory.create(2, "two", 2.0, 2),
+                RowFactory.create(3, "three", 3.0, 3)
+        );
+        Assert.assertEquals(expected, withRowNumbers.orderBy("id").collectAsList());
+
+        Assert.assertFalse(cacheManager.isEmpty());
+        unpersist.apply(true);
+        Assert.assertTrue(cacheManager.isEmpty());
+    }
+
+    @Test
+    public void testRowNumbersStorageLevelAndUnpersist() {
+        CacheManager cacheManager = SparkJavaTests.spark.sharedState().cacheManager();
+        cacheManager.clearCache();
+        Assert.assertTrue(cacheManager.isEmpty());
+
+        UnpersistHandle unpersist = new UnpersistHandle();
+        RowNumbers.withStorageLevel(StorageLevel.MEMORY_ONLY()).withUnpersistHandle(unpersist).of(dataset);
+
+        Assert.assertFalse(cacheManager.isEmpty());
+        unpersist.apply(true);
+        Assert.assertTrue(cacheManager.isEmpty());
+    }
+
+    @Test
+    public void testRowNumbersColumnName() {
+        Dataset<Row> withRowNumbers = RowNumbers.withRowNumberColumnName("row").of(dataset);
+        Assert.assertEquals(Arrays.asList("id", "label", "score", "row"), Arrays.asList(withRowNumbers.columns()));
+
+        List<Row> expected = Arrays.asList(
+                RowFactory.create(1, "one", 1.0, 1),
+                RowFactory.create(2, "two", 2.0, 2),
+                RowFactory.create(3, "three", 3.0, 3)
+        );
+        Assert.assertEquals(expected, withRowNumbers.orderBy("id").collectAsList());
     }
 
     @AfterClass
