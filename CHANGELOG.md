@@ -3,7 +3,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [NOT RELEASED] - YYYY-MM-DD
+## [2.2.0] - 2022-07-21
+
+### Added
+- Add (global) row numbers transformation to Scala, Java and Python API. (#97)
 
 ### Removed
 - Removed support for Pyton 3.6
