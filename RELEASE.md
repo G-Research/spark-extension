@@ -39,8 +39,8 @@ Once you have released the new version, release from the same tag for all other 
 - Release for these environments, one of these has been released above, that should be the tagged version:
 |Spark|Scala|
 |:----|:----|
-|3.0  |2.12.10 and 2.13.1|
-|3.1  |2.12.10 and 2.13.4|
+|3.0  |2.12.10 (and 2.13.1)|
+|3.1  |2.12.10 (and 2.13.4)|
 |3.2  |2.12.15 and 2.13.5|
 |3.3  |2.12.15 and 2.13.8|
 |3.4  |2.12.16 and 2.13.8|
