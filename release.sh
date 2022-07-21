@@ -73,9 +73,10 @@ echo "Committing release to local git"
 git commit -a -m "Releasing $version"
 git tag -a "v${version}" -m "Release v${version}"
 
-echo "Creating release package, please inspect git changes in the meantime:"
+echo "Please inspect git changes:"
 git show HEAD
-sleep 10
+echo "Press <ENTER> to push to origin"
+read
 
 echo "Pushing release commit and tag to origin"
 git push origin master "v${version}"
