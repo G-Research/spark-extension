@@ -12,9 +12,12 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+from enum import Enum
+from typing import Union
+
 from py4j.java_gateway import JavaObject, JVMView
 from pyspark.sql import DataFrame
-from enum import Enum
+
 from gresearch.spark import _to_seq
 
 
@@ -424,7 +427,7 @@ class Differ:
         jvm = left._sc._jvm
         jdiffer = self._to_java(jvm)
         jdf = jdiffer.diff(left._jdf, right._jdf, _to_seq(jvm, list(id_columns)))
-        return DataFrame(jdf, left.sql_ctx)
+        return DataFrame(jdf, left.session_or_ctx())
 
 
 def diff(self: DataFrame, other: DataFrame, *id_columns: str) -> DataFrame:
