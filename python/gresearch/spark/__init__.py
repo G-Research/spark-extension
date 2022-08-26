@@ -55,7 +55,7 @@ def histogram(self: DataFrame,
 
     hist = _get_scala_object(jvm, 'uk.co.gresearch.spark.Histogram')
     jdf = hist.of(self._jdf, _to_seq(jvm, thresholds), value_column, _to_seq(jvm, aggregate_columns))
-    return DataFrame(jdf, self.sql_ctx)
+    return DataFrame(jdf, self.sparkSession)
 
 
 DataFrame.histogram = histogram
@@ -102,7 +102,7 @@ def with_row_numbers(self: DataFrame,
         .withOrderColumns(jcols) \
         .of(self._jdf)
 
-    return DataFrame(jdf, self.sql_ctx)
+    return DataFrame(jdf, self.sparkSession)
 
 
 DataFrame.with_row_numbers = with_row_numbers
