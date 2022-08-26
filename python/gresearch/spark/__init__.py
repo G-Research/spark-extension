@@ -17,6 +17,7 @@ from typing import List, Any, Union, List, Optional, Sequence
 from py4j.java_gateway import JVMView, JavaObject
 from pyspark.sql import DataFrame
 from pyspark.sql.column import Column, _to_seq, _to_list, _to_java_column
+from pyspark.sql.context import SQLContext
 from pyspark.sql.session import SparkSession
 from pyspark.storagelevel import StorageLevel
 
@@ -55,7 +56,7 @@ def histogram(self: DataFrame,
 
     hist = _get_scala_object(jvm, 'uk.co.gresearch.spark.Histogram')
     jdf = hist.of(self._jdf, _to_seq(jvm, thresholds), value_column, _to_seq(jvm, aggregate_columns))
-    return DataFrame(jdf, self.sparkSession)
+    return DataFrame(jdf, self.session_or_ctx())
 
 
 DataFrame.histogram = histogram
@@ -102,7 +103,12 @@ def with_row_numbers(self: DataFrame,
         .withOrderColumns(jcols) \
         .of(self._jdf)
 
-    return DataFrame(jdf, self.sparkSession)
+    return DataFrame(jdf, self.session_or_ctx())
+
+
+def session_or_ctx(self: DataFrame) -> Union[SparkSession, SQLContext]:
+    return self.sparkSession if hasattr(self, 'sparkSession') else self.sql_ctx
 
 
 DataFrame.with_row_numbers = with_row_numbers
+DataFrame.session_or_ctx = session_or_ctx
