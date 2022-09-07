@@ -99,7 +99,7 @@ This column is an array of strings and only set for `"N"` and `"C"`action rows; 
 
 This `diff` transformation provides the following features:
 * id columns are optional
-* provides typed `diffAs` transformations
+* provides typed `diffAs` and `diffWith` transformations
 * supports *null* values in id and non-id columns
 * detects *null* value insertion / deletion
 * configurable via `DiffOptions`:
