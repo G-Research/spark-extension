@@ -1237,7 +1237,6 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     val options = DiffOptions.default.withDiffMode(DiffMode.LeftSide).withSparseMode(true)
     val differ = new Differ(options)
 
-    val expected = expectedSparseDiff8.map(r => Row(r.get(0), r.get(1), r.get(2), r.get(3), r.get(5)))
     assertIgnoredColumns(left8.diff(right8, options, Seq("id", "seq"), Seq("meta")), expectedLeftSideSparseDiff8, diffColumns = Seq("value", "meta"))
     assertIgnoredColumns(differ.diff(left8, right8, Seq("id", "seq"), Seq("meta")), expectedLeftSideSparseDiff8, diffColumns = Seq("value", "meta"))
   }

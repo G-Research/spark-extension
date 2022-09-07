@@ -33,23 +33,24 @@ class DiffTest(SparkTest):
     def setUpClass(cls):
         super(DiffTest, cls).setUpClass()
 
+        value_row = Row('id', 'val', 'label')
         cls.left_df = cls.spark.createDataFrame([
-            (1, 1.0, 'one'),
-            (2, 2.0, 'two'),
-            (3, 3.0, 'three'),
-            (4, None, None),
-            (5, 5.0, 'five'),
-            (7, 7.0, 'seven'),
-        ], ['id', 'val', 'label'])
+            value_row(1, 1.0, 'one'),
+            value_row(2, 2.0, 'two'),
+            value_row(3, 3.0, 'three'),
+            value_row(4, None, None),
+            value_row(5, 5.0, 'five'),
+            value_row(7, 7.0, 'seven'),
+        ])
 
         cls.right_df = cls.spark.createDataFrame([
-            (1, 1.1, 'one'),
-            (2, 2.0, 'Two'),
-            (3, 3.0, 'three'),
-            (4, 4.0, 'four'),
-            (5, None, None),
-            (6, 6.0, 'six'),
-        ], ['id', 'val', 'label'])
+            value_row(1, 1.1, 'one'),
+            value_row(2, 2.0, 'Two'),
+            value_row(3, 3.0, 'three'),
+            value_row(4, 4.0, 'four'),
+            value_row(5, None, None),
+            value_row(6, 6.0, 'six'),
+        ])
 
         diff_row = Row('diff', 'id', 'left_val', 'right_val', 'left_label', 'right_label')
         cls.expected_diff = [
@@ -60,6 +61,17 @@ class DiffTest(SparkTest):
             diff_row('C', 5, 5.0, None, 'five', None),
             diff_row('I', 6, None, 6.0, None, 'six'),
             diff_row('D', 7, 7.0, None, 'seven', None),
+        ]
+
+        diffwith_row = Row('diff', 'left', 'right')
+        cls.expected_diffwith = [
+            diffwith_row('C', value_row(1, 1.0, 'one'), value_row(1, 1.1, 'one')),
+            diffwith_row('C', value_row(2, 2.0, 'two'), value_row(2, 2.0, 'Two')),
+            diffwith_row('N', value_row(3, 3.0, 'three'), value_row(3, 3.0, 'three')),
+            diffwith_row('C', value_row(4, None, None), value_row(4, 4.0, 'four')),
+            diffwith_row('C', value_row(5, 5.0, 'five'), value_row(5, None, None)),
+            diffwith_row('I', None, value_row(6, 6.0, 'six')),
+            diffwith_row('D', value_row(7, 7.0, 'seven'), None),
         ]
 
         diff_with_options_row = Row('d', 'id', 'l_val', 'r_val', 'l_label', 'r_label')
@@ -136,7 +148,8 @@ class DiffTest(SparkTest):
 
     def test_dataframe_diffwith(self):
         diff = self.left_df.diffwith(self.right_df, 'id').orderBy('id').collect()
-        self.assertEqual(self.expected_diff, diff)
+        self.assertSetEqual(set(self.expected_diffwith), set(diff))
+        self.assertEqual(len(self.expected_diffwith), len(diff))
 
     def test_dataframe_diff_with_default_options(self):
         diff = self.left_df.diff_with_options(self.right_df, DiffOptions(), 'id').orderBy('id').collect()
@@ -183,7 +196,8 @@ class DiffTest(SparkTest):
 
     def test_differ_diffwith(self):
         diff = Differ().diffwith(self.left_df, self.right_df, 'id').orderBy('id').collect()
-        self.assertEqual(self.expected_diff, diff)
+        self.assertSetEqual(set(self.expected_diffwith), set(diff))
+        self.assertEqual(len(self.expected_diffwith), len(diff))
 
     def test_differ_diff_with_default_options(self):
         options = DiffOptions()
