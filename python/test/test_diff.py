@@ -134,6 +134,10 @@ class DiffTest(SparkTest):
         diff = self.left_df.diff(self.right_df, 'id').orderBy('id').collect()
         self.assertEqual(self.expected_diff, diff)
 
+    def test_dataframe_diffwith(self):
+        diff = self.left_df.diffwith(self.right_df, 'id').orderBy('id').collect()
+        self.assertEqual(self.expected_diff, diff)
+
     def test_dataframe_diff_with_default_options(self):
         diff = self.left_df.diff_with_options(self.right_df, DiffOptions(), 'id').orderBy('id').collect()
         self.assertEqual(self.expected_diff, diff)
@@ -173,46 +177,50 @@ class DiffTest(SparkTest):
         diff = self.left_df.diff_with_options(self.right_df, options, 'id').orderBy('id').collect()
         self.assertEqual(self.expected_diff_in_sparse_mode, diff)
 
-    def test_diff_of(self):
+    def test_differ_diff(self):
         diff = Differ().diff(self.left_df, self.right_df, 'id').orderBy('id').collect()
         self.assertEqual(self.expected_diff, diff)
 
-    def test_diff_of_with_default_options(self):
+    def test_differ_diffwith(self):
+        diff = Differ().diffwith(self.left_df, self.right_df, 'id').orderBy('id').collect()
+        self.assertEqual(self.expected_diff, diff)
+
+    def test_differ_diff_with_default_options(self):
         options = DiffOptions()
         diff = Differ(options).diff(self.left_df, self.right_df, 'id').orderBy('id').collect()
         self.assertEqual(self.expected_diff, diff)
 
-    def test_diff_of_with_options(self):
+    def test_differ_diff_with_options(self):
         options = DiffOptions('d', 'l', 'r', 'i', 'c', 'r', 'n', None)
         diff = Differ(options).diff(self.left_df, self.right_df, 'id').orderBy('id').collect()
         self.assertEqual(self.expected_diff_with_options, diff)
 
-    def test_diff_of_with_changes(self):
+    def test_differ_diff_with_changes(self):
         options = DiffOptions().with_change_column('changes')
         diff = Differ(options).diff(self.left_df, self.right_df, 'id').orderBy('id').collect()
         self.assertEqual(self.expected_diff_with_changes, diff)
 
-    def test_dataframe_diff_of_in_diff_mode_column_by_column(self):
+    def test_differ_diff_in_diff_mode_column_by_column(self):
         options = DiffOptions().with_diff_mode(DiffMode.ColumnByColumn)
         diff = Differ(options).diff(self.left_df, self.right_df, 'id').orderBy('id').collect()
         self.assertEqual(self.expected_diff_in_column_by_column_mode, diff)
 
-    def test_dataframe_diff_of_in_diff_mode_side_by_side(self):
+    def test_differ_diff_in_diff_mode_side_by_side(self):
         options = DiffOptions().with_diff_mode(DiffMode.SideBySide)
         diff = Differ(options).diff(self.left_df, self.right_df, 'id').orderBy('id').collect()
         self.assertEqual(self.expected_diff_in_side_by_side_mode, diff)
 
-    def test_dataframe_diff_of_in_diff_mode_left_side(self):
+    def test_differ_diff_in_diff_mode_left_side(self):
         options = DiffOptions().with_diff_mode(DiffMode.LeftSide)
         diff = Differ(options).diff(self.left_df, self.right_df, 'id').orderBy('id').collect()
         self.assertEqual(self.expected_diff_in_left_side_mode, diff)
 
-    def test_dataframe_diff_of_in_diff_mode_right_side(self):
+    def test_differ_diff_in_diff_mode_right_side(self):
         options = DiffOptions().with_diff_mode(DiffMode.RightSide)
         diff = Differ(options).diff(self.left_df, self.right_df, 'id').orderBy('id').collect()
         self.assertEqual(self.expected_diff_in_right_side_mode, diff)
 
-    def test_dataframe_diff_with_sparse_mode(self):
+    def test_differ_diff_with_sparse_mode(self):
         options = DiffOptions().with_sparse_mode(True)
         diff = Differ(options).diff(self.left_df, self.right_df, 'id').orderBy('id').collect()
         self.assertEqual(self.expected_diff_in_sparse_mode, diff)

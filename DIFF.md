@@ -258,30 +258,51 @@ Above [Column by Column](#column-by-column) example would look in sparse mode as
 
 ## Methods (Scala)
 
+All Scala methods come in two variants, one without (as shown below) and one with an `options: DiffOptions` argument.
+
 * `def diff(other: Dataset[T], idColumns: String*): DataFrame`
-* `def diff(other: Dataset[T], options: DiffOptions, idColumns: String*): DataFrame`
+* `def diff(other: Dataset[T], idColumns: Seq[String], ignoreColumns: Seq[String]): DataFrame`
 
 
 * `def diffAs[U](other: Dataset[T], idColumns: String*)(implicit diffEncoder: Encoder[U]): Dataset[U]`
-* `def diffAs[U](other: Dataset[T], options: DiffOptions, idColumns: String*)(implicit diffEncoder: Encoder[U]): Dataset[U]`
+* `def diffAs[U](other: Dataset[T], idColumns: Seq[String], ignoreColumns: Seq[String])(implicit diffEncoder: Encoder[U]): Dataset[U]`
 * `def diffAs[U](other: Dataset[T], diffEncoder: Encoder[U], idColumns: String*): Dataset[U]`
-* `def diffAs[U](other: Dataset[T], options: DiffOptions, diffEncoder: Encoder[U], idColumns: String*): Dataset[U]`
+* `def diffAs[U](other: Dataset[T], diffEncoder: Encoder[U], idColumns: Seq[String], ignoreColumns: Seq[String]): Dataset[U]`
 
+
+* `def diffWith(other: Dataset[T], idColumns: String*): Dataset[(String, T, T)]`
+* `def diffWith(other: Dataset[T], idColumns: Seq[String], ignoreColumns: Seq[String]): Dataset[(String, T, T)]`
 
 ## Methods (Java)
 
+* `Dataset<Row> Diff.of[T](Dataset<T> left, Dataset<T> right, String... idColumns)`
+* `Dataset<Row> Diff.of[T](Dataset<T> left, Dataset<T> right, List<String> idColumns, List<String> ignoreColumns)`
+
+
+* `Dataset<U> Diff.ofAs[T, U](Dataset<T> left, Dataset<T> right, Encoder<U> diffEncoder, String... idColumns)`
+* `Dataset<U> Diff.ofAs[T, U](Dataset<T> left, Dataset<T> right, Encoder<U> diffEncoder, List<String> idColumns, List<String> ignoreColumns)`
+
+
+* `Dataset<Tuple3<String, T, T>> Diff.ofWith[T](Dataset<T> left, Dataset<T> right, String... idColumns)`
+* `Dataset<Tuple3<String, T, T>> Diff.ofWith[T](Dataset<T> left, Dataset<T> right, List<String> idColumns, List<String> ignoreColumns)`
+
+Given a `DiffOptions`, a customized `Differ` can be instantiated as `Differ differ = new Differ(options)`:
+
 * `Dataset<Row> Differ.diff[T](Dataset<T> left, Dataset<T> right, String... idColumns)`
 * `Dataset<Row> Differ.diff[T](Dataset<T> left, Dataset<T> right, List<String> idColumns, List<String> ignoreColumns)`
+
+
 * `Dataset<U> Differ.diffAs[T, U](Dataset<T> left, Dataset<T> right, Encoder<U> diffEncoder, String... idColumns)`
 * `Dataset<U> Differ.diffAs[T, U](Dataset<T> left, Dataset<T> right, Encoder<U> diffEncoder, List<String> idColumns, List<String> ignoreColumns)`
 
 
-* `Dataset<Row> Diff.of[T](Dataset<T> left, Dataset<T> right, String... idColumns)`
-* `Dataset<Row> Diff.of[T](Dataset<T> left, Dataset<T> right, List<String> idColumns, List<String> ignoreColumns)`
-* `Dataset<U> Diff.ofAs[T, U](Dataset<T> left, Dataset<T> right, Encoder<U> diffEncoder, String... idColumns)`
-* `Dataset<U> Diff.ofAs[T, U](Dataset<T> left, Dataset<T> right, Encoder<U> diffEncoder, List<String> idColumns, List<String> ignoreColumns)`
+* `Dataset<Row> Differ.diffWith[T](Dataset<T> left, Dataset<T> right, String... idColumns)`
+* `Dataset<Row> Differ.diffWith[T](Dataset<T> left, Dataset<T> right, List<String> idColumns, List<String> ignoreColumns)`
 
 ## Methods (Python)
 
+All Python methods come in two variants, one without (as shown below) and one with an `options: DiffOptions` argument.
+The latter variant is prefixed with `_with_options`.
+
 * `def diff(self: DataFrame, other: DataFrame, *idColumns: str) -> DataFrame`
-* `def diff_with_options(self: DataFrame, other: DataFrame, options: DiffOptions, *id_columns: str) -> DataFrame:`
+* `def diffwith(self: DataFrame, other: DataFrame, *id_columns: str) -> DataFrame:`

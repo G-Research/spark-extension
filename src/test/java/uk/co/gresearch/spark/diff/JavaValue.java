@@ -17,6 +17,7 @@
 package uk.co.gresearch.spark.diff;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 public class JavaValue implements Serializable {
     private Integer id;
@@ -53,5 +54,24 @@ public class JavaValue implements Serializable {
 
     public void setScore(Double score) {
         this.score = score;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        JavaValue javaValue = (JavaValue) o;
+        return Objects.equals(id, javaValue.id) && Objects.equals(label, javaValue.label) && Objects.equals(score, javaValue.score);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, label, score);
+    }
+
+    @Override
+    public String toString() {
+        return "JavaValue{id=" + id + ", label='" + label + "', score=" + score + '}';
     }
 }

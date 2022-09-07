@@ -16,11 +16,11 @@
 
 package uk.co.gresearch.spark.diff
 
+import org.apache.spark.sql._
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.{ArrayType, StringType}
-import org.apache.spark.sql.{Column, DataFrame, Dataset, Encoder}
-import uk.co.gresearch.spark.{backticks, distinctPrefixFor}
 import uk.co.gresearch.spark.diff.DiffMode.DiffMode
+import uk.co.gresearch.spark.{backticks, distinctPrefixFor}
 
 import scala.collection.JavaConverters
 
@@ -460,6 +460,73 @@ class Differ(options: DiffOptions) {
       JavaConverters.iterableAsScalaIterable(idColumns).toSeq, JavaConverters.iterableAsScalaIterable(ignoreColumns).toSeq)
   }
 
+  /**
+   * Returns a new Dataset that contains the differences
+   * between this and the other Dataset of the same type `T`
+   * as tuples of type `(String, T, T)`.
+   *
+   * See `diff(Dataset[T], Dataset[T], String*)`.
+   */
+  @scala.annotation.varargs
+  def diffWith[T](left: Dataset[T], right: Dataset[T], idColumns: String*): Dataset[(String, T, T)] = {
+    val df = diff(left, right, idColumns: _*)
+    diffWith(df, idColumns: _*)(left.encoder)
+  }
+
+  /**
+   * Returns a new Dataset that contains the differences
+   * between this and the other Dataset of the same type `T`
+   * as tuples of type `(String, T, T)`.
+   *
+   * See `diff(Dataset[T], Dataset[T], Seq[String], Seq[String])`.
+   */
+  def diffWith[T](left: Dataset[T], right: Dataset[T],
+                  idColumns: Seq[String], ignoreColumns: Seq[String]): Dataset[(String, T, T)] = {
+    val df = diff(left, right, idColumns, ignoreColumns)
+    diffWith(df, idColumns: _*)(left.encoder)
+  }
+
+  /**
+   * Returns a new Dataset that contains the differences
+   * between this and the other Dataset of the same type `T`
+   * as tuples of type `(String, T, T)`.
+   *
+   * See `diff(Dataset[T], Dataset[T], Seq[String], Seq[String])`.
+   */
+  def diffWith[T](left: Dataset[T], right: Dataset[T],
+                  idColumns: java.util.List[String], ignoreColumns: java.util.List[String]): Dataset[(String, T, T)] = {
+    diffWith(left, right,
+      JavaConverters.iterableAsScalaIterable(idColumns).toSeq, JavaConverters.iterableAsScalaIterable(ignoreColumns).toSeq)
+  }
+
+  private def columnsOfSide(df: DataFrame, idColumns: Seq[String], sidePrefix: String): Seq[Column] = {
+    val prefix = sidePrefix + "_"
+    df.columns
+      .filter(c => idColumns.contains(c) || c.startsWith(sidePrefix))
+      .map(c => if (idColumns.contains(c)) col(c) else col(c).as(c.replace(prefix, "")))
+  }
+
+  private def diffWith[T : Encoder](diff: DataFrame, idColumns: String*): Dataset[(String, T, T)] = {
+    val leftColumns = columnsOfSide(diff, idColumns, options.leftColumnPrefix)
+    val rightColumns = columnsOfSide(diff, idColumns, options.rightColumnPrefix)
+
+    val diffColumn = col(options.diffColumn).as("_1")
+    val leftStruct = when(col(options.diffColumn) === options.insertDiffValue, lit(null))
+      .otherwise(struct(leftColumns: _*))
+      .as("_2")
+    val rightStruct = when(col(options.diffColumn) === options.deleteDiffValue, lit(null))
+      .otherwise(struct(rightColumns: _*))
+      .as("_3")
+
+    val plan = diff.select(diffColumn, leftStruct, rightStruct).queryExecution.logical
+
+    val encoder: Encoder[(String, T, T)] = Encoders.tuple(
+      Encoders.STRING, implicitly[Encoder[T]], implicitly[Encoder[T]]
+    )
+
+    new Dataset(diff.sparkSession, plan, encoder)
+  }
+
 }
 
 /**
@@ -639,7 +706,7 @@ object Diff {
    * columns are in the order of this Dataset.
    */
   def of[T](left: Dataset[T], right: Dataset[T], idColumns: java.util.List[String], ignoreColumns: java.util.List[String]): DataFrame =
-    default.diff(left, right, JavaConverters.iterableAsScalaIterable(idColumns).toSeq, JavaConverters.iterableAsScalaIterable(ignoreColumns).toSeq)
+    default.diff(left, right, idColumns, ignoreColumns)
 
   /**
    * Returns a new Dataset that contains the differences between the two Datasets of the same type `T`.
@@ -697,7 +764,38 @@ object Diff {
    */
   def ofAs[T, U](left: Dataset[T], right: Dataset[T], diffEncoder: Encoder[U],
                  idColumns: java.util.List[String], ignoreColumns: java.util.List[String]): Dataset[U] =
-    default.diffAs(left, right, diffEncoder,
-      JavaConverters.iterableAsScalaIterable(idColumns).toSeq, JavaConverters.iterableAsScalaIterable(ignoreColumns).toSeq)
+    default.diffAs(left, right, diffEncoder, idColumns, ignoreColumns)
 
+  /**
+   * Returns a new Dataset that contains the differences
+   * between this and the other Dataset of the same type `T`
+   * as tuples of type `(String, T, T)`.
+   *
+   * See `of(Dataset[T], Dataset[T], String*)`.
+   */
+  @scala.annotation.varargs
+  def ofWith[T](left: Dataset[T], right: Dataset[T], idColumns: String*): Dataset[(String, T, T)] =
+    default.diffWith(left, right, idColumns: _*)
+
+  /**
+   * Returns a new Dataset that contains the differences
+   * between this and the other Dataset of the same type `T`
+   * as tuples of type `(String, T, T)`.
+   *
+   * See `of(Dataset[T], Dataset[T], Seq[String], Seq[String])`.
+   */
+  def ofWith[T](left: Dataset[T], right: Dataset[T],
+                idColumns: Seq[String], ignoreColumns: Seq[String]): Dataset[(String, T, T)] =
+    default.diffWith(left, right, idColumns, ignoreColumns)
+
+  /**
+   * Returns a new Dataset that contains the differences
+   * between this and the other Dataset of the same type `T`
+   * as tuples of type `(String, T, T)`.
+   *
+   * See `of(Dataset[T], Dataset[T], Seq[String], Seq[String])`.
+   */
+  def ofWith[T](left: Dataset[T], right: Dataset[T],
+                idColumns: java.util.List[String], ignoreColumns: java.util.List[String]): Dataset[(String, T, T)] =
+    default.diffWith(left, right, idColumns, ignoreColumns)
 }

@@ -20,7 +20,7 @@ import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{Dataset, Encoders, Row}
 import org.scalatest.funsuite.AnyFunSuite
-import uk.co.gresearch.spark.{SparkTestSession, distinctPrefixFor, _}
+import uk.co.gresearch.spark.{SparkTestSession, distinctPrefixFor}
 
 case class Empty()
 case class Value(id: Int, value: Option[String])
@@ -31,6 +31,9 @@ case class Value5(first_id: Int, id: String)
 case class Value6(id: Int, label: String)
 case class Value7(id: Int, value: Option[String], label: Option[String])
 case class Value8(id: Int, seq: Option[Int], value: Option[String], meta: Option[String])
+
+case class ValueLeft(left_id: Int, value: Option[String])
+case class ValueRight(right_id: Int, value: Option[String])
 
 case class DiffAs(diff: String,
                   id: Int,
@@ -1271,6 +1274,56 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
       doTestRequirement(left8.diff(right8, Seq("Id", "SeQ"), Seq("MeTa")),
         "Some id columns do not exist: Id, SeQ missing among id, seq, value, meta")
     }
+  }
+
+  test("diffWith") {
+    val actual = left.diffWith(right, "id").collect()
+    assert(actual === Seq(
+      ("N", Value(1, Some("one")), Value(1, Some("one"))),
+      ("I", null, Value(4, Some("four"))),
+      ("C", Value(2, Some("two")), Value(2, Some("Two"))),
+      ("D", Value(3, Some("three")), null)
+    ))
+  }
+
+  test("diffWith ignored") {
+    val actual = left8.diffWith(right8, Seq("id", "seq"), Seq("meta")).collect()
+    assert(actual.toSet === expectedDiff8.map(row => (
+      row.getString(0),
+      Value8(row.getInt(1), Option(row.get(2)).map(_.asInstanceOf[Int]), Option(row.getString(3)), Option(row.getString(5))),
+      Value8(row.getInt(1), Option(row.get(2)).map(_.asInstanceOf[Int]), Option(row.getString(4)), Option(row.getString(6)))
+    )).map { case (diff, left, right) => (
+      diff,
+      if (diff == "I") null else left,
+      if (diff == "D") null else right
+    )}.toSet)
+    assert(actual.length === expectedDiff8.length)
+  }
+
+  test("diffWith left-prefixed id") {
+    val prefixedLeft = left.select($"id".as("left_id"), $"value").as[ValueLeft]
+    val prefixedRight = right.select($"id".as("left_id"), $"value").as[ValueLeft]
+
+    val actual = prefixedLeft.diffWith(prefixedRight, "left_id").collect()
+    assert(actual === Seq(
+      ("N", ValueLeft(1, Some("one")), ValueLeft(1, Some("one"))),
+      ("I", null, ValueLeft(4, Some("four"))),
+      ("C", ValueLeft(2, Some("two")), ValueLeft(2, Some("Two"))),
+      ("D", ValueLeft(3, Some("three")), null)
+    ))
+  }
+
+  test("diffWith right-prefixed id") {
+    val prefixedLeft = left.select($"id".as("right_id"), $"value").as[ValueRight]
+    val prefixedRight = right.select($"id".as("right_id"), $"value").as[ValueRight]
+
+    val actual = prefixedLeft.diffWith(prefixedRight, "right_id").collect()
+    assert(actual === Seq(
+      ("N", ValueRight(1, Some("one")), ValueRight(1, Some("one"))),
+      ("I", null, ValueRight(4, Some("four"))),
+      ("C", ValueRight(2, Some("two")), ValueRight(2, Some("Two"))),
+      ("D", ValueRight(3, Some("three")), null)
+    ))
   }
 
   def doTestRequirement(f: => Any, expected: String): Unit = {
