@@ -22,12 +22,11 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import scala.Tuple3;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class DiffJavaTests {
     private static SparkSession spark;
@@ -55,7 +54,7 @@ public class DiffJavaTests {
     }
 
     @Test
-    public void testDiffDataFrame() {
+    public void testDiff() {
         Dataset<Row> diff = Diff.of(left.toDF(), right.toDF(), "id");
         List<Row> expected = Arrays.asList(
                 RowFactory.create("D", 1, "one", null, 1.0, null),
@@ -111,6 +110,31 @@ public class DiffJavaTests {
                 RowFactory.create("N", 2, "two", "two", 2.0, 2.0),
                 RowFactory.create("N", 3, "three", "three", 3.0, 3.1),
                 RowFactory.create("I", 4, null, "four", null, 4.0)
+        );
+        Assert.assertEquals(expected, diff.sort("id").collectAsList());
+    }
+
+    @Test
+    public void testDiffAs() {
+        Encoder<JavaValueAs> encoder = Encoders.bean(JavaValueAs.class);
+        Dataset<JavaValueAs> diff = Diff.ofAs(left.toDF(), right.toDF(), encoder, "id");
+        List<JavaValueAs> expected = Arrays.asList(
+                new JavaValueAs("D", 1, "one", null, 1.0, null),
+                new JavaValueAs("N", 2, "two", "two", 2.0, 2.0),
+                new JavaValueAs("C", 3, "three", "three", 3.0, 3.1),
+                new JavaValueAs("I", 4, null, "four", null, 4.0)
+        );
+        Assert.assertEquals(expected, diff.sort("id").collectAsList());
+    }
+
+    @Test
+    public void testDiffOfWith() {
+        Dataset<Tuple3<String, JavaValue, JavaValue>> diff = Diff.ofWith(left, right, "id");
+        List<Tuple3<String, JavaValue, JavaValue>> expected = Arrays.asList(
+                new Tuple3<>("D", new JavaValue(1, "one", 1.0), null),
+                new Tuple3<>("N", new JavaValue(2, "two", 2.0), new JavaValue(2, "two", 2.0)),
+                new Tuple3<>("C", new JavaValue(3, "three", 3.0), new JavaValue(3, "three", 3.1)),
+                new Tuple3<>("I", null, new JavaValue(4, "four", 4.0))
         );
         Assert.assertEquals(expected, diff.sort("id").collectAsList());
     }

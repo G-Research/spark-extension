@@ -16,10 +16,10 @@
 
 package uk.co.gresearch.spark
 
-import java.util.Locale
-
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.{DataFrame, Dataset, Encoder}
+
+import java.util.Locale
 
 package object diff {
 
@@ -286,6 +286,60 @@ package object diff {
                   idColumns: Seq[String],
                   ignoreColumns: Seq[String]): Dataset[U] = {
       new Differ(options).diffAs(this.ds, other, diffEncoder, idColumns, ignoreColumns)
+    }
+
+    /**
+     * Returns a new Dataset that contains the differences
+     * between this and the other Dataset of the same type `T`
+     * as tuples of type `(String, T, T)`.
+     *
+     * See `diff(Dataset[T], Seq[String])`.
+     */
+    def diffWith(other: Dataset[T],
+                 idColumns: String*): Dataset[(String, T, T)] =
+      Diff.default.diffWith(this.ds, other, idColumns: _*)
+
+    /**
+     * Returns a new Dataset that contains the differences
+     * between this and the other Dataset of the same type `T`
+     * as tuples of type `(String, T, T)`.
+     *
+     * See `diff(Dataset[T], Seq[String], Seq[String])`.
+     */
+    def diffWith(other: Dataset[T],
+                 idColumns: Seq[String],
+                 ignoreColumns: Seq[String]): Dataset[(String, T, T)] =
+      Diff.default.diffWith(this.ds, other, idColumns, ignoreColumns)
+
+    /**
+     * Returns a new Dataset that contains the differences
+     * between this and the other Dataset of the same type `T`
+     * as tuples of type `(String, T, T)`.
+     *
+     * See `diff(Dataset[T], String*)`.
+     *
+     * The schema of the returned Dataset can be configured by the given `DiffOptions`.
+     */
+    def diffWith(other: Dataset[T],
+                 options: DiffOptions,
+                 idColumns: String*): Dataset[(String, T, T)] = {
+      new Differ(options).diffWith(this.ds, other, idColumns: _*)
+    }
+
+    /**
+     * Returns a new Dataset that contains the differences
+     * between this and the other Dataset of the same type `T`
+     * as tuples of type `(String, T, T)`.
+     *
+     * See `diff(Dataset[T], Seq[String], Seq[String])`.
+     *
+     * The schema of the returned Dataset can be configured by the given `DiffOptions`.
+     */
+    def diffWith(other: Dataset[T],
+                 options: DiffOptions,
+                 idColumns: Seq[String],
+                 ignoreColumns: Seq[String]): Dataset[(String, T, T)] = {
+      new Differ(options).diffWith(this.ds, other, idColumns, ignoreColumns)
     }
   }
 

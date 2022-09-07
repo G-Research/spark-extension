@@ -364,20 +364,20 @@ class Differ:
     def diff(self, left: DataFrame, right: DataFrame, *id_columns: str) -> DataFrame:
         """
         Returns a new DataFrame that contains the differences between the two DataFrames.
-        
+
         Both DataFrames must contain the same set of column names and data types.
         The order of columns in the two DataFrames is not important as columns are compared based on the
         name, not the the position.
-       
+
         Optional id columns are used to uniquely identify rows to compare. If values in any non-id
         column are differing between the two DataFrames, then that row is marked as `"C"`hange
         and `"N"`o-change otherwise. Rows of the right DataFrame, that do not exist in the left DataFrame
         (w.r.t. the values in the id columns) are marked as `"I"`nsert. And rows of the left DataFrame,
         that do not exist in the right DataFrame are marked as `"D"`elete.
-       
+
         If no id columns are given, all columns are considered id columns. Then, no `"C"`hange rows
         will appear, as all changes will exists as respective `"D"`elete and `"I"`nsert.
-       
+
         The returned DataFrame has the `diff` column as the first column. This holds the `"N"`, `"C"`,
         `"I"` or `"D"` strings. The id columns follow, then the non-id columns (all remaining columns).
 
@@ -428,6 +428,31 @@ class Differ:
         jdiffer = self._to_java(jvm)
         jdf = jdiffer.diff(left._jdf, right._jdf, _to_seq(jvm, list(id_columns)))
         return DataFrame(jdf, left.session_or_ctx())
+
+    def diffwith(self, left: DataFrame, right: DataFrame, *id_columns: str) -> DataFrame:
+        """
+        Returns a new DataFrame that contains the differences between the two DataFrames
+        as tuples of type `(String, Row, Row)`.
+
+        See `diff(left: DataFrame, right: DataFrame, *id_columns: str)`.
+
+        :param left: left DataFrame
+        :type left: DataFrame
+        :param right: right DataFrame
+        :type right: DataFrame
+        :param id_columns: optional id column names
+        :type id_columns: str
+        :return: the diff DataFrame
+        :rtype DataFrame
+        """
+        jvm = left._sc._jvm
+        jdiffer = self._to_java(jvm)
+        jdf = jdiffer.diffWith(left._jdf, right._jdf, _to_seq(jvm, list(id_columns)))
+        df = DataFrame(jdf, left.sql_ctx)
+        return df \
+            .withColumnRenamed('_1', self._options.diff_column) \
+            .withColumnRenamed('_2', self._options.left_column_prefix) \
+            .withColumnRenamed('_3', self._options.right_column_prefix)
 
 
 def diff(self: DataFrame, other: DataFrame, *id_columns: str) -> DataFrame:
@@ -493,6 +518,25 @@ def diff(self: DataFrame, other: DataFrame, *id_columns: str) -> DataFrame:
     return Differ().diff(self, other, *id_columns)
 
 
+def diffwith(self: DataFrame, other: DataFrame, *id_columns: str) -> DataFrame:
+    """
+    Returns a new DataFrame that contains the differences between the two DataFrames
+    as tuples of type `(String, Row, Row)`.
+
+    See `diff(left: DataFrame, right: DataFrame, *id_columns: str)`.
+
+    :param left: left DataFrame
+    :type left: DataFrame
+    :param right: right DataFrame
+    :type right: DataFrame
+    :param id_columns: optional id column names
+    :type id_columns: str
+    :return: the diff DataFrame
+    :rtype DataFrame
+    """
+    return Differ().diffwith(self, other, *id_columns)
+
+
 def diff_with_options(self: DataFrame, other: DataFrame, options: DiffOptions, *id_columns: str) -> DataFrame:
     """
     Returns a new DataFrame that contains the differences between this and the other DataFrame.
@@ -513,5 +557,29 @@ def diff_with_options(self: DataFrame, other: DataFrame, options: DiffOptions, *
     return Differ(options).diff(self, other, *id_columns)
 
 
+def diffwith_with_options(self: DataFrame, other: DataFrame, options: DiffOptions, *id_columns: str) -> DataFrame:
+    """
+    Returns a new DataFrame that contains the differences between the two DataFrames
+    as tuples of type `(String, Row, Row)`.
+
+    See `diff(left: DataFrame, right: DataFrame, *id_columns: str)`.
+
+    The schema of the returned DataFrame can be configured by the given `DiffOptions`.
+
+    :param other: right DataFrame
+    :type other: DataFrame
+    :param id_columns: optional id column names
+    :type id_columns: str
+    :param options: diff options
+    :type options: DiffOptions
+    :return: the diff DataFrame
+    :rtype DataFrame
+    """
+    return Differ(options).diffwith(self, other, *id_columns)
+
+
 DataFrame.diff = diff
+DataFrame.diffwith = diffwith
+
 DataFrame.diff_with_options = diff_with_options
+DataFrame.diffwith_with_options = diffwith_with_options

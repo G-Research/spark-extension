@@ -20,7 +20,7 @@ import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{Dataset, Encoders, Row}
 import org.scalatest.funsuite.AnyFunSuite
-import uk.co.gresearch.spark.{SparkTestSession, distinctPrefixFor, _}
+import uk.co.gresearch.spark.{SparkTestSession, distinctPrefixFor}
 
 case class Empty()
 case class Value(id: Int, value: Option[String])
@@ -31,6 +31,9 @@ case class Value5(first_id: Int, id: String)
 case class Value6(id: Int, label: String)
 case class Value7(id: Int, value: Option[String], label: Option[String])
 case class Value8(id: Int, seq: Option[Int], value: Option[String], meta: Option[String])
+
+case class ValueLeft(left_id: Int, value: Option[String])
+case class ValueRight(right_id: Int, value: Option[String])
 
 case class DiffAs(diff: String,
                   id: Int,
@@ -1234,7 +1237,6 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     val options = DiffOptions.default.withDiffMode(DiffMode.LeftSide).withSparseMode(true)
     val differ = new Differ(options)
 
-    val expected = expectedSparseDiff8.map(r => Row(r.get(0), r.get(1), r.get(2), r.get(3), r.get(5)))
     assertIgnoredColumns(left8.diff(right8, options, Seq("id", "seq"), Seq("meta")), expectedLeftSideSparseDiff8, diffColumns = Seq("value", "meta"))
     assertIgnoredColumns(differ.diff(left8, right8, Seq("id", "seq"), Seq("meta")), expectedLeftSideSparseDiff8, diffColumns = Seq("value", "meta"))
   }
@@ -1271,6 +1273,71 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
       doTestRequirement(left8.diff(right8, Seq("Id", "SeQ"), Seq("MeTa")),
         "Some id columns do not exist: Id, SeQ missing among id, seq, value, meta")
     }
+  }
+
+  def assertDiffWith(actual: Seq[Any], expected: Seq[Any]): Unit = {
+    assert(actual.toSet === expected.toSet)
+    assert(actual.length === expected.length)
+  }
+
+  test("diffWith") {
+    val expected = Seq(
+      ("N", Value(1, Some("one")), Value(1, Some("one"))),
+      ("I", null, Value(4, Some("four"))),
+      ("C", Value(2, Some("two")), Value(2, Some("Two"))),
+      ("D", Value(3, Some("three")), null)
+    )
+
+    assertDiffWith(left.diffWith(right, "id").collect(), expected)
+    assertDiffWith(Diff.ofWith(left, right, "id").collect(), expected)
+    assertDiffWith(Diff.default.diffWith(left, right, "id").collect(), expected)
+  }
+
+  test("diffWith ignored") {
+    val expected = expectedDiff8.map(row => (
+      row.getString(0),
+      Value8(row.getInt(1), Option(row.get(2)).map(_.asInstanceOf[Int]), Option(row.getString(3)), Option(row.getString(5))),
+      Value8(row.getInt(1), Option(row.get(2)).map(_.asInstanceOf[Int]), Option(row.getString(4)), Option(row.getString(6)))
+    )).map { case (diff, left, right) => (
+      diff,
+      if (diff == "I") null else left,
+      if (diff == "D") null else right
+    )}
+
+    assertDiffWith(left8.diffWith(right8, Seq("id", "seq"), Seq("meta")).collect(), expected)
+    assertDiffWith(Diff.ofWith(left8, right8, Seq("id", "seq"), Seq("meta")).collect(), expected)
+    assertDiffWith(Diff.default.diffWith(left8, right8, Seq("id", "seq"), Seq("meta")).collect(), expected)
+  }
+
+  test("diffWith left-prefixed id") {
+    val prefixedLeft = left.select($"id".as("left_id"), $"value").as[ValueLeft]
+    val prefixedRight = right.select($"id".as("left_id"), $"value").as[ValueLeft]
+
+    val expected = Seq(
+      ("N", ValueLeft(1, Some("one")), ValueLeft(1, Some("one"))),
+      ("I", null, ValueLeft(4, Some("four"))),
+      ("C", ValueLeft(2, Some("two")), ValueLeft(2, Some("Two"))),
+      ("D", ValueLeft(3, Some("three")), null)
+    )
+
+    assertDiffWith(prefixedLeft.diffWith(prefixedRight, "left_id").collect(), expected)
+    assertDiffWith(Diff.ofWith(prefixedLeft, prefixedRight, "left_id").collect(), expected)
+    assertDiffWith(Diff.default.diffWith(prefixedLeft, prefixedRight, "left_id").collect(), expected)
+  }
+
+  test("diffWith right-prefixed id") {
+    val prefixedLeft = left.select($"id".as("right_id"), $"value").as[ValueRight]
+    val prefixedRight = right.select($"id".as("right_id"), $"value").as[ValueRight]
+
+    val expected = Seq(
+      ("N", ValueRight(1, Some("one")), ValueRight(1, Some("one"))),
+      ("I", null, ValueRight(4, Some("four"))),
+      ("C", ValueRight(2, Some("two")), ValueRight(2, Some("Two"))),
+      ("D", ValueRight(3, Some("three")), null)
+    )
+    assertDiffWith(prefixedLeft.diffWith(prefixedRight, "right_id").collect(), expected)
+    assertDiffWith(Diff.ofWith(prefixedLeft, prefixedRight, "right_id").collect(), expected)
+    assertDiffWith(Diff.default.diffWith(prefixedLeft, prefixedRight, "right_id").collect(), expected)
   }
 
   def doTestRequirement(f: => Any, expected: String): Unit = {
