@@ -448,7 +448,11 @@ class Differ:
         jvm = left._sc._jvm
         jdiffer = self._to_java(jvm)
         jdf = jdiffer.diffWith(left._jdf, right._jdf, _to_seq(jvm, list(id_columns)))
-        return DataFrame(jdf, left.sql_ctx)
+        df = DataFrame(jdf, left.sql_ctx)
+        return df \
+            .withColumnRenamed('_1', self._options.diff_column) \
+            .withColumnRenamed('_2', self._options.left_column_prefix) \
+            .withColumnRenamed('_3', self._options.right_column_prefix)
 
 
 def diff(self: DataFrame, other: DataFrame, *id_columns: str) -> DataFrame:
