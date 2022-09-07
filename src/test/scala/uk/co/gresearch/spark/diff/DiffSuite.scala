@@ -1276,9 +1276,14 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     }
   }
 
+  def assertDiffWith(actual: Seq[Any], expected: Seq[Any]): Unit = {
+    assert(actual.toSet === expected.toSet)
+    assert(actual.length === expected.length)
+  }
+
   test("diffWith") {
     val actual = left.diffWith(right, "id").collect()
-    assert(actual === Seq(
+    assertDiffWith(actual, Seq(
       ("N", Value(1, Some("one")), Value(1, Some("one"))),
       ("I", null, Value(4, Some("four"))),
       ("C", Value(2, Some("two")), Value(2, Some("Two"))),
@@ -1288,7 +1293,7 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
 
   test("diffWith ignored") {
     val actual = left8.diffWith(right8, Seq("id", "seq"), Seq("meta")).collect()
-    assert(actual.toSet === expectedDiff8.map(row => (
+    assertDiffWith(actual, expectedDiff8.map(row => (
       row.getString(0),
       Value8(row.getInt(1), Option(row.get(2)).map(_.asInstanceOf[Int]), Option(row.getString(3)), Option(row.getString(5))),
       Value8(row.getInt(1), Option(row.get(2)).map(_.asInstanceOf[Int]), Option(row.getString(4)), Option(row.getString(6)))
@@ -1296,8 +1301,7 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
       diff,
       if (diff == "I") null else left,
       if (diff == "D") null else right
-    )}.toSet)
-    assert(actual.length === expectedDiff8.length)
+    )})
   }
 
   test("diffWith left-prefixed id") {
@@ -1305,7 +1309,7 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     val prefixedRight = right.select($"id".as("left_id"), $"value").as[ValueLeft]
 
     val actual = prefixedLeft.diffWith(prefixedRight, "left_id").collect()
-    assert(actual === Seq(
+    assertDiffWith(actual, Seq(
       ("N", ValueLeft(1, Some("one")), ValueLeft(1, Some("one"))),
       ("I", null, ValueLeft(4, Some("four"))),
       ("C", ValueLeft(2, Some("two")), ValueLeft(2, Some("Two"))),
@@ -1318,7 +1322,7 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     val prefixedRight = right.select($"id".as("right_id"), $"value").as[ValueRight]
 
     val actual = prefixedLeft.diffWith(prefixedRight, "right_id").collect()
-    assert(actual === Seq(
+    assertDiffWith(actual, Seq(
       ("N", ValueRight(1, Some("one")), ValueRight(1, Some("one"))),
       ("I", null, ValueRight(4, Some("four"))),
       ("C", ValueRight(2, Some("two")), ValueRight(2, Some("Two"))),
