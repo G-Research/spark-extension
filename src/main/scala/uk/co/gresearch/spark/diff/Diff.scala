@@ -30,7 +30,7 @@ import scala.collection.JavaConverters
  */
 class Differ(options: DiffOptions) {
 
-  private[diff] def checkSchema[T](left: Dataset[T], right: Dataset[T], idColumns: String*): Unit = {
+  private[diff] def checkSchema[T, U](left: Dataset[T], right: Dataset[U], idColumns: Seq[String], ignoreColumns: Seq[String]): Unit = {
     require(left.columns.length == left.columns.toSet.size &&
       right.columns.length == right.columns.toSet.size,
       "The datasets have duplicate columns.\n" +
@@ -144,8 +144,9 @@ class Differ(options: DiffOptions) {
       )
   }
 
-  private[diff] def getDiffColumns[T](pkColumns: Seq[String], otherColumns: Seq[String],
-                                      left: Dataset[T], right: Dataset[T]): Seq[Column] = {
+  private[diff] def getDiffColumns[T, U](pkColumns: Seq[String], otherColumns: Seq[String],
+                                         left: Dataset[T], right: Dataset[U],
+                                         ignoreColumns: Seq[String]): Seq[Column] = {
     val idColumns = pkColumns.map(c => coalesce(left(backticks(c)), right(backticks(c))).as(c))
 
     val (leftValues, rightValues) = if (options.sparseMode) {
@@ -181,14 +182,48 @@ class Differ(options: DiffOptions) {
     idColumns ++ valueColumns
   }
 
+  private def doDiff[T, U](left: Dataset[T], right: Dataset[U], idColumns: Seq[String], ignoreColumns: Seq[String] = Seq.empty): DataFrame = {
+    checkSchema(left, right, idColumns, ignoreColumns)
+
+    val pkColumns = if (idColumns.isEmpty) left.columns.toList else idColumns
+    val pkColumnsCs = pkColumns.map(handleConfiguredCaseSensitivity).toSet
+    val nonPkColumns = left.columns.filter(col => !pkColumnsCs.contains(handleConfiguredCaseSensitivity(col)))
+
+    val ignoreColumnsCs = ignoreColumns.map(handleConfiguredCaseSensitivity).toSet
+    val valueColumns = nonPkColumns.filter(col => !ignoreColumnsCs(handleConfiguredCaseSensitivity(col)))
+
+    val existsColumnName = distinctPrefixFor(left.columns) + "exists"
+    val leftWithExists = left.withColumn(existsColumnName, lit(1))
+    val rightWithExists = right.withColumn(existsColumnName, lit(1))
+    val joinCondition = pkColumns.map(c => leftWithExists(backticks(c)) <=> rightWithExists(backticks(c))).reduce(_ && _)
+    val unChanged = valueColumns.map(c => leftWithExists(backticks(c)) <=> rightWithExists(backticks(c))).reduceOption(_ && _)
+    val changeCondition = not(unChanged.getOrElse(lit(true)))
+
+    val diffActionColumn =
+      when(leftWithExists(existsColumnName).isNull, lit(options.insertDiffValue)).
+        when(rightWithExists(existsColumnName).isNull, lit(options.deleteDiffValue)).
+        when(changeCondition, lit(options.changeDiffValue)).
+        otherwise(lit(options.nochangeDiffValue)).
+        as(options.diffColumn)
+
+    val diffColumns = getDiffColumns(pkColumns, nonPkColumns, left, right, ignoreColumns)
+    val changeColumn = getChangeColumn(existsColumnName, valueColumns, leftWithExists, rightWithExists)
+      // turn this column into a sequence of one or none column so we can easily concat it below with diffActionColumn and diffColumns
+      .map(Seq(_))
+      .getOrElse(Seq.empty[Column])
+
+    leftWithExists.join(rightWithExists, joinCondition, "fullouter")
+      .select((diffActionColumn +: changeColumn) ++ diffColumns: _*)
+  }
+
   /**
-   * Returns a new DataFrame that contains the differences between the two Datasets
+   * Returns a new DataFrame that contains the differences between two Datasets
    * of the same type `T`. Both Datasets must contain the same set of column names and data types.
    * The order of columns in the two Datasets is not important as columns are compared based on the
    * name, not the the position.
    *
    * Optional `id` columns are used to uniquely identify rows to compare. If values in any non-id
-   * column are differing between the two Datasets, then that row is marked as `"C"`hange
+   * column are differing between two Datasets, then that row is marked as `"C"`hange
    * and `"N"`o-change otherwise. Rows of the right Dataset, that do not exist in the left Dataset
    * (w.r.t. the values in the id columns) are marked as `"I"`nsert. And rows of the left Dataset,
    * that do not exist in the right Dataset are marked as `"D"`elete.
@@ -240,13 +275,13 @@ class Differ(options: DiffOptions) {
   }
 
   /**
-   * Returns a new DataFrame that contains the differences between the two Datasets
-   * of the same type `T`. Both Datasets must contain the same set of column names and data types.
-   * The order of columns in the two Datasets is not important as columns are compared based on the
-   * name, not the the position.
+   * Returns a new DataFrame that contains the differences between two Datasets of
+   * similar types `T` and `U`. Both Datasets must contain the same set of column names and data types,
+   * except for the columns in `ignoreColumns`. The order of columns in the two Datasets is not important as
+   * columns are compared based on the name, not the the position.
    *
    * Optional id columns are used to uniquely identify rows to compare. If values in any non-id
-   * column are differing between the two Datasets, then that row is marked as `"C"`hange
+   * column are differing between two Datasets, then that row is marked as `"C"`hange
    * and `"N"`o-change otherwise. Rows of the right Dataset, that do not exist in the left Dataset
    * (w.r.t. the values in the id columns) are marked as `"I"`nsert. And rows of the left Dataset,
    * that do not exist in the right Dataset are marked as `"D"`elete.
@@ -294,48 +329,17 @@ class Differ(options: DiffOptions) {
    * columns of this Dataset are id columns and appear in the same order. The remaining non-id
    * columns are in the order of this Dataset.
    */
-  def diff[T](left: Dataset[T], right: Dataset[T], idColumns: Seq[String], ignoreColumns: Seq[String] = Seq.empty): DataFrame = {
-    checkSchema(left, right, idColumns: _*)
-
-    val pkColumns = if (idColumns.isEmpty) left.columns.toList else idColumns
-    val pkColumnsCs = pkColumns.map(handleConfiguredCaseSensitivity).toSet
-    val nonPkColumns = left.columns.filter(col => !pkColumnsCs.contains(handleConfiguredCaseSensitivity(col)))
-
-    val ignoreColumnsCs = ignoreColumns.map(handleConfiguredCaseSensitivity).toSet
-    val valueColumns = nonPkColumns.filter(col => !ignoreColumnsCs(handleConfiguredCaseSensitivity(col)))
-
-    val existsColumnName = distinctPrefixFor(left.columns) + "exists"
-    val leftWithExists = left.withColumn(existsColumnName, lit(1))
-    val rightWithExists = right.withColumn(existsColumnName, lit(1))
-    val joinCondition = pkColumns.map(c => leftWithExists(backticks(c)) <=> rightWithExists(backticks(c))).reduce(_ && _)
-    val unChanged = valueColumns.map(c => leftWithExists(backticks(c)) <=> rightWithExists(backticks(c))).reduceOption(_ && _)
-    val changeCondition = not(unChanged.getOrElse(lit(true)))
-
-    val diffActionColumn =
-      when(leftWithExists(existsColumnName).isNull, lit(options.insertDiffValue)).
-        when(rightWithExists(existsColumnName).isNull, lit(options.deleteDiffValue)).
-        when(changeCondition, lit(options.changeDiffValue)).
-        otherwise(lit(options.nochangeDiffValue)).
-        as(options.diffColumn)
-
-    val diffColumns = getDiffColumns(pkColumns, nonPkColumns, left, right)
-    val changeColumn = getChangeColumn(existsColumnName, valueColumns, leftWithExists, rightWithExists)
-        // turn this column into a sequence of one or none column so we can easily concat it below with diffActionColumn and diffColumns
-        .map(Seq(_))
-        .getOrElse(Seq.empty[Column])
-
-    leftWithExists.join(rightWithExists, joinCondition, "fullouter")
-      .select((diffActionColumn +: changeColumn) ++ diffColumns: _*)
-  }
+  def diff[T, U](left: Dataset[T], right: Dataset[U], idColumns: Seq[String], ignoreColumns: Seq[String] = Seq.empty): DataFrame =
+    doDiff(left, right, idColumns, ignoreColumns)
 
   /**
-   * Returns a new DataFrame that contains the differences between the two Datasets
-   * of the same type `T`. Both Datasets must contain the same set of column names and data types.
-   * The order of columns in the two Datasets is not important as columns are compared based on the
-   * name, not the the position.
+   * Returns a new DataFrame that contains the differences between two Datasets of
+   * similar types `T` and `U`. Both Datasets must contain the same set of column names and data types,
+   * except for the columns in `ignoreColumns`. The order of columns in the two Datasets is not relevant as
+   * columns are compared based on the name, not the the position.
    *
    * Optional id columns are used to uniquely identify rows to compare. If values in any non-id
-   * column are differing between the two Datasets, then that row is marked as `"C"`hange
+   * column are differing between two Datasets, then that row is marked as `"C"`hange
    * and `"N"`o-change otherwise. Rows of the right Dataset, that do not exist in the left Dataset
    * (w.r.t. the values in the id columns) are marked as `"I"`nsert. And rows of the left Dataset,
    * that do not exist in the right Dataset are marked as `"D"`elete.
@@ -383,58 +387,60 @@ class Differ(options: DiffOptions) {
    * columns of this Dataset are id columns and appear in the same order. The remaining non-id
    * columns are in the order of this Dataset.
    */
-  def diff[T](left: Dataset[T], right: Dataset[T], idColumns: java.util.List[String], ignoreColumns: java.util.List[String]): DataFrame = {
+  def diff[T, U](left: Dataset[T], right: Dataset[U], idColumns: java.util.List[String], ignoreColumns: java.util.List[String]): DataFrame = {
     diff(left, right, JavaConverters.iterableAsScalaIterable(idColumns).toSeq, JavaConverters.iterableAsScalaIterable(ignoreColumns).toSeq)
   }
 
   /**
-   * Returns a new Dataset that contains the differences between the two Datasets of the same type `T`.
+   * Returns a new Dataset that contains the differences between two Datasets of the same type `T`.
    *
-   * See `diff(Dataset[T], Dataset[T], String*)`.
+   * See `diff(Dataset[T], Dataset[U], String*)`.
    *
-   * This requires an additional implicit `Encoder[U]` for the return type `Dataset[U]`.
+   * This requires an additional implicit `Encoder[V]` for the return type `Dataset[V]`.
    */
   // no @scala.annotation.varargs here as implicit arguments are explicit in Java
   // this signature is redundant to the other diffAs method in Java
-  def diffAs[T, U](left: Dataset[T], right: Dataset[T], idColumns: String*)
-                  (implicit diffEncoder: Encoder[U]): Dataset[U] = {
+  def diffAs[T, U, V](left: Dataset[T], right: Dataset[T], idColumns: String*)
+                     (implicit diffEncoder: Encoder[V]): Dataset[V] = {
     diffAs(left, right, diffEncoder, idColumns: _*)
   }
 
   /**
-   * Returns a new Dataset that contains the differences between the two Datasets of the same type `T`.
+   * Returns a new Dataset that contains the differences between two Datasets of
+   * similar types `T` and `U`.
    *
-   * See `diff(Dataset[T], Dataset[T], Seq[String], Seq[String])`.
+   * See `diff(Dataset[T], Dataset[U], Seq[String], Seq[String])`.
    *
-   * This requires an additional implicit `Encoder[U]` for the return type `Dataset[U]`.
+   * This requires an additional implicit `Encoder[V]` for the return type `Dataset[V]`.
    */
-  def diffAs[T, U](left: Dataset[T], right: Dataset[T], idColumns: Seq[String], ignoreColumns: Seq[String] = Seq.empty)
-                  (implicit diffEncoder: Encoder[U]): Dataset[U] = {
+  def diffAs[T, U, V](left: Dataset[T], right: Dataset[U], idColumns: Seq[String], ignoreColumns: Seq[String] = Seq.empty)
+                     (implicit diffEncoder: Encoder[V]): Dataset[V] = {
     diffAs(left, right, diffEncoder, idColumns, ignoreColumns)
   }
 
   /**
-   * Returns a new Dataset that contains the differences between the two Datasets of the same type `T`.
+   * Returns a new Dataset that contains the differences between two Datasets of the same type `T`.
    *
    * See `diff(Dataset[T], Dataset[T], String*)`.
    *
-   * This requires an additional explicit `Encoder[U]` for the return type `Dataset[U]`.
+   * This requires an additional explicit `Encoder[V]` for the return type `Dataset[V]`.
    */
   @scala.annotation.varargs
-  def diffAs[T, U](left: Dataset[T], right: Dataset[T],
-                   diffEncoder: Encoder[U], idColumns: String*): Dataset[U] = {
+  def diffAs[T, V](left: Dataset[T], right: Dataset[T],
+                   diffEncoder: Encoder[V], idColumns: String*): Dataset[V] = {
     diffAs(left, right, diffEncoder, idColumns, Seq.empty)
   }
 
   /**
-   * Returns a new Dataset that contains the differences between the two Datasets of the same type `T`.
+   * Returns a new Dataset that contains the differences between two Datasets of
+   * similar types `T` and `U`.
    *
-   * See `of(Dataset[T], Dataset[T], Seq[String], Seq[String])`.
+   * See `of(Dataset[T], Dataset[U], Seq[String], Seq[String])`.
    *
-   * This requires an additional explicit `Encoder[U]` for the return type `Dataset[U]`.
+   * This requires an additional explicit `Encoder[V]` for the return type `Dataset[V]`.
    */
-  def diffAs[T, U](left: Dataset[T], right: Dataset[T],
-                   diffEncoder: Encoder[U], idColumns: Seq[String], ignoreColumns: Seq[String]): Dataset[U] = {
+  def diffAs[T, U, V](left: Dataset[T], right: Dataset[U],
+                      diffEncoder: Encoder[V], idColumns: Seq[String], ignoreColumns: Seq[String]): Dataset[V] = {
     val nonIdColumns = left.columns.diff(if (idColumns.isEmpty) left.columns.toList else idColumns)
     val encColumns = diffEncoder.schema.fields.map(_.name)
     val diffColumns = Seq(options.diffColumn) ++ idColumns ++ getDiffValueColumns(nonIdColumns, options.diffMode)
@@ -444,57 +450,55 @@ class Differ(options: DiffOptions) {
       s"Diff encoder's columns must be part of the diff result schema, " +
         s"these columns are unexpected: ${extraColumns.mkString(", ")}")
 
-    diff(left, right, idColumns, ignoreColumns).as[U](diffEncoder)
+    diff(left, right, idColumns, ignoreColumns).as[V](diffEncoder)
   }
 
   /**
-   * Returns a new Dataset that contains the differences between the two Datasets of the same type `T`.
+   * Returns a new Dataset that contains the differences between two Datasets of
+   * similar types `T` and `U`.
    *
-   * See `of(Dataset[T], Dataset[T], Seq[String], Seq[String])`.
+   * See `of(Dataset[T], Dataset[U], Seq[String], Seq[String])`.
    *
-   * This requires an additional explicit `Encoder[U]` for the return type `Dataset[U]`.
+   * This requires an additional explicit `Encoder[V]` for the return type `Dataset[V]`.
    */
-  def diffAs[T, U](left: Dataset[T], right: Dataset[T], diffEncoder: Encoder[U],
-                   idColumns: java.util.List[String], ignoreColumns: java.util.List[String]): Dataset[U] = {
+  def diffAs[T, U, V](left: Dataset[T], right: Dataset[U], diffEncoder: Encoder[V],
+                      idColumns: java.util.List[String], ignoreColumns: java.util.List[String]): Dataset[V] = {
     diffAs(left, right, diffEncoder,
       JavaConverters.iterableAsScalaIterable(idColumns).toSeq, JavaConverters.iterableAsScalaIterable(ignoreColumns).toSeq)
   }
 
   /**
-   * Returns a new Dataset that contains the differences
-   * between this and the other Dataset of the same type `T`
-   * as tuples of type `(String, T, T)`.
+   * Returns a new Dataset that contains the differences between two Dataset of
+   * the same type `T` as tuples of type `(String, T, T)`.
    *
    * See `diff(Dataset[T], Dataset[T], String*)`.
    */
   @scala.annotation.varargs
   def diffWith[T](left: Dataset[T], right: Dataset[T], idColumns: String*): Dataset[(String, T, T)] = {
     val df = diff(left, right, idColumns: _*)
-    diffWith(df, idColumns: _*)(left.encoder)
+    diffWith(df, idColumns: _*)(left.encoder, right.encoder)
   }
 
   /**
-   * Returns a new Dataset that contains the differences
-   * between this and the other Dataset of the same type `T`
-   * as tuples of type `(String, T, T)`.
+   * Returns a new Dataset that contains the differences between two Dataset of
+   * similar types `T` and `U` as tuples of type `(String, T, U)`.
    *
-   * See `diff(Dataset[T], Dataset[T], Seq[String], Seq[String])`.
+   * See `diff(Dataset[T], Dataset[U], Seq[String], Seq[String])`.
    */
-  def diffWith[T](left: Dataset[T], right: Dataset[T],
-                  idColumns: Seq[String], ignoreColumns: Seq[String]): Dataset[(String, T, T)] = {
+  def diffWith[T, U](left: Dataset[T], right: Dataset[U],
+                     idColumns: Seq[String], ignoreColumns: Seq[String]): Dataset[(String, T, U)] = {
     val df = diff(left, right, idColumns, ignoreColumns)
-    diffWith(df, idColumns: _*)(left.encoder)
+    diffWith(df, idColumns: _*)(left.encoder, right.encoder)
   }
 
   /**
-   * Returns a new Dataset that contains the differences
-   * between this and the other Dataset of the same type `T`
-   * as tuples of type `(String, T, T)`.
+   * Returns a new Dataset that contains the differences between two Dataset of
+   * similar types `T` and `U` as tuples of type `(String, T, U)`.
    *
-   * See `diff(Dataset[T], Dataset[T], Seq[String], Seq[String])`.
+   * See `diff(Dataset[T], Dataset[U], Seq[String], Seq[String])`.
    */
-  def diffWith[T](left: Dataset[T], right: Dataset[T],
-                  idColumns: java.util.List[String], ignoreColumns: java.util.List[String]): Dataset[(String, T, T)] = {
+  def diffWith[T, U](left: Dataset[T], right: Dataset[U],
+                     idColumns: java.util.List[String], ignoreColumns: java.util.List[String]): Dataset[(String, T, U)] = {
     diffWith(left, right,
       JavaConverters.iterableAsScalaIterable(idColumns).toSeq, JavaConverters.iterableAsScalaIterable(ignoreColumns).toSeq)
   }
@@ -506,7 +510,7 @@ class Differ(options: DiffOptions) {
       .map(c => if (idColumns.contains(c)) col(c) else col(c).as(c.replace(prefix, "")))
   }
 
-  private def diffWith[T : Encoder](diff: DataFrame, idColumns: String*): Dataset[(String, T, T)] = {
+  private def diffWith[T : Encoder, U : Encoder](diff: DataFrame, idColumns: String*): Dataset[(String, T, U)] = {
     val leftColumns = columnsOfSide(diff, idColumns, options.leftColumnPrefix)
     val rightColumns = columnsOfSide(diff, idColumns, options.rightColumnPrefix)
 
@@ -520,8 +524,8 @@ class Differ(options: DiffOptions) {
 
     val plan = diff.select(diffColumn, leftStruct, rightStruct).queryExecution.logical
 
-    val encoder: Encoder[(String, T, T)] = Encoders.tuple(
-      Encoders.STRING, implicitly[Encoder[T]], implicitly[Encoder[T]]
+    val encoder: Encoder[(String, T, U)] = Encoders.tuple(
+      Encoders.STRING, implicitly[Encoder[T]], implicitly[Encoder[U]]
     )
 
     new Dataset(diff.sparkSession, plan, encoder)
@@ -536,13 +540,13 @@ object Diff {
   val default = new Differ(DiffOptions.default)
 
   /**
-   * Returns a new DataFrame that contains the differences between the two Datasets
+   * Returns a new DataFrame that contains the differences between two Datasets
    * of the same type `T`. Both Datasets must contain the same set of column names and data types.
-   * The order of columns in the two Datasets is not important as columns are compared based on the
+   * The order of columns in the two Datasets is not relevant as columns are compared based on the
    * name, not the the position.
    *
    * Optional id columns are used to uniquely identify rows to compare. If values in any non-id
-   * column are differing between the two Datasets, then that row is marked as `"C"`hange
+   * column are differing between two Datasets, then that row is marked as `"C"`hange
    * and `"N"`o-change otherwise. Rows of the right Dataset, that do not exist in the left Dataset
    * (w.r.t. the values in the id columns) are marked as `"I"`nsert. And rows of the left Dataset,
    * that do not exist in the right Dataset are marked as `"D"`elete.
@@ -593,13 +597,13 @@ object Diff {
     default.diff(left, right, idColumns: _*)
 
   /**
-   * Returns a new DataFrame that contains the differences between the two Datasets
-   * of the same type `T`. Both Datasets must contain the same set of column names and data types.
-   * The order of columns in the two Datasets is not important as columns are compared based on the
-   * name, not the the position.
+   * Returns a new DataFrame that contains the differences between two Datasets of
+   * similar types `T` and `U`. Both Datasets must contain the same set of column names and data types,
+   * except for the columns in `ignoreColumns`. The order of columns in the two Datasets is not important as
+   * columns are compared based on the name, not the the position.
    *
    * Optional id columns are used to uniquely identify rows to compare. If values in any non-id
-   * column are differing between the two Datasets, then that row is marked as `"C"`hange
+   * column are differing between two Datasets, then that row is marked as `"C"`hange
    * and `"N"`o-change otherwise. Rows of the right Dataset, that do not exist in the left Dataset
    * (w.r.t. the values in the id columns) are marked as `"I"`nsert. And rows of the left Dataset,
    * that do not exist in the right Dataset are marked as `"D"`elete.
@@ -647,17 +651,17 @@ object Diff {
    * columns of this Dataset are id columns and appear in the same order. The remaining non-id
    * columns are in the order of this Dataset.
    */
-  def of[T](left: Dataset[T], right: Dataset[T], idColumns: Seq[String], ignoreColumns: Seq[String] = Seq.empty): DataFrame =
+  def of[T, U](left: Dataset[T], right: Dataset[U], idColumns: Seq[String], ignoreColumns: Seq[String] = Seq.empty): DataFrame =
     default.diff(left, right, idColumns, ignoreColumns)
 
   /**
-   * Returns a new DataFrame that contains the differences between the two Datasets
-   * of the same type `T`. Both Datasets must contain the same set of column names and data types.
-   * The order of columns in the two Datasets is not important as columns are compared based on the
-   * name, not the the position.
+   * Returns a new DataFrame that contains the differences between two Datasets of
+   * similar types `T` and `U`. Both Datasets must contain the same set of column names and data types,
+   * except for the columns in `ignoreColumns`. The order of columns in the two Datasets is not important as
+   * columns are compared based on the name, not the the position.
    *
    * Optional id columns are used to uniquely identify rows to compare. If values in any non-id
-   * column are differing between the two Datasets, then that row is marked as `"C"`hange
+   * column are differing between two Datasets, then that row is marked as `"C"`hange
    * and `"N"`o-change otherwise. Rows of the right Dataset, that do not exist in the left Dataset
    * (w.r.t. the values in the id columns) are marked as `"I"`nsert. And rows of the left Dataset,
    * that do not exist in the right Dataset are marked as `"D"`elete.
@@ -705,71 +709,75 @@ object Diff {
    * columns of this Dataset are id columns and appear in the same order. The remaining non-id
    * columns are in the order of this Dataset.
    */
-  def of[T](left: Dataset[T], right: Dataset[T], idColumns: java.util.List[String], ignoreColumns: java.util.List[String]): DataFrame =
+  def of[T, U](left: Dataset[T], right: Dataset[U], idColumns: java.util.List[String], ignoreColumns: java.util.List[String]): DataFrame =
     default.diff(left, right, idColumns, ignoreColumns)
 
   /**
-   * Returns a new Dataset that contains the differences between the two Datasets of the same type `T`.
+   * Returns a new Dataset that contains the differences between two Datasets of
+   * the same type `T`.
    *
    * See `of(Dataset[T], Dataset[T], String*)`.
    *
-   * This requires an additional implicit `Encoder[U]` for the return type `Dataset[U]`.
+   * This requires an additional implicit `Encoder[V]` for the return type `Dataset[V]`.
    */
   // no @scala.annotation.varargs here as implicit arguments are explicit in Java
   // this signature is redundant to the other ofAs method in Java
-  def ofAs[T, U](left: Dataset[T], right: Dataset[T], idColumns: String*)
-                (implicit diffEncoder: Encoder[U]): Dataset[U] =
+  def ofAs[T, V](left: Dataset[T], right: Dataset[T], idColumns: String*)
+                (implicit diffEncoder: Encoder[V]): Dataset[V] =
     default.diffAs(left, right, idColumns: _*)
 
   /**
-   * Returns a new Dataset that contains the differences between the two Datasets of the same type `T`.
+   * Returns a new DataFrame that contains the differences between two Datasets of
+   * similar types `T` and `U`.
    *
-   * See `of(Dataset[T], Dataset[T], Seq[String], Seq[String])`.
+   * See `of(Dataset[T], Dataset[U], Seq[String], Seq[String])`.
    *
-   * This requires an additional implicit `Encoder[U]` for the return type `Dataset[U]`.
+   * This requires an additional implicit `Encoder[V]` for the return type `Dataset[V]`.
    */
-  def ofAs[T, U](left: Dataset[T], right: Dataset[T], idColumns: Seq[String], ignoreColumns: Seq[String] = Seq.empty)
-                (implicit diffEncoder: Encoder[U]): Dataset[U] =
+  def ofAs[T, U, V](left: Dataset[T], right: Dataset[U], idColumns: Seq[String], ignoreColumns: Seq[String] = Seq.empty)
+                   (implicit diffEncoder: Encoder[V]): Dataset[V] =
     default.diffAs(left, right, idColumns, ignoreColumns)
 
   /**
-   * Returns a new Dataset that contains the differences between the two Datasets of the same type `T`.
+   * Returns a new Dataset that contains the differences between two Datasets of
+   * the same type `T`.
    *
    * See `of(Dataset[T], Dataset[T], String*)`.
    *
-   * This requires an additional explicit `Encoder[U]` for the return type `Dataset[U]`.
+   * This requires an additional explicit `Encoder[V]` for the return type `Dataset[V]`.
    */
   @scala.annotation.varargs
-  def ofAs[T, U](left: Dataset[T], right: Dataset[T],
-                 diffEncoder: Encoder[U], idColumns: String*): Dataset[U] =
+  def ofAs[T, V](left: Dataset[T], right: Dataset[T],
+                 diffEncoder: Encoder[V], idColumns: String*): Dataset[V] =
     default.diffAs(left, right, diffEncoder, idColumns: _*)
 
   /**
-   * Returns a new Dataset that contains the differences between the two Datasets of the same type `T`.
+   * Returns a new DataFrame that contains the differences between two Datasets of
+   * similar types `T` and `U`.
    *
-   * See `of(Dataset[T], Dataset[T], Seq[String], Seq[String])`.
+   * See `of(Dataset[T], Dataset[U], Seq[String], Seq[String])`.
    *
-   * This requires an additional explicit `Encoder[U]` for the return type `Dataset[U]`.
+   * This requires an additional explicit `Encoder[V]` for the return type `Dataset[V]`.
    */
-  def ofAs[T, U](left: Dataset[T], right: Dataset[T],
-                 diffEncoder: Encoder[U], idColumns: Seq[String], ignoreColumns: Seq[String]): Dataset[U] =
+  def ofAs[T, U, V](left: Dataset[T], right: Dataset[U],
+                    diffEncoder: Encoder[V], idColumns: Seq[String], ignoreColumns: Seq[String]): Dataset[V] =
     default.diffAs(left, right, diffEncoder, idColumns, ignoreColumns)
 
   /**
-   * Returns a new Dataset that contains the differences between the two Datasets of the same type `T`.
+   * Returns a new DataFrame that contains the differences between two Datasets of
+   * similar types `T` and `U`.
    *
-   * See `of(Dataset[T], Dataset[T], Seq[String], Seq[String])`.
+   * See `of(Dataset[T], Dataset[U], Seq[String], Seq[String])`.
    *
-   * This requires an additional explicit `Encoder[U]` for the return type `Dataset[U]`.
+   * This requires an additional explicit `Encoder[V]` for the return type `Dataset[V]`.
    */
-  def ofAs[T, U](left: Dataset[T], right: Dataset[T], diffEncoder: Encoder[U],
-                 idColumns: java.util.List[String], ignoreColumns: java.util.List[String]): Dataset[U] =
+  def ofAs[T, U, V](left: Dataset[T], right: Dataset[U], diffEncoder: Encoder[V],
+                    idColumns: java.util.List[String], ignoreColumns: java.util.List[String]): Dataset[V] =
     default.diffAs(left, right, diffEncoder, idColumns, ignoreColumns)
 
   /**
-   * Returns a new Dataset that contains the differences
-   * between this and the other Dataset of the same type `T`
-   * as tuples of type `(String, T, T)`.
+   * Returns a new Dataset that contains the differences between two Dataset of
+   * the same type `T` as tuples of type `(String, T, T)`.
    *
    * See `of(Dataset[T], Dataset[T], String*)`.
    */
@@ -778,24 +786,22 @@ object Diff {
     default.diffWith(left, right, idColumns: _*)
 
   /**
-   * Returns a new Dataset that contains the differences
-   * between this and the other Dataset of the same type `T`
-   * as tuples of type `(String, T, T)`.
+   * Returns a new DataFrame that contains the differences between two Datasets of
+   * similar types `T` and `U` as tuples of type `(String, T, U)`.
    *
-   * See `of(Dataset[T], Dataset[T], Seq[String], Seq[String])`.
+   * See `of(Dataset[T], Dataset[U], Seq[String], Seq[String])`.
    */
-  def ofWith[T](left: Dataset[T], right: Dataset[T],
-                idColumns: Seq[String], ignoreColumns: Seq[String]): Dataset[(String, T, T)] =
+  def ofWith[T, U](left: Dataset[T], right: Dataset[U],
+                   idColumns: Seq[String], ignoreColumns: Seq[String]): Dataset[(String, T, U)] =
     default.diffWith(left, right, idColumns, ignoreColumns)
 
   /**
-   * Returns a new Dataset that contains the differences
-   * between this and the other Dataset of the same type `T`
-   * as tuples of type `(String, T, T)`.
+   * Returns a new DataFrame that contains the differences between two Datasets of
+   * similar types `T` and `U` as tuples of type `(String, T, U)`.
    *
-   * See `of(Dataset[T], Dataset[T], Seq[String], Seq[String])`.
+   * See `of(Dataset[T], Dataset[U], Seq[String], Seq[String])`.
    */
-  def ofWith[T](left: Dataset[T], right: Dataset[T],
-                idColumns: java.util.List[String], ignoreColumns: java.util.List[String]): Dataset[(String, T, T)] =
+  def ofWith[T, U](left: Dataset[T], right: Dataset[U],
+                   idColumns: java.util.List[String], ignoreColumns: java.util.List[String]): Dataset[(String, T, U)] =
     default.diffWith(left, right, idColumns, ignoreColumns)
 }
