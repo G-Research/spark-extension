@@ -83,7 +83,7 @@ jobs:
           distribution: 'zulu'
 
       - name: Build
-        run: mvn --batch-mode --update-snapshots compile test-compile package -DskipTests
+        run: mvn --batch-mode --update-snapshots compile test-compile package -DskipTests -Dmaven.test.skip=true
 
       - name: Upload Binaries
         uses: actions/upload-artifact@v3
