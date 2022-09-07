@@ -1281,18 +1281,20 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
   }
 
   test("diffWith") {
-    val actual = left.diffWith(right, "id").collect()
-    assertDiffWith(actual, Seq(
+    val expected = Seq(
       ("N", Value(1, Some("one")), Value(1, Some("one"))),
       ("I", null, Value(4, Some("four"))),
       ("C", Value(2, Some("two")), Value(2, Some("Two"))),
       ("D", Value(3, Some("three")), null)
-    ))
+    )
+
+    assertDiffWith(left.diffWith(right, "id").collect(), expected)
+    assertDiffWith(Diff.ofWith(left, right, "id").collect(), expected)
+    assertDiffWith(Diff.default.diffWith(left, right, "id").collect(), expected)
   }
 
   test("diffWith ignored") {
-    val actual = left8.diffWith(right8, Seq("id", "seq"), Seq("meta")).collect()
-    assertDiffWith(actual, expectedDiff8.map(row => (
+    val expected = expectedDiff8.map(row => (
       row.getString(0),
       Value8(row.getInt(1), Option(row.get(2)).map(_.asInstanceOf[Int]), Option(row.getString(3)), Option(row.getString(5))),
       Value8(row.getInt(1), Option(row.get(2)).map(_.asInstanceOf[Int]), Option(row.getString(4)), Option(row.getString(6)))
@@ -1300,33 +1302,42 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
       diff,
       if (diff == "I") null else left,
       if (diff == "D") null else right
-    )})
+    )}
+
+    assertDiffWith(left8.diffWith(right8, Seq("id", "seq"), Seq("meta")).collect(), expected)
+    assertDiffWith(Diff.ofWith(left8, right8, Seq("id", "seq"), Seq("meta")).collect(), expected)
+    assertDiffWith(Diff.default.diffWith(left8, right8, Seq("id", "seq"), Seq("meta")).collect(), expected)
   }
 
   test("diffWith left-prefixed id") {
     val prefixedLeft = left.select($"id".as("left_id"), $"value").as[ValueLeft]
     val prefixedRight = right.select($"id".as("left_id"), $"value").as[ValueLeft]
 
-    val actual = prefixedLeft.diffWith(prefixedRight, "left_id").collect()
-    assertDiffWith(actual, Seq(
+    val expected = Seq(
       ("N", ValueLeft(1, Some("one")), ValueLeft(1, Some("one"))),
       ("I", null, ValueLeft(4, Some("four"))),
       ("C", ValueLeft(2, Some("two")), ValueLeft(2, Some("Two"))),
       ("D", ValueLeft(3, Some("three")), null)
-    ))
+    )
+
+    assertDiffWith(prefixedLeft.diffWith(prefixedRight, "left_id").collect(), expected)
+    assertDiffWith(Diff.ofWith(prefixedLeft, prefixedRight, "left_id").collect(), expected)
+    assertDiffWith(Diff.default.diffWith(prefixedLeft, prefixedRight, "left_id").collect(), expected)
   }
 
   test("diffWith right-prefixed id") {
     val prefixedLeft = left.select($"id".as("right_id"), $"value").as[ValueRight]
     val prefixedRight = right.select($"id".as("right_id"), $"value").as[ValueRight]
 
-    val actual = prefixedLeft.diffWith(prefixedRight, "right_id").collect()
-    assertDiffWith(actual, Seq(
+    val expected = Seq(
       ("N", ValueRight(1, Some("one")), ValueRight(1, Some("one"))),
       ("I", null, ValueRight(4, Some("four"))),
       ("C", ValueRight(2, Some("two")), ValueRight(2, Some("Two"))),
       ("D", ValueRight(3, Some("three")), null)
-    ))
+    )
+    assertDiffWith(prefixedLeft.diffWith(prefixedRight, "right_id").collect(), expected)
+    assertDiffWith(Diff.ofWith(prefixedLeft, prefixedRight, "right_id").collect(), expected)
+    assertDiffWith(Diff.default.diffWith(prefixedLeft, prefixedRight, "right_id").collect(), expected)
   }
 
   def doTestRequirement(f: => Any, expected: String): Unit = {
