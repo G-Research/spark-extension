@@ -65,12 +65,6 @@ jobs:
             scala-version: '2.13.8'
 
     steps:
-      - name: Cache Maven packages
-        uses: actions/cache@v3
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-mvn-build-${{ matrix.spark-version }}-${{ matrix.scala-version }}
-
       - name: Checkout
         uses: actions/checkout@v3
 
@@ -78,6 +72,12 @@ jobs:
         run: |
           ./set-version.sh ${{ matrix.spark-version }} ${{ matrix.scala-version }}
           git diff
+
+      - name: Cache Maven packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-mvn-build-${{ matrix.spark-version }}-${{ matrix.scala-version }}-${{ hashFiles('pom.xml') }}
 
       - name: Setup JDK 1.8
         uses: actions/setup-java@v3
@@ -167,12 +167,6 @@ jobs:
             python-version: '3.7'
 
     steps:
-      - name: Cache Maven packages
-        uses: actions/cache@v3
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-mvn-build-${{ matrix.spark-version }}-${{ matrix.scala-version }}
-
       - name: Checkout
         uses: actions/checkout@v3
 
@@ -186,6 +180,12 @@ jobs:
         with:
           name: Binaries-${{ matrix.spark-version }}-${{ matrix.scala-version }}
           path: .
+
+      - name: Cache Maven packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-mvn-build-${{ matrix.spark-version }}-${{ matrix.scala-version }}-${{ hashFiles('pom.xml') }}
 
       - name: Setup JDK 1.8
         uses: actions/setup-java@v3
