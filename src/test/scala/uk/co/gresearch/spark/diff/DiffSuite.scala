@@ -1362,18 +1362,25 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
   }
 
   test("diff similar with ignored columns") {
-    val diffColumns = Seq("left_value", "right_value", "left_meta", "right_info")
-/**
-    assertIgnoredColumns(left8.diff(right9, Seq("id", "seq"), Seq("meta", "info")), expectedDiff8and9, diffColumns = diffColumns)
-    assertIgnoredColumns(Diff.of(left8, right9, Seq("id", "seq"), Seq("meta", "info")), expectedDiff8and9, diffColumns = diffColumns)
-    assertIgnoredColumns(Diff.default.diff(left8, right9, Seq("id", "seq"), Seq("meta", "info")), expectedDiff8and9, diffColumns = diffColumns)
-
-    assertIgnoredColumns[DiffAs8and9](left8.diffAs(right9, Seq("id", "seq"), Seq("meta", "info")), expectedDiffAs8and9, diffColumns = diffColumns)
-    assertIgnoredColumns[DiffAs8and9](Diff.ofAs(left8, right9, Seq("id", "seq"), Seq("meta", "info")), expectedDiffAs8and9, diffColumns = diffColumns)
-    assertIgnoredColumns[DiffAs8and9](Diff.default.diffAs(left8, right9, Seq("id", "seq"), Seq("meta", "info")), expectedDiffAs8and9, diffColumns = diffColumns)
-**/
-
     val expectedSchema = StructType(Seq(
+      StructField("diff", StringType),
+      StructField("id", IntegerType),
+      StructField("seq", IntegerType),
+      StructField("left_value", StringType),
+      StructField("right_value", StringType),
+      StructField("left_meta", StringType),
+      StructField("right_info", StringType),
+    ))
+
+    assertIgnoredColumns(left8.diff(right9, Seq("id", "seq"), Seq("meta", "info")), expectedDiff8and9, expectedSchema)
+    assertIgnoredColumns(Diff.of(left8, right9, Seq("id", "seq"), Seq("meta", "info")), expectedDiff8and9, expectedSchema)
+    assertIgnoredColumns(Diff.default.diff(left8, right9, Seq("id", "seq"), Seq("meta", "info")), expectedDiff8and9, expectedSchema)
+
+    assertIgnoredColumns[DiffAs8and9](left8.diffAs(right9, Seq("id", "seq"), Seq("meta", "info")), expectedDiffAs8and9, expectedSchema)
+    assertIgnoredColumns[DiffAs8and9](Diff.ofAs(left8, right9, Seq("id", "seq"), Seq("meta", "info")), expectedDiffAs8and9, expectedSchema)
+    assertIgnoredColumns[DiffAs8and9](Diff.default.diffAs(left8, right9, Seq("id", "seq"), Seq("meta", "info")), expectedDiffAs8and9, expectedSchema)
+
+    val expectedSchemaWith = StructType(Seq(
       StructField("_1", StringType),
       StructField("_2", StructType(Seq(
         StructField("id", IntegerType, nullable = true),
@@ -1389,13 +1396,13 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
       ))),
     ))
 
-    assertDiffWithSchema(left8.diffWith(right9, Seq("id", "seq"), Seq("meta", "info")), expectedDiffWith8and9, expectedSchema)
-    assertDiffWithSchema(Diff.ofWith(left8, right9, Seq("id", "seq"), Seq("meta", "info")), expectedDiffWith8and9, expectedSchema)
-    assertDiffWithSchema(Diff.default.diffWith(left8, right9, Seq("id", "seq"), Seq("meta", "info")), expectedDiffWith8and9, expectedSchema)
+    assertDiffWithSchema(left8.diffWith(right9, Seq("id", "seq"), Seq("meta", "info")), expectedDiffWith8and9, expectedSchemaWith)
+    assertDiffWithSchema(Diff.ofWith(left8, right9, Seq("id", "seq"), Seq("meta", "info")), expectedDiffWith8and9, expectedSchemaWith)
+    assertDiffWithSchema(Diff.default.diffWith(left8, right9, Seq("id", "seq"), Seq("meta", "info")), expectedDiffWith8and9, expectedSchemaWith)
   }
 
   test("diff similar with ignored columns of different type") {
-
+    // TODO
   }
 
   test("diff with ignored columns case-insensitive") {
