@@ -1114,13 +1114,13 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
   test("diff with left-side diff mode and diff column name in value columns") {
     val options = DiffOptions.default.withDiffColumn("value").withDiffMode(DiffMode.LeftSide)
     doTestRequirement(left.diff(right, options, "id"),
-      "The non-id columns must not contain the diff column name 'value': value")
+      "The left non-id columns must not contain the diff column name 'value': value")
   }
 
   test("diff with right-side diff mode and diff column name in value columns") {
     val options = DiffOptions.default.withDiffColumn("value").withDiffMode(DiffMode.RightSide)
     doTestRequirement(right.diff(right, options, "id"),
-      "The non-id columns must not contain the diff column name 'value': value")
+      "The right non-id columns must not contain the diff column name 'value': value")
   }
 
   test("diff with left-side diff mode and change column name in value columns") {
