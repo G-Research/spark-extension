@@ -852,6 +852,14 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     doTestRequirement(left.diff(right), "The schema must not be empty")
   }
 
+  test("diff similar with ignored columns and empty schema") {
+    val left = Seq((1, "info")).toDF("id", "info")
+    val right = Seq((1, "meta")).toDF("id", "meta")
+
+    doTestRequirement(left.diff(right, Seq.empty, Seq("id", "info", "meta")),
+      "The schema except ignored columns must not be empty")
+  }
+
   test("diff with different types") {
     // different value types only compiles with DataFrames
     val left = Seq((1, "str")).toDF("id", "value")
@@ -940,7 +948,7 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
       "Some id columns do not exist: does not exists missing among id, value")
   }
 
-  test("diff with different number of column") {
+  test("diff with different number of columns") {
     // different column names only compiles with DataFrames
     val left = Seq((1, "str")).toDF("id", "value")
     val right = Seq((1, 1, "str")).toDF("id", "seq", "value")
@@ -949,6 +957,16 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
       "The number of columns doesn't match.\n" +
         "Left column names (2): id, value\n" +
         "Right column names (3): id, seq, value")
+  }
+
+  test("diff similar with ignored column and different number of columns") {
+    val left = Seq((1, "str", "meta")).toDF("id", "value", "meta")
+    val right = Seq((1, 1, "str")).toDF("id", "seq", "value")
+
+    doTestRequirement(left.diff(right, Seq("id"), Seq("meta")),
+      "The number of columns doesn't match.\n" +
+        "Left column names except ignored columns (2): id, value\n" +
+        "Right column names except ignored columns (3): id, seq, value")
   }
 
   test("diff as U") {

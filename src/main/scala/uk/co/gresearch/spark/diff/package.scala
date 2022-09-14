@@ -37,8 +37,8 @@ package object diff {
      * (w.r.t. the values in the id columns) are marked as `"I"`nsert. And rows of this Dataset, that
      * do not exist in the other Dataset are marked as `"D"`elete.
      *
-     * If no id columns are given, all columns are considered id columns. Then, no `"C"`hange rows
-     * will appear, as all changes will exists as respective `"D"`elete and `"I"`nsert.
+     * If no id columns are given (empty sequence), all columns are considered id columns. Then,
+     * no `"C"`hange rows will appear, as all changes will exists as respective `"D"`elete and `"I"`nsert.
      *
      * The returned DataFrame has the `diff` column as the first column. This holds the `"N"`, `"C"`,
      * `"I"` or `"D"` strings. The id columns follow, then the non-id columns (all remaining columns).
@@ -98,8 +98,8 @@ package object diff {
      * (w.r.t. the values in the id columns) are marked as `"I"`nsert. And rows of this Dataset, that
      * do not exist in the other Dataset are marked as `"D"`elete.
      *
-     * If no id columns are given, all columns are considered id columns. Then, no `"C"`hange rows
-     * will appear, as all changes will exists as respective `"D"`elete and `"I"`nsert.
+     * If no id columns are given (empty sequence), all columns are considered id columns. Then,
+     * no `"C"`hange rows will appear, as all changes will exists as respective `"D"`elete and `"I"`nsert.
      *
      * Values in optional ignore columns are not compared but included in the output DataFrame.
      *

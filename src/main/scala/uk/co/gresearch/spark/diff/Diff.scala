@@ -83,12 +83,10 @@ class Differ(options: DiffOptions) {
           s"non-id columns must not contain the diff column name '${options.diffColumn}': " +
           s"${(if (options.diffMode == DiffMode.LeftSide) left else right).columns.diffCaseSensitivity(idColumns).mkString(", ")}")
 
-      options.changeColumn.foreach( changeColumn =>
-        require(!diffValueColumns.contains(changeColumn),
-          s"The ${if (options.diffMode == DiffMode.LeftSide) "left" else "right"} " +
-            s"non-id columns must not contain the change column name '${options.changeColumn.get}': " +
-            s"${(if (options.diffMode == DiffMode.LeftSide) left else right).columns.diffCaseSensitivity(idColumns).mkString(", ")}")
-      )
+      require(options.changeColumn.forall(!diffValueColumns.containsCaseSensitivity(_)),
+        s"The ${if (options.diffMode == DiffMode.LeftSide) "left" else "right"} " +
+          s"non-id columns must not contain the change column name '${options.changeColumn.get}': " +
+          s"${(if (options.diffMode == DiffMode.LeftSide) left else right).columns.diffCaseSensitivity(idColumns).mkString(", ")}")
     } else {
       require(!diffValueColumns.containsCaseSensitivity(options.diffColumn),
         s"The column prefixes '${options.leftColumnPrefix}' and '${options.rightColumnPrefix}', " +
@@ -96,13 +94,11 @@ class Differ(options: DiffOptions) {
           s"must not produce the diff column name '${options.diffColumn}': " +
           s"${nonPkColumns.mkString(", ")}")
 
-      options.changeColumn.foreach( changeColumn =>
-        require(!diffValueColumns.containsCaseSensitivity(changeColumn),
-          s"The column prefixes '${options.leftColumnPrefix}' and '${options.rightColumnPrefix}', " +
-            s"together with these non-id columns " +
-            s"must not produce the change column name '${changeColumn}': " +
-            s"${nonPkColumns.mkString(", ")}")
-      )
+      require(options.changeColumn.forall(!diffValueColumns.containsCaseSensitivity(_)),
+        s"The column prefixes '${options.leftColumnPrefix}' and '${options.rightColumnPrefix}', " +
+          s"together with these non-id columns " +
+          s"must not produce the change column name '${options.changeColumn.orNull}': " +
+          s"${nonPkColumns.mkString(", ")}")
 
       require(diffValueColumns.forall(!pkColumns.containsCaseSensitivity(_)),
         s"The column prefixes '${options.leftColumnPrefix}' and '${options.rightColumnPrefix}', " +
