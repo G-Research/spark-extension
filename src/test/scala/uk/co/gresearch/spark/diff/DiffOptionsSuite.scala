@@ -17,6 +17,7 @@
 package uk.co.gresearch.spark.diff
 
 import org.apache.spark.sql.internal.SQLConf
+import org.apache.spark.sql.types._
 import org.scalatest.funsuite.AnyFunSuite
 import uk.co.gresearch.spark.SparkTestSession
 
@@ -105,6 +106,24 @@ class DiffOptionsSuite extends AnyFunSuite with SparkTestSession {
     }
   }
 
+  test("diff options with comparators") {
+    val cmp1 = new DiffComparator { }
+    val cmp2 = new DiffComparator { }
+    val cmp3 = new DiffComparator { }
+
+    val options = DiffOptions.default
+      .withComparator(cmp1, IntegerType)
+      .withComparator(cmp2, DoubleType)
+      .withComparator(cmp3, "col1", "col2")
+
+    assert(options.comparatorFor(StructField("col1", IntegerType)) === Some(cmp3))
+    assert(options.comparatorFor(StructField("col1", LongType)) === Some(cmp3))
+    assert(options.comparatorFor(StructField("col2", StringType)) === Some(cmp3))
+    assert(options.comparatorFor(StructField("col3", IntegerType)) === Some(cmp1))
+    assert(options.comparatorFor(StructField("col4", DoubleType)) === Some(cmp2))
+    assert(options.comparatorFor(StructField("col5", LongType)) === None)
+  }
+
   test("fluent methods of diff options") {
     assert(DiffMode.Default != DiffMode.LeftSide, "test assumption on default diff mode must hold, otherwise test is trivial")
 
@@ -119,8 +138,12 @@ class DiffOptionsSuite extends AnyFunSuite with SparkTestSession {
       .withChangeColumn("change")
       .withDiffMode(DiffMode.LeftSide)
       .withSparseMode(true)
+      .withComparator(null, IntegerType)
+      .withComparator(null, "col1")
 
-    val expected = DiffOptions("d", "l", "r", "i", "c", "d", "n", Some("change"), DiffMode.LeftSide, true)
+    val expectedDtCmps = Map(IntegerType.asInstanceOf[DataType] -> null)
+    val expectedColCmps = Map("col1" -> null)
+    val expected = DiffOptions("d", "l", "r", "i", "c", "d", "n", Some("change"), DiffMode.LeftSide, true, expectedDtCmps, expectedColCmps)
     assert(options === expected)
   }
 

@@ -23,6 +23,7 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import scala.Tuple3;
+import scala.collection.immutable.Map$;
 
 import java.util.Arrays;
 import java.util.Collections;

@@ -16,8 +16,11 @@
 
 package uk.co.gresearch.spark.diff
 
+import org.apache.spark.sql.types.{DataType, StructField, StructType}
 import uk.co.gresearch.spark.diff
 import uk.co.gresearch.spark.diff.DiffMode.{Default, DiffMode}
+
+import scala.annotation.varargs
 
 /**
  * The diff mode determines the output columns of the diffing transformation.
@@ -76,6 +79,8 @@ object DiffMode extends Enumeration {
  * @param changeColumn name of change column
  * @param diffMode diff output format
  * @param sparseMode un-changed values are null on both sides
+ * @param dataTypeComparators custom comparator for some data type
+ * @param columnNameComparators custom comparator for some column name
  */
 case class DiffOptions(diffColumn: String,
                        leftColumnPrefix: String,
@@ -86,7 +91,33 @@ case class DiffOptions(diffColumn: String,
                        nochangeDiffValue: String,
                        changeColumn: Option[String] = None,
                        diffMode: DiffMode = Default,
-                       sparseMode: Boolean = false) {
+                       sparseMode: Boolean = false,
+                       dataTypeComparators: Map[DataType, DiffComparator] = Map.empty,
+                       columnNameComparators: Map[String, DiffComparator] = Map.empty) {
+  def this(diffColumn: String,
+           leftColumnPrefix: String,
+           rightColumnPrefix: String,
+           insertDiffValue: String,
+           changeDiffValue: String,
+           deleteDiffValue: String,
+           nochangeDiffValue: String,
+           changeColumn: Option[String],
+           diffMode: DiffMode,
+           sparseMode: Boolean) = {
+    this(
+      diffColumn,
+      leftColumnPrefix,
+      rightColumnPrefix,
+      insertDiffValue,
+      changeDiffValue,
+      deleteDiffValue,
+      nochangeDiffValue,
+      changeColumn,
+      diffMode,
+      sparseMode,
+      Map.empty,
+      Map.empty)
+  }
 
   require(leftColumnPrefix.nonEmpty, "Left column prefix must not be empty")
   require(rightColumnPrefix.nonEmpty, "Right column prefix must not be empty")
@@ -207,11 +238,42 @@ case class DiffOptions(diffColumn: String,
     this.copy(sparseMode = sparseMode)
   }
 
+  /**
+   * Fluent method to add a comparator for a data type.
+   * Returns a new immutable DiffOptions instance with the new sparse mode.
+   * @return new immutable DiffOptions instance
+   */
+  def withComparator(diffComparator: DiffComparator, dataType: DataType): DiffOptions = {
+    if (dataTypeComparators.contains(dataType)) {
+      throw new IllegalArgumentException(s"A comparator for data type $dataType exists already: ${dataTypeComparators.get(dataType)}")
+    }
+    this.copy(dataTypeComparators = dataTypeComparators + (dataType -> diffComparator))
+  }
+
+  /**
+   * Fluent method to add a comparator for a data type.
+   * Returns a new immutable DiffOptions instance with the new sparse mode.
+   * @return new immutable DiffOptions instance
+   */
+  @varargs
+  def withComparator(diffComparator: DiffComparator, columnName: String*): DiffOptions = {
+    val existingColumnNames = columnName.filter(columnNameComparators.contains)
+    if (existingColumnNames.nonEmpty) {
+      throw new IllegalArgumentException(
+        s"A comparator for column name${if (existingColumnNames.length > 1) "s" else ""} ${existingColumnNames.mkString(", ")} " +
+          s"exist${if (existingColumnNames.length == 1) "s" else ""} already.")
+    }
+    this.copy(columnNameComparators = columnNameComparators ++ columnName.map(name => name -> diffComparator))
+  }
+
+  private[diff] def comparatorFor(column: StructField): Option[DiffComparator] =
+    columnNameComparators.get(column.name)
+      .orElse(dataTypeComparators.get(column.dataType))
 }
 
 object DiffOptions {
   /**
    * Default diffing options.
    */
-  val default: DiffOptions = DiffOptions("diff", "left", "right", "I", "C", "D", "N", None, Default, false)
+  val default: DiffOptions = DiffOptions("diff", "left", "right", "I", "C", "D", "N", None, Default, false, Map.empty, Map.empty)
 }
