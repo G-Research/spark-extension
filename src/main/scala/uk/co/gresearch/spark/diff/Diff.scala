@@ -282,9 +282,8 @@ class Differ(options: DiffOptions) {
    * columns are in the order of this Dataset.
    */
   @scala.annotation.varargs
-  def diff[T](left: Dataset[T], right: Dataset[T], idColumns: String*): DataFrame = {
-    diff(left, right, idColumns)
-  }
+  def diff[T](left: Dataset[T], right: Dataset[T], idColumns: String*): DataFrame =
+    doDiff(left, right, idColumns)
 
   /**
    * Returns a new DataFrame that contains the differences between two Datasets of
@@ -341,7 +340,7 @@ class Differ(options: DiffOptions) {
    * columns of this Dataset are id columns and appear in the same order. The remaining non-id
    * columns are in the order of this Dataset.
    */
-  def diff[T, U](left: Dataset[T], right: Dataset[U], idColumns: Seq[String], ignoreColumns: Seq[String] = Seq.empty): DataFrame =
+  def diff[T, U](left: Dataset[T], right: Dataset[U], idColumns: Seq[String], ignoreColumns: Seq[String]): DataFrame =
     doDiff(left, right, idColumns, ignoreColumns)
 
   /**
@@ -425,7 +424,7 @@ class Differ(options: DiffOptions) {
    *
    * This requires an additional implicit `Encoder[V]` for the return type `Dataset[V]`.
    */
-  def diffAs[T, U, V](left: Dataset[T], right: Dataset[U], idColumns: Seq[String], ignoreColumns: Seq[String] = Seq.empty)
+  def diffAs[T, U, V](left: Dataset[T], right: Dataset[U], idColumns: Seq[String], ignoreColumns: Seq[String])
                      (implicit diffEncoder: Encoder[V]): Dataset[V] = {
     diffAs(left, right, diffEncoder, idColumns, ignoreColumns)
   }

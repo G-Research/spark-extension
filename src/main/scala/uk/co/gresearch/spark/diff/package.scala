@@ -144,7 +144,7 @@ package object diff {
      * The id column names are take literally, i.e. "a.field" is interpreted as "`a.field`, which is a
      * column name containing a dot. This is not interpreted as a column "a" with a field "field" (struct).
      */
-    def diff[U](other: Dataset[U], idColumns: Seq[String], ignoreColumns: Seq[String] = Seq.empty): DataFrame = {
+    def diff[U](other: Dataset[U], idColumns: Seq[String], ignoreColumns: Seq[String]): DataFrame = {
       Diff.of(this.ds, other, idColumns, ignoreColumns)
     }
 
@@ -182,8 +182,8 @@ package object diff {
      * This requires an additional implicit `Encoder[U]` for the return type `Dataset[U]`.
      */
     // no @scala.annotation.varargs here as this implicit class is not nicely accessible from Java
-    def diffAs[U](other: Dataset[T], idColumns: String*)
-                 (implicit diffEncoder: Encoder[U]): Dataset[U] = {
+    def diffAs[V](other: Dataset[T], idColumns: String*)
+                 (implicit diffEncoder: Encoder[V]): Dataset[V] = {
       Diff.ofAs(this.ds, other, idColumns: _*)
     }
 
@@ -195,7 +195,7 @@ package object diff {
      *
      * This requires an additional implicit `Encoder[V]` for the return type `Dataset[V]`.
      */
-    def diffAs[U, V](other: Dataset[U], idColumns: Seq[String], ignoreColumns: Seq[String] = Seq.empty)
+    def diffAs[U, V](other: Dataset[U], idColumns: Seq[String], ignoreColumns: Seq[String])
                     (implicit diffEncoder: Encoder[V]): Dataset[V] = {
       Diff.ofAs(this.ds, other, idColumns, ignoreColumns)
     }
