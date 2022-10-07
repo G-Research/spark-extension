@@ -50,17 +50,6 @@ class GroupBySortedSuite extends AnyFunSpec with SparkTestSession {
     Val(3, 1, 3.1),
   ).reverse.toDS().repartition(3).cache()
 
-  describe("test dataset") {
-    it("is randomly partitioned") {
-      val partitions: Array[List[Val]] = ds.mapPartitions(it => Iterator(it.toList)).collect()
-      assert(partitions === Array(
-        List(Val(1,3,1.31), Val(1,1,1.1)),
-        List(Val(1,2,1.2), Val(1,3,1.3), Val(2,1,2.1)),
-        List(Val(3,1,3.1), Val(2,2,2.2), Val(2,3,2.3))
-      ))
-    }
-  }
-
   describe("ds.groupBySorted") {
     testGroupByIdSortBySeq(ds.groupBySorted($"id")($"seq", $"value"))
     testGroupByIdSortBySeqDesc(ds.groupBySorted($"id")($"seq".desc, $"value".desc))
