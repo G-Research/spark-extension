@@ -88,13 +88,32 @@ Note: Pick the right Scala version (here 2.12) and Spark version (here 3.3) depe
 
 ### Python
 
+#### PySpark API
+
+Start a PySpark session with the Spark Extension dependency (version ≥1.1.0) as follows:
+
+```python
+from pyspark.sql import SparkSession
+
+spark = SparkSession \
+    .builder \
+    .config("spark.jars.packages", "uk.co.gresearch.spark:spark-extension_2.12:2.2.0-3.1") \
+    .getOrCreate()
+```
+
+Note: Pick the right Scala version (here 2.12) and Spark version (here 3.3) depending on your PySpark version.
+
+#### PySpark REPL
+
 Launch the Python Spark REPL with the Spark Extension dependency (version ≥1.1.0) as follows:
 
 ```shell script
 pyspark --packages uk.co.gresearch.spark:spark-extension_2.12:2.2.0-3.3
 ```
 
-Note: Pick the right Scala version and Spark version depending on your PySpark version.
+Note: Pick the right Scala version (here 2.12) and Spark version (here 3.3) depending on your PySpark version.
+
+#### PySpark `spark-submit`
 
 Run your Python scripts that use PySpark via `spark-submit`:
 
