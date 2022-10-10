@@ -25,7 +25,7 @@ then
 	then
 		if [ "$spark_compat" == "3.3" ]
 		then
-			hadoop="hadoop3.3-scala2.13"
+			hadoop="hadoop3-scala2.13"
 		else
 			hadoop="hadoop3.2-scala2.13"
 		fi
