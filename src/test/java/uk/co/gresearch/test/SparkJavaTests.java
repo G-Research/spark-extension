@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-package uk.co.gresearch.spark;
+// these tests are deliberately located outside uk.co.gresearch.spark to show how imports look for Java
+package uk.co.gresearch.test;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.sql.*;
@@ -24,8 +25,11 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import uk.co.gresearch.spark.Backticks;
+import uk.co.gresearch.spark.Histogram;
+import uk.co.gresearch.spark.RowNumbers;
+import uk.co.gresearch.spark.UnpersistHandle;
 import uk.co.gresearch.spark.diff.JavaValue;
-import org.apache.spark.sql.Column;
 
 import java.util.Arrays;
 import java.util.List;
