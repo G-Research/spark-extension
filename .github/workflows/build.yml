@@ -1,0 +1,63 @@
+name: Build
+
+on:
+  workflow_call:
+    inputs:
+      spark-compat-version:
+        description: Spark compatibility version, e.g. 3.4
+        required: true
+        type: string
+      spark-version:
+        description: Spark version, e.g. 3.4.0 or 3.4.0-SNAPSHOT
+        required: true
+        type: string
+      scala-compat-version:
+        description: Scala compatibility version, e.g. 2.12
+        required: true
+        type: string
+      scala-version:
+        description: Scala version, e.g. 2.12.15
+        required: true
+        type: string
+
+jobs:
+  build:
+    name: Build (Spark ${{ inputs.spark-version }} Scala ${{ inputs.scala-version }})
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set versions in pom.xml
+        run: |
+          ./set-version.sh ${{ inputs.spark-version }}${{ inputs.spark-version-suffix }} ${{ inputs.scala-version }}
+          git diff
+
+      - name: Cache Maven packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}${{ inputs.spark-version-suffix }}-${{ inputs.scala-version }}-${{ hashFiles('pom.xml') }}
+
+      - name: Setup JDK 1.8
+        uses: actions/setup-java@v3
+        with:
+          java-version: '8'
+          distribution: 'zulu'
+
+      - name: Build
+        run: |
+          mvn --batch-mode --update-snapshots clean compile test-compile
+          mvn --batch-mode package -DskipTests -Dmaven.test.skip=true
+
+      - name: Upload Binaries
+        uses: actions/upload-artifact@v3
+        with:
+          name: Binaries-${{ inputs.spark-version }}${{ inputs.spark-version-suffix }}-${{ inputs.scala-version }}
+          path: |
+            *
+            !.*
+            !target/*-javadoc.jar
+            !target/site
+
