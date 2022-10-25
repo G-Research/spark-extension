@@ -9,6 +9,12 @@ inputs:
   scala-version:
     description: Scala version, e.g. 2.12.15
     required: true
+  spark-compat-version:
+    description: Spark compatibility version, e.g. 3.4
+    required: true
+  scala-compat-version:
+    description: Scala compatibility version, e.g. 2.12
+    required: true
 
 runs:
   using: 'composite'

@@ -70,6 +70,9 @@ jobs:
 
     - name: Build
       uses: ./.github/actions/build
+      with:
+        spark-version: ${{ matrix.spark-version }}
+        scala-version: ${{ matrix.scala-version }}
 
   test:
     name: Test (Spark ${{ matrix.spark-version }} Scala ${{ matrix.scala-version }} Python ${{ matrix.python-version }})
@@ -143,6 +146,11 @@ jobs:
 
     - name: Build
       uses: ./.github/actions/test
+      with:
+        spark-version: ${{ matrix.spark-version }}
+        scala-version: ${{ matrix.scala-version }}
+        spark-compat-version: ${{ matrix.spark-compat-version }}
+        scala-compat-version: ${{ matrix.scala-compat-version }}
 
   event_file:
     name: "Event File"
