@@ -195,7 +195,7 @@ class HistogramSuite extends AnyFunSuite with SparkTestSession {
     assert(
       exception.getMessage.startsWith("cannot resolve '`does-not-exist`' given input columns: [") ||
         exception.getMessage.startsWith("Column '`does-not-exist`' does not exist. Did you mean one of the following? [title, id, value, ≤-100, ≤-200, >200, ≤0, ≤100, ≤200]") ||
-        exception.getMessage.startsWith("[UNRESOLVED_COLUMN.WITH_SUGGESTION] A column or function parameter with name `does-not-exist` cannot be resolved. Did you mean one of the following? [`title`, `id`, `value`, `≤-100`, `≤-200`]")
+        exception.getMessage.startsWith("[UNRESOLVED_COLUMN.WITH_SUGGESTION] A column or function parameter with name `does-not-exist` cannot be resolved. Did you mean one of the following? [`≤-100`, `≤-200`, `>200`, `title`, `≤0`]")
     )
   }
 
