@@ -16,14 +16,19 @@
 
 package uk.co.gresearch
 
+import org.apache.spark.internal.Logging
 import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.catalyst.expressions.NamedExpression
 import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.storage.StorageLevel
 import uk.co.gresearch.spark.group.SortedGroupByDataset
 
-package object spark {
+import java.io.IOException
+import scala.util.Properties
+
+package object spark extends Logging {
 
   /**
    * Provides a prefix that makes any string distinct w.r.t. the given strings.
@@ -33,6 +38,46 @@ package object spark {
   private[spark] def distinctPrefixFor(existing: Seq[String]): String = {
     "_" * (existing.map(_.takeWhile(_ == '_').length).reduceOption(_ max _).getOrElse(0) + 1)
   }
+
+  private[spark] lazy val getSparkVersion: Option[String] = {
+    val scalaCompatVersionOpt = Properties.releaseVersion.map(_.split("\\.").take(2).mkString("."))
+    scalaCompatVersionOpt.flatMap { scalaCompatVersion =>
+      val propFilePath = s"META-INF/maven/org.apache.spark/spark-sql_$scalaCompatVersion/pom.properties"
+      Option(ClassLoader.getSystemClassLoader.getResourceAsStream(propFilePath)).flatMap { in =>
+        val props = try {
+          val props = new java.util.Properties()
+          props.load(in)
+          Some(props)
+        } catch {
+          case _: IOException => None
+        }
+
+        props.flatMap { props =>
+          val ver = Option(props.getProperty("version"))
+          val group = Option(props.getProperty("groupId"))
+          val artifact = Option(props.getProperty("artifactId"))
+
+          ver.filter(_ =>
+            group.exists(_.equals("org.apache.spark")) &&
+              artifact.exists(_.equals(s"spark-sql_$scalaCompatVersion"))
+          )
+        }
+      }
+    }
+  }
+
+  private[spark] def writePartitionedByRequiresCaching[T](ds: Dataset[T]): Boolean = {
+    val enabled = ds.sparkSession.conf.get(SQLConf.ADAPTIVE_EXECUTION_ENABLED.key, SQLConf.ADAPTIVE_EXECUTION_ENABLED.defaultValue.getOrElse(true).toString)
+    ds.sparkSession.conf.get(
+      SQLConf.ADAPTIVE_EXECUTION_ENABLED.key,
+      SQLConf.ADAPTIVE_EXECUTION_ENABLED.defaultValue.getOrElse(true).toString
+    ).equalsIgnoreCase("true") && getSparkVersion.exists(ver =>
+      ver.startsWith("3.0.") || ver.startsWith("3.1.") || ver.startsWith("3.2.") || ver.startsWith("3.3.")
+    )
+  }
+
+  private[spark] def info(msg: String): Unit = logInfo(msg)
+  private[spark] def warning(msg: String): Unit = logWarning(msg)
 
   /**
    * Encloses the given strings with backticks if needed. Multiple strings will be enclosed individually and
@@ -88,18 +133,34 @@ package object spark {
      * file per `partitionBy` partition only. Rows within the partition files are also sorted,
      * if partitionOrder is defined.
      *
+     * Note: With Spark 3.0, 3.1, 3.2 and 3.3 and AQE enabled, an intermediate DataFrame is being
+     *       cached in order to guarantee sorted output files. See https://issues.apache.org/jira/browse/SPARK-40588.
+     *       That cached DataFrame can be unpersisted via an optional [[UnpersistHandle]] provided to this method.
+     *
      * Calling:
      * {{{
-     *   df.writePartitionedBy(Seq("a"), Seq("b"), Seq("c"), Some(10), Seq($"a", concat($"b", $"c")))
+     *   val unpersist = UnpersistHandle()
+     *   val writer = df.writePartitionedBy(Seq("a"), Seq("b"), Seq("c"), Some(10), Seq($"a", concat($"b", $"c")), unpersist)
+     *   writer.parquet("data.parquet")
+     *   unpersist()
      * }}}
      *
      * is equivalent to:
      * {{{
-     *   df.repartitionByRange(10, $"a", $"b")
-     *     .sortWithinPartitions($"a", $"b", $"c")
-     *     .select($"a", concat($"b", $"c"))
-     *     .write
-     *     .partitionBy("a")
+     *   val cached =
+     *     df.repartitionByRange(10, $"a", $"b")
+     *       .sortWithinPartitions($"a", $"b", $"c")
+     *       .cache
+     *
+     *   val writer =
+     *     cached
+     *       .select($"a", concat($"b", $"c"))
+     *       .write
+     *       .partitionBy("a")
+     *
+     *   writer.parquet("data.parquet")
+     *
+     *   cached.unpersist
      * }}}
      *
      * @param partitionColumns  columns used for partitioning
@@ -107,18 +168,33 @@ package object spark {
      * @param moreFileOrder     additional columns to sort partition files
      * @param partitions        optional number of partition files
      * @param writtenProjection additional transformation to be applied before calling write
+     * @param unpersistHandle   handle to unpersist internally created DataFrame after writing
      * @return configured DataFrameWriter
      */
     def writePartitionedBy(partitionColumns: Seq[Column],
                            moreFileColumns: Seq[Column] = Seq.empty,
                            moreFileOrder: Seq[Column] = Seq.empty,
                            partitions: Option[Int] = None,
-                           writtenProjection: Option[Seq[Column]] = None): DataFrameWriter[Row] = {
+                           writtenProjection: Option[Seq[Column]] = None,
+                           unpersistHandle: Option[UnpersistHandle] = None): DataFrameWriter[Row] = {
       if (partitionColumns.isEmpty)
         throw new IllegalArgumentException(s"partition columns must not be empty")
 
       if (partitionColumns.exists(!_.expr.isInstanceOf[NamedExpression]))
         throw new IllegalArgumentException(s"partition columns must be named: ${partitionColumns.mkString(",")}")
+
+      val requiresCaching = writePartitionedByRequiresCaching(ds)
+      (requiresCaching, unpersistHandle.isDefined) match {
+        case (true, false) =>
+          warning("Partitioned-writing with AQE enabled and Spark 3.0 to 3.3 requires caching " +
+            "an intermediate DataFrame, which calling code has to unpersist once writing is done. " +
+            "Please provide an UnpersistHandle to DataFrame.writePartitionedBy, or UnpersistHandle.Noop.")
+        case (false, true) if !unpersistHandle.get.isInstanceOf[NoopUnpersistHandle] =>
+          info("UnpersistHandle provided to DataFrame.writePartitionedBy is not needed as " +
+            "partitioned-writing with AQE disabled or Spark 3.4 and above does not require caching intermediate DataFrame.")
+          unpersistHandle.get.setDataFrame(ds.sparkSession.emptyDataFrame)
+        case _ =>
+      }
 
       val partitionColumnsMap = partitionColumns.map(c => c.expr.asInstanceOf[NamedExpression].name -> c).toMap
       val partitionColumnNames = partitionColumnsMap.keys.map(col).toSeq
@@ -130,6 +206,7 @@ package object spark {
         .when(partitions.isDefined).call(_.repartitionByRange(partitions.get, rangeColumns: _*))
         .sortWithinPartitions(sortColumns: _*)
         .when(writtenProjection.isDefined).call(_.select(writtenProjection.get: _*))
+        .when(requiresCaching && unpersistHandle.isDefined).call(unpersistHandle.get.setDataFrame(_))
         .write
         .partitionBy(partitionColumnsMap.keys.toSeq: _*)
     }

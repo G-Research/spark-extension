@@ -32,6 +32,94 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
   val emptyDataset: Dataset[Value] = spark.emptyDataset[Value]
   val emptyDataFrame: DataFrame = spark.createDataFrame(Seq.empty[Value])
 
+  test("get spark version") {
+    assert(getSparkVersion.isDefined)
+  }
+
+  Seq(MEMORY_AND_DISK, MEMORY_ONLY, DISK_ONLY, NONE).foreach { level =>
+    Seq(
+      ("UnpersistHandle", UnpersistHandle()),
+      ("SilentUnpersistHandle", SilentUnpersistHandle())
+    ).foreach { case (handleClass, unpersist) =>
+      test(s"$handleClass does unpersist set DataFrame with $level") {
+        val cacheManager = spark.sharedState.cacheManager
+        cacheManager.clearCache()
+        assert(cacheManager.isEmpty === true)
+
+        val df = spark.emptyDataFrame
+        assert(cacheManager.lookupCachedData(spark.emptyDataFrame).isDefined === false)
+
+        unpersist.setDataFrame(df)
+        assert(cacheManager.lookupCachedData(spark.emptyDataFrame).isDefined === false)
+
+        df.cache()
+        assert(cacheManager.lookupCachedData(spark.emptyDataFrame).isDefined === true)
+
+        unpersist(blocking = true)
+        assert(cacheManager.lookupCachedData(spark.emptyDataFrame).isDefined === false)
+
+        // calling this twice does not throw any errors
+        unpersist()
+      }
+    }
+  }
+
+  Seq(MEMORY_AND_DISK, MEMORY_ONLY, DISK_ONLY, NONE).foreach { level =>
+    test(s"NoopUnpersistHandle does not unpersist set DataFrame with $level") {
+      val cacheManager = spark.sharedState.cacheManager
+      cacheManager.clearCache()
+      assert(cacheManager.isEmpty === true)
+
+      val df = spark.emptyDataFrame
+      assert(cacheManager.lookupCachedData(spark.emptyDataFrame).isDefined === false)
+
+      val unpersist = UnpersistHandle.Noop
+      unpersist.setDataFrame(df)
+      assert(cacheManager.lookupCachedData(spark.emptyDataFrame).isDefined === false)
+
+      df.cache()
+      assert(cacheManager.lookupCachedData(spark.emptyDataFrame).isDefined === true)
+
+      unpersist(blocking = true)
+      assert(cacheManager.lookupCachedData(spark.emptyDataFrame).isDefined === true)
+
+      // calling this twice does not throw any errors
+      unpersist()
+    }
+  }
+
+  Seq(
+    ("UnpersistHandle", UnpersistHandle()),
+    ("SilentUnpersistHandle", SilentUnpersistHandle())
+  ).foreach { case (handleClass, unpersist) =>
+    test(s"$handleClass throws on setting DataFrame twice") {
+      unpersist.setDataFrame(spark.emptyDataFrame)
+      assert(intercept[IllegalStateException] {
+        unpersist.setDataFrame(spark.emptyDataFrame)
+      }.getMessage === s"DataFrame has been set already, it cannot be reused.")
+    }
+  }
+
+  test("UnpersistHandle throws on unpersist if no DataFrame is set") {
+    val unpersist = UnpersistHandle()
+    assert(intercept[IllegalStateException] { unpersist() }.getMessage === s"DataFrame has to be set first")
+  }
+
+  test("UnpersistHandle throws on unpersist with blocking if no DataFrame is set") {
+    val unpersist = UnpersistHandle()
+    assert(intercept[IllegalStateException] { unpersist(blocking = true) }.getMessage === s"DataFrame has to be set first")
+  }
+
+  test("SilentUnpersistHandle does not throw on unpersist if no DataFrame is set") {
+    val unpersist = SilentUnpersistHandle()
+    unpersist()
+  }
+
+  test("SilentUnpersistHandle does not throw on unpersist with blocking if no DataFrame is set") {
+    val unpersist = SilentUnpersistHandle()
+    unpersist(blocking = true)
+  }
+
   test("backticks") {
     assert(backticks("column") === "column")
     assert(backticks("a.column") === "`a.column`")
@@ -224,13 +312,13 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
     doTestWithRowNumbers { df => df.repartition(100) }($"id".desc)()
   }
 
-  Seq(MEMORY_AND_DISK, MEMORY_ONLY, DISK_ONLY).foreach { level =>
+  Seq(MEMORY_AND_DISK, MEMORY_ONLY, DISK_ONLY, NONE).foreach { level =>
     test(s"global row number with $level") {
       doTestWithRowNumbers(storageLevel = level)($"id")()
     }
   }
 
-  Seq(MEMORY_AND_DISK, MEMORY_ONLY, DISK_ONLY).foreach { level =>
+  Seq(MEMORY_AND_DISK, MEMORY_ONLY, DISK_ONLY, NONE).foreach { level =>
     test(s"global row number allows to unpersist with $level") {
       val cacheManager = spark.sharedState.cacheManager
       cacheManager.clearCache()
@@ -321,42 +409,6 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
     val incorrectRowNumbers = df.where(! expect).count()
     assert(correctRowNumbers === rows)
     assert(incorrectRowNumbers === 0)
-  }
-
-  test("UnpersistHandle does unpersit set DataFrame") {
-    val cacheManager = spark.sharedState.cacheManager
-    cacheManager.clearCache()
-    assert(cacheManager.isEmpty === true)
-
-    val unpersist = UnpersistHandle()
-    val df = spark.emptyDataFrame
-    assert(cacheManager.lookupCachedData(spark.emptyDataFrame).isDefined === false)
-
-    df.cache()
-    assert(cacheManager.lookupCachedData(spark.emptyDataFrame).isDefined === true)
-
-    unpersist.setDataFrame(df)
-    unpersist(blocking = true)
-    assert(cacheManager.lookupCachedData(spark.emptyDataFrame).isDefined === false)
-
-    // calling this twice does not throw any errors
-    unpersist()
-  }
-
-  test("UnpersistHandle throws on unpersist if no DataFrame is set") {
-    val unpersist = UnpersistHandle()
-    assert(intercept[IllegalStateException] { unpersist() }.getMessage === s"DataFrame has to be set first")
-  }
-
-  test("UnpersistHandle throws on unpersist with blocking if no DataFrame is set") {
-    val unpersist = UnpersistHandle()
-    assert(intercept[IllegalStateException] { unpersist(blocking = true) }.getMessage === s"DataFrame has to be set first")
-  }
-
-  test("UnpersistHandle throws on setting DataFrame twice") {
-    val unpersist = UnpersistHandle()
-    unpersist.setDataFrame(spark.emptyDataFrame)
-    assert(intercept[IllegalStateException] { unpersist.setDataFrame(spark.emptyDataFrame) }.getMessage === s"DataFrame has been set already. It cannot be reused once used with withRowNumbers.")
   }
 
 }

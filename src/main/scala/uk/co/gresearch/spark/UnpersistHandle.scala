@@ -10,9 +10,10 @@ import org.apache.spark.sql.DataFrame
 class UnpersistHandle {
   var df: Option[DataFrame] = None
 
-  private[spark] def setDataFrame(dataframe: DataFrame): Unit = {
-    if (df.isDefined) throw new IllegalStateException("DataFrame has been set already. It cannot be reused once used with withRowNumbers.")
+  private[spark] def setDataFrame(dataframe: DataFrame): DataFrame = {
+    if (df.isDefined) throw new IllegalStateException("DataFrame has been set already, it cannot be reused.")
     this.df = Some(dataframe)
+    dataframe
   }
 
   def apply(): Unit = {
@@ -24,13 +25,32 @@ class UnpersistHandle {
   }
 }
 
-class NoopUnpersistHandle extends UnpersistHandle{
-  override def setDataFrame(dataframe: DataFrame): Unit = {}
+case class SilentUnpersistHandle() extends UnpersistHandle {
+  override def apply(): Unit = {
+    this.df.foreach(_.unpersist())
+  }
+
+  override def apply(blocking: Boolean): Unit = {
+    this.df.foreach(_.unpersist(blocking))
+  }
+}
+
+case class NoopUnpersistHandle() extends UnpersistHandle{
+  override def setDataFrame(dataframe: DataFrame): DataFrame = dataframe
   override def apply(): Unit = {}
   override def apply(blocking: Boolean): Unit = {}
 }
 
 object UnpersistHandle {
+  val Noop: NoopUnpersistHandle = NoopUnpersistHandle()
   def apply(): UnpersistHandle = new UnpersistHandle()
-  val Noop = new NoopUnpersistHandle()
+
+  def withUnpersist[T](blocking: Boolean = false)(func: UnpersistHandle => T): T = {
+    val handle = SilentUnpersistHandle()
+    try {
+      func(handle)
+    } finally {
+      handle(blocking)
+    }
+  }
 }

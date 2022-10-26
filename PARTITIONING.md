@@ -90,6 +90,7 @@ If you need each file to further be sorted by additional columns, e.g. `ts`, the
 
     ds.repartitionByRange($"property", $"id")
       .sortWithinPartitions($"property", $"id", $"ts")
+      .cache    // this is needed for Spark 3.0 to 3.3 with AQE enabled: SPARK-40588
       .write
       .partitionBy("property")
       .csv("file.csv")
@@ -100,6 +101,7 @@ e.g. the date-representation of the `ts` column.
     ds.withColumn("date", $"ts".cast(DateType))
       .repartitionByRange($"date", $"id")
       .sortWithinPartitions($"date", $"id", $"ts")
+      .cache    // this is needed for Spark 3.0 to 3.3 with AQE enabled: SPARK-40588
       .write
       .partitionBy("date")
       .csv("file.csv")
@@ -107,8 +109,18 @@ e.g. the date-representation of the `ts` column.
 All those above constructs can be replaced with a single meaningful operation:
 
     ds.writePartitionedBy(Seq($"ts".cast(DateType).as("date")), Seq($"id"), Seq($"ts"))
+      .csv("file.csv")
 
+For Spark 3.0 to 3.3 with AQE enabled (see [SPARK-40588](https://issues.apache.org/jira/browse/SPARK-40588)),
+`writePartitionedBy` has to cache an internally created DataFrame. This can be unpersisted after writing
+is finished. Provide an `UnpersistHandle` for this purpose:
 
+    val unpersist = UnpersistHandle()
+
+    ds.writePartitionedBy(…, unpersistHandle = Some(unpersist))
+      .csv("file.csv")
+
+    unpersist()
 
 <!--
 # Other Approaches

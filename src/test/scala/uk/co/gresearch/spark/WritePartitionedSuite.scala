@@ -18,8 +18,10 @@ package uk.co.gresearch.spark
 
 import org.apache.spark.sql.Dataset
 import org.apache.spark.sql.functions.{col, reverse}
+import org.apache.spark.sql.internal.SQLConf
 import org.scalatest.funsuite.AnyFunSuite
 import uk.co.gresearch.spark.WritePartitionedSuite.Value
+import uk.co.gresearch.spark.UnpersistHandle.withUnpersist
 
 import java.io.File
 import java.sql.Date
@@ -42,9 +44,27 @@ class WritePartitionedSuite extends AnyFunSuite with SparkTestSession {
     Value(4, Date.valueOf("2020-07-01"), "four")
   ).toDS()
 
+
+  test("write partitionedBy requires caching with AQE enabled") {
+    withSQLConf(SQLConf.ADAPTIVE_EXECUTION_ENABLED.key -> "true") {
+      getSparkVersion
+        .map(version => Set("3.0.", "3.1.", "3.2.", "3.3.").contains(version.substring(0, 4)))
+        .foreach(expected => assert(writePartitionedByRequiresCaching(values) === expected))
+    }
+  }
+
+  test("write partitionedBy requires caching with AQE disabled") {
+    withSQLConf(SQLConf.ADAPTIVE_EXECUTION_ENABLED.key -> "false") {
+      assert(writePartitionedByRequiresCaching(values) === false)
+    }
+  }
+
   test("write with one partition column") {
     withTempPath { dir =>
-      values.writePartitionedBy(Seq($"id")).csv(dir.getAbsolutePath)
+      withUnpersist() { handle =>
+        values.writePartitionedBy(Seq($"id"), unpersistHandle = Some(handle)).csv(dir.getAbsolutePath)
+      }
+
       val partitions = dir.list().filter(_.startsWith("id=")).sorted
       assert(partitions === Seq("id=1", "id=2", "id=3", "id=4"))
       partitions.foreach { partition =>
@@ -56,7 +76,10 @@ class WritePartitionedSuite extends AnyFunSuite with SparkTestSession {
 
   test("write with two partition column") {
     withTempPath { dir =>
-      values.writePartitionedBy(Seq($"id", $"date")).csv(dir.getAbsolutePath)
+      withUnpersist() { handle =>
+        values.writePartitionedBy(Seq($"id", $"date"), unpersistHandle = Some(handle)).csv(dir.getAbsolutePath)
+      }
+
       val ids = dir.list().filter(_.startsWith("id=")).sorted
       assert(ids === Seq("id=1", "id=2", "id=3", "id=4"))
       val dates = ids.flatMap { id =>
@@ -68,7 +91,10 @@ class WritePartitionedSuite extends AnyFunSuite with SparkTestSession {
 
   test("write with more partition columns") {
     withTempPath { dir =>
-      values.writePartitionedBy(Seq($"id"), Seq($"date")).csv(dir.getAbsolutePath)
+      withUnpersist() { handle =>
+        values.writePartitionedBy(Seq($"id"), Seq($"date"), unpersistHandle = Some(handle)).csv(dir.getAbsolutePath)
+      }
+
       val partitions = dir.list().filter(_.startsWith("id=")).sorted
       assert(partitions === Seq("id=1", "id=2", "id=3", "id=4"))
       partitions.foreach { partition =>
@@ -81,7 +107,10 @@ class WritePartitionedSuite extends AnyFunSuite with SparkTestSession {
 
   test("write with one partition") {
     withTempPath { dir =>
-      values.writePartitionedBy(Seq($"id"), Seq($"date"), partitions = Some(1)).csv(dir.getAbsolutePath)
+      withUnpersist() { handle =>
+        values.writePartitionedBy(Seq($"id"), Seq($"date"), partitions = Some(1), unpersistHandle = Some(handle)).csv(dir.getAbsolutePath)
+      }
+
       val partitions = dir.list().filter(_.startsWith("id=")).sorted
       assert(partitions === Seq("id=1", "id=2", "id=3", "id=4"))
       val files = partitions.flatMap { partition =>
@@ -93,7 +122,10 @@ class WritePartitionedSuite extends AnyFunSuite with SparkTestSession {
 
   test("write with partition order") {
     withTempPath { dir =>
-      values.writePartitionedBy(Seq($"id"), Seq.empty, Seq($"date")).csv(dir.getAbsolutePath)
+      withUnpersist() { handle =>
+        values.writePartitionedBy(Seq($"id"), Seq.empty, Seq($"date"), unpersistHandle = Some(handle)).csv(dir.getAbsolutePath)
+      }
+
       val partitions = dir.list().filter(_.startsWith("id=")).sorted
       assert(partitions === Seq("id=1", "id=2", "id=3", "id=4"))
       partitions.foreach { partition =>
@@ -129,7 +161,10 @@ class WritePartitionedSuite extends AnyFunSuite with SparkTestSession {
 
   test("write with desc partition order") {
     withTempPath { dir =>
-      values.writePartitionedBy(Seq($"id"), Seq.empty, Seq($"date".desc)).csv(dir.getAbsolutePath)
+      withUnpersist() { handle =>
+        values.writePartitionedBy(Seq($"id"), Seq.empty, Seq($"date".desc), unpersistHandle = Some(handle)).csv(dir.getAbsolutePath)
+      }
+
       val partitions = dir.list().filter(_.startsWith("id=")).sorted
       assert(partitions === Seq("id=1", "id=2", "id=3", "id=4"))
       partitions.foreach { partition =>
@@ -166,7 +201,10 @@ class WritePartitionedSuite extends AnyFunSuite with SparkTestSession {
   test("write with write projection") {
     val projection = Some(Seq(col("id"), reverse(col("value"))))
     withTempPath { path =>
-      values.writePartitionedBy(Seq($"id"), Seq.empty, Seq($"date"), writtenProjection = projection).csv(path.getAbsolutePath)
+      withUnpersist() { handle =>
+        values.writePartitionedBy(Seq($"id"), Seq.empty, Seq($"date"), writtenProjection = projection, unpersistHandle = Some(handle)).csv(path.getAbsolutePath)
+      }
+
       val partitions = path.list().filter(_.startsWith("id=")).sorted
       assert(partitions === Seq("id=1", "id=2", "id=3", "id=4"))
       partitions.foreach { partition =>
@@ -189,9 +227,13 @@ class WritePartitionedSuite extends AnyFunSuite with SparkTestSession {
 
     }
   }
+
   test("write dataframe") {
     withTempPath { dir =>
-      values.toDF().writePartitionedBy(Seq($"id", $"date")).csv(dir.getAbsolutePath)
+      withUnpersist() { handle =>
+        values.toDF().writePartitionedBy(Seq($"id", $"date"), unpersistHandle = Some(handle)).csv(dir.getAbsolutePath)
+      }
+
       val ids = dir.list().filter(_.startsWith("id=")).sorted
       assert(ids === Seq("id=1", "id=2", "id=3", "id=4"))
       val dates = ids.flatMap { id =>
