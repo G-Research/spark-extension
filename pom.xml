@@ -77,7 +77,7 @@
     <dependency>
       <groupId>org.scalatest</groupId>
       <artifactId>scalatest_${scala.compat.version}</artifactId>
-      <version>3.2.11</version>
+      <version>3.2.14</version>
       <scope>test</scope>
     </dependency>
 
@@ -175,7 +175,7 @@
       <plugin>
         <groupId>org.scalatest</groupId>
         <artifactId>scalatest-maven-plugin</artifactId>
-        <version>2.0.2</version>
+        <version>2.2.0</version>
         <configuration>
           <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
           <junitxml>.</junitxml>
@@ -232,7 +232,7 @@
       <plugin>
         <groupId>net.alchim31.maven</groupId>
         <artifactId>scala-maven-plugin</artifactId>
-        <version>4.7.0</version>
+        <version>4.7.2</version>
         <executions>
           <execution>
             <id>attach-javadocs</id>
