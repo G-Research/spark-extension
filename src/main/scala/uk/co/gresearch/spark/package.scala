@@ -213,7 +213,7 @@ package object spark extends Logging {
 
     /**
      * Groups the Dataset and sorts the groups using the specified columns, so we can run
-     * further process the sorted groups. See [[SortedGroupByDataset]] for all the available
+     * further process the sorted groups. See [[uk.co.gresearch.spark.group.SortedGroupByDataset]] for all the available
      * functions.
      *
      * {{{
@@ -232,7 +232,7 @@ package object spark extends Logging {
 
     /**
      * Groups the Dataset and sorts the groups using the specified columns, so we can run
-     * further process the sorted groups. See [[SortedGroupByDataset]] for all the available
+     * further process the sorted groups. See [[uk.co.gresearch.spark.group.SortedGroupByDataset]] for all the available
      * functions.
      *
      * {{{
@@ -252,7 +252,7 @@ package object spark extends Logging {
 
     /**
      * Groups the Dataset and sorts the groups using the specified columns, so we can run
-     * further process the sorted groups. See [[SortedGroupByDataset]] for all the available
+     * further process the sorted groups. See [[uk.co.gresearch.spark.group.SortedGroupByDataset]] for all the available
      * functions.
      *
      * {{{
@@ -270,7 +270,7 @@ package object spark extends Logging {
 
     /**
      * Groups the Dataset and sorts the groups using the specified columns, so we can run
-     * further process the sorted groups. See [[SortedGroupByDataset]] for all the available
+     * further process the sorted groups. See [[uk.co.gresearch.spark.group.SortedGroupByDataset]] for all the available
      * functions.
      *
      * {{{
@@ -289,7 +289,7 @@ package object spark extends Logging {
 
     /**
      * Groups the Dataset and sorts the groups using the specified columns, so we can run
-     * further process the sorted groups. See [[SortedGroupByDataset]] for all the available
+     * further process the sorted groups. See [[uk.co.gresearch.spark.group.SortedGroupByDataset]] for all the available
      * functions.
      *
      * {{{
@@ -310,7 +310,7 @@ package object spark extends Logging {
     /**
      * Adds a global continuous row number starting at 1.
      *
-     * See [[ExtendedDataset#withRowNumbers(String, StorageLevel, UnpersistHandle, Column*)]] for details.
+     * See [[withRowNumbers(String,StorageLevel,UnpersistHandle,Column...)]] for details.
      */
     def withRowNumbers(order: Column*): DataFrame =
       RowNumbers.withOrderColumns(order: _*).of(ds)
@@ -318,7 +318,7 @@ package object spark extends Logging {
     /**
      * Adds a global continuous row number starting at 1.
      *
-     * See [[ExtendedDataset#withRowNumbers(String, StorageLevel, UnpersistHandle, Column*)]] for details.
+     * See [[withRowNumbers(String,StorageLevel,UnpersistHandle,Column...)]] for details.
      */
     def withRowNumbers(rowNumberColumnName: String, order: Column*): DataFrame =
       RowNumbers.withRowNumberColumnName(rowNumberColumnName).withOrderColumns(order).of(ds)
@@ -326,7 +326,7 @@ package object spark extends Logging {
     /**
      * Adds a global continuous row number starting at 1.
      *
-     * See [[ExtendedDataset#withRowNumbers(String, StorageLevel, UnpersistHandle, Column*)]] for details.
+     * See [[withRowNumbers(String,StorageLevel,UnpersistHandle,Column...)]] for details.
      */
     def withRowNumbers(storageLevel: StorageLevel, order: Column*): DataFrame =
       RowNumbers.withStorageLevel(storageLevel).withOrderColumns(order).of(ds)
@@ -334,7 +334,7 @@ package object spark extends Logging {
     /**
      * Adds a global continuous row number starting at 1.
      *
-     * See [[ExtendedDataset#withRowNumbers(String, StorageLevel, UnpersistHandle, Column*)]] for details.
+     * See [[withRowNumbers(String,StorageLevel,UnpersistHandle,Column...)]] for details.
      */
     def withRowNumbers(unpersistHandle: UnpersistHandle, order: Column*): DataFrame =
       RowNumbers.withUnpersistHandle(unpersistHandle).withOrderColumns(order).of(ds)
@@ -342,7 +342,7 @@ package object spark extends Logging {
     /**
      * Adds a global continuous row number starting at 1.
      *
-     * See [[ExtendedDataset#withRowNumbers(String, StorageLevel, UnpersistHandle, Column*)]] for details.
+     * See [[withRowNumbers(String,StorageLevel,UnpersistHandle,Column...)]] for details.
      */
     def withRowNumbers(rowNumberColumnName: String,
                        storageLevel: StorageLevel,
@@ -352,7 +352,7 @@ package object spark extends Logging {
     /**
      * Adds a global continuous row number starting at 1.
      *
-     * See [[ExtendedDataset#withRowNumbers(String, StorageLevel, UnpersistHandle, Column*)]] for details.
+     * See [[withRowNumbers(String,StorageLevel,UnpersistHandle,Column...)]] for details.
      */
     def withRowNumbers(rowNumberColumnName: String,
                        unpersistHandle: UnpersistHandle,
@@ -362,7 +362,7 @@ package object spark extends Logging {
     /**
      * Adds a global continuous row number starting at 1.
      *
-     * See [[ExtendedDataset#withRowNumbers(String, StorageLevel, UnpersistHandle, Column*)]] for details.
+     * See [[withRowNumbers(String,StorageLevel,UnpersistHandle,Column...)]] for details.
      */
     def withRowNumbers(storageLevel: StorageLevel,
                        unpersistHandle: UnpersistHandle,
