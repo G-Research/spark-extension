@@ -19,7 +19,6 @@ package uk.co.gresearch.spark
 import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.expressions.{Descending, SortOrder}
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.storage.StorageLevel.{DISK_ONLY, MEMORY_AND_DISK, MEMORY_ONLY, NONE}
 import org.scalatest.funsuite.AnyFunSuite
@@ -42,7 +41,7 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
       ("UnpersistHandle", UnpersistHandle()),
       ("SilentUnpersistHandle", SilentUnpersistHandle())
     ).foreach { case (handleClass, unpersist) =>
-      test(s"$handleClass does unpersist set DataFrame with $level\"") {
+      test(s"$handleClass does unpersist set DataFrame with $level") {
         val cacheManager = spark.sharedState.cacheManager
         cacheManager.clearCache()
         assert(cacheManager.isEmpty === true)
@@ -66,7 +65,7 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
   }
 
   Seq(MEMORY_AND_DISK, MEMORY_ONLY, DISK_ONLY, NONE).foreach { level =>
-    test(s"NoopUnpersistHandle does not unpersist set DataFrame with $level\"") {
+    test(s"NoopUnpersistHandle does not unpersist set DataFrame with $level") {
       val cacheManager = spark.sharedState.cacheManager
       cacheManager.clearCache()
       assert(cacheManager.isEmpty === true)
