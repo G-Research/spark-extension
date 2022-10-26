@@ -70,7 +70,8 @@ sed -i "s/$latest-/$version-/g" README.md
 # commit changes to local repo
 echo
 echo "Committing release to local git"
-git commit -a -m "Releasing $version"
+git add CHANGELOG.md README.md pom.xml
+git commit -m "Releasing $version"
 git tag -a "v${version}" -m "Release v${version}"
 
 echo "Please inspect git changes:"
