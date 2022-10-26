@@ -197,6 +197,7 @@ jobs:
         scala-version: ${{ matrix.scala-version }}
         spark-compat-version: ${{ matrix.spark-compat-version }}
         scala-compat-version: ${{ matrix.scala-compat-version }}
+        python-version: ${{ matrix.python-version }}
 
   test-snapshots:
     name: Test (Spark ${{ matrix.spark-version }} Scala ${{ matrix.scala-version }} Python ${{ matrix.python-version }})
@@ -275,6 +276,7 @@ jobs:
         scala-version: ${{ matrix.scala-version }}
         spark-compat-version: ${{ matrix.spark-compat-version }}
         scala-compat-version: ${{ matrix.scala-compat-version }}
+        python-version: ${{ matrix.python-version }}
 
   event_file:
     name: "Event File"
