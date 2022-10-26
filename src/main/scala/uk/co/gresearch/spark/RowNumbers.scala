@@ -81,31 +81,3 @@ object RowNumbers {
 
   def of[D](ds: Dataset[D]): DataFrame = default().of(ds)
 }
-
-class UnpersistHandle {
-  var df: Option[DataFrame] = None
-
-  def setDataFrame(dataframe: DataFrame): Unit = {
-    if (df.isDefined) throw new IllegalStateException("DataFrame has been set already. It cannot be reused once used with withRowNumbers.")
-    this.df = Some(dataframe)
-  }
-
-  def apply(): Unit = {
-    this.df.getOrElse(throw new IllegalStateException("DataFrame has to be set first")).unpersist()
-  }
-
-  def apply(blocking: Boolean): Unit = {
-    this.df.getOrElse(throw new IllegalStateException("DataFrame has to be set first")).unpersist(blocking)
-  }
-}
-
-class NoopUnpersistHandle extends UnpersistHandle{
-  override def setDataFrame(dataframe: DataFrame): Unit = {}
-  override def apply(): Unit = {}
-  override def apply(blocking: Boolean): Unit = {}
-}
-
-object UnpersistHandle {
-  def apply(): UnpersistHandle = new UnpersistHandle()
-  val Noop = new NoopUnpersistHandle()
-}
