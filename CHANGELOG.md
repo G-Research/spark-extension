@@ -3,6 +3,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [2.3.0] - 2022-10-26
+
+### Added
+
+- Add diffWith to Scala, Java and Python Diff API. (#109)
+
+### Changed
+
+- Diff similar Datasets with ignoreColumns. Before, only similar DataFrame could be diffed with ignoreColumns. (#111)
+
+### Fixed
+
+- Cache before writing via partitionedBy to work around SPARK-40588. Unpersist via UnpersistHandle. (#124)
+
 ## [2.2.0] - 2022-07-21
 
 ### Added
