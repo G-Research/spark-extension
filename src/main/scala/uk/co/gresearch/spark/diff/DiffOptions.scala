@@ -16,11 +16,12 @@
 
 package uk.co.gresearch.spark.diff
 
-import org.apache.spark.sql.types.{DataType, StructField, StructType}
+import org.apache.spark.sql.types.{DataType, StructField}
 import uk.co.gresearch.spark.diff
 import uk.co.gresearch.spark.diff.DiffMode.{Default, DiffMode}
 
 import scala.annotation.varargs
+import scala.collection.Map
 
 /**
  * The diff mode determines the output columns of the diffing transformation.
@@ -266,9 +267,10 @@ case class DiffOptions(diffColumn: String,
     this.copy(columnNameComparators = columnNameComparators ++ columnName.map(name => name -> diffComparator))
   }
 
-  private[diff] def comparatorFor(column: StructField): Option[DiffComparator] =
+  private[diff] def comparatorFor(column: StructField): DiffComparator =
     columnNameComparators.get(column.name)
       .orElse(dataTypeComparators.get(column.dataType))
+      .getOrElse(DefaultDiffComparator)
 }
 
 object DiffOptions {

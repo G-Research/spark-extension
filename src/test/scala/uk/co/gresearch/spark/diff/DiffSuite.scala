@@ -16,11 +16,12 @@
 
 package uk.co.gresearch.spark.diff
 
+import org.apache.spark.sql.functions.{lit, regexp_replace, when}
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.functions.regexp_replace
-import org.apache.spark.sql.{Dataset, Encoders, Row}
+import org.apache.spark.sql.{Dataset, Encoder, Encoders, Row}
 import org.scalatest.funsuite.AnyFunSuite
+import uk.co.gresearch.spark.diff.DiffSuite.{optionsWithRelaxedComparators, optionsWithTightComparators}
 import uk.co.gresearch.spark.{SparkTestSession, distinctPrefixFor}
 
 case class Empty()
@@ -34,6 +35,7 @@ case class Value7(id: Int, value: Option[String], label: Option[String])
 case class Value8(id: Int, seq: Option[Int], value: Option[String], meta: Option[String])
 case class Value9(id: Int, seq: Option[Int], value: Option[String], info: Option[String])
 case class Value9up(ID: Int, SEQ: Option[Int], VALUE: Option[String], INFO: Option[String])
+case class Number(id: Int, longValue: Long, floatValue: Float, doubleValue: Double, someInt: Option[Int], someLong: Option[Long])
 
 case class ValueLeft(left_id: Int, value: Option[String])
 case class ValueRight(right_id: Int, value: Option[String])
@@ -107,6 +109,20 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     Value(1, Some("one")),
     Value(2, Some("Two")),
     Value(4, Some("four"))
+  ).toDS()
+
+  lazy val leftNumbers: Dataset[Number] = Seq(
+    Number(1, 1L, 1.0f, 1.0, None, None),
+    Number(2, 2L, 2.0f, 2.0, Some(2), Some(2L)),
+    Number(3, 3L, 3.0f, 3.0, Some(3), None),
+    Number(4, 4L, 4.0f, 4.0, None, Some(4L)),
+  ).toDS()
+
+  lazy val rightNumbers: Dataset[Number] = Seq(
+    Number(1, 1L, 1.0f, 1.0, None, None),
+    Number(2, 3L, 2.001f, 2.001, Some(3), Some(3L)),
+    Number(3, 3L, 3.0f, 3.0, None, Some(3L)),
+    Number(5, 5L, 5.0f, 5.0, Some(5), Some(5L)),
   ).toDS()
 
   lazy val left7: Dataset[Value7] = Seq(
@@ -312,7 +328,7 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
   }
 
   test("diff dataframe with duplicate columns") {
-    val df = Seq((1)).toDF("id").select($"id", $"id")
+    val df = Seq(1).toDF("id").select($"id", $"id")
 
     doTestRequirement(df.diff(df, "id"),
       "The datasets have duplicate columns.\n" +
@@ -1555,6 +1571,26 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     }
   }
 
+  test("diff with custom comparator") {
+    withSQLConf(SQLConf.WHOLESTAGE_CODEGEN_ENABLED.key -> "false") {
+      val actualWithoutComparators = leftNumbers.diff(rightNumbers, "id").orderBy($"id")
+
+      val actualWithTightComparators = leftNumbers.diff(rightNumbers, optionsWithTightComparators, "id").orderBy($"id")
+      val expectedWithTightComparators = actualWithoutComparators
+      assert(actualWithTightComparators.collect() === expectedWithTightComparators.collect())
+
+      val actualWithRelaxedComparators = leftNumbers.diff(rightNumbers, optionsWithRelaxedComparators, "id").orderBy($"id")
+      val expectedWithRelaxedComparators = actualWithoutComparators
+        // the comparators are relaxed so that all changes disappear
+        .withColumn("diff", when($"id" === 2, lit("N")).otherwise($"diff"))
+
+      actualWithRelaxedComparators.explain()
+      expectedWithRelaxedComparators.show()
+      actualWithRelaxedComparators.show()
+      assert(actualWithRelaxedComparators.collect() === expectedWithRelaxedComparators.collect())
+    }
+  }
+
   def assertDiffWith[T](actual: Seq[T], expected: Seq[T]): Unit = {
     assert(actual.toSet === expected.toSet)
     assert(actual.length === expected.length)
@@ -1613,5 +1649,41 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
   def doTestRequirement(f: => Any, expected: String): Unit = {
     assert(intercept[IllegalArgumentException](f).getMessage === s"requirement failed: $expected")
   }
+
+}
+
+object DiffSuite {
+  implicit val intEnc: Encoder[Int] = Encoders.scalaInt
+  implicit val longEnc: Encoder[Long] = Encoders.scalaLong
+  implicit val floatEnc: Encoder[Float] = Encoders.scalaFloat
+  implicit val doubleEnc: Encoder[Double] = Encoders.scalaDouble
+
+  val optionsWithTightComparators: DiffOptions = DiffOptions.default
+    .withComparator(
+      OrderingDiffComparator((x: Int, y: Int) => if (x - y <= -1) -1 else if (x - y >= +1) +1 else 0), IntegerType
+    )
+    .withComparator(
+      OrderingDiffComparator((x: Long, y: Long) => if (x - y <= -1) -1 else if (x - y >= +1) +1 else 0), LongType
+    )
+    .withComparator(
+      OrderingDiffComparator((x: Float, y: Float) => if (x - y <= -0.001) -1 else if (x - y >= +0.001) +1 else 0), "floatValue"
+    )
+    .withComparator(
+      OrderingDiffComparator((x: Double, y: Double) => if (x - y <= -0.001) -1 else if (x - y >= +0.001) +1 else 0), "doubleValue"
+    )
+
+  val optionsWithRelaxedComparators: DiffOptions = DiffOptions.default
+    .withComparator(
+      OrderingDiffComparator((x: Int, y: Int) => if (x - y < -1) -1 else if (x - y > +1) +1 else 0), IntegerType
+    )
+    .withComparator(
+      OrderingDiffComparator((x: Long, y: Long) => if (x - y < -1) -1 else if (x - y > +1) +1 else 0), LongType
+    )
+    .withComparator(
+      OrderingDiffComparator((x: Float, y: Float) => if (x - y < -0.001) -1 else if (x - y > +0.001) +1 else 0), "floatValue"
+    )
+    .withComparator(
+      OrderingDiffComparator((x: Double, y: Double) => if (x - y < -0.001) -1 else if (x - y > +0.001) +1 else 0), "doubleValue"
+    )
 
 }

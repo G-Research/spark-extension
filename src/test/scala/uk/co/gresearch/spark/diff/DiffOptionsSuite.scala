@@ -16,6 +16,7 @@
 
 package uk.co.gresearch.spark.diff
 
+import org.apache.spark.sql.Column
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
 import org.scalatest.funsuite.AnyFunSuite
@@ -107,9 +108,15 @@ class DiffOptionsSuite extends AnyFunSuite with SparkTestSession {
   }
 
   test("diff options with comparators") {
-    val cmp1 = new DiffComparator { }
-    val cmp2 = new DiffComparator { }
-    val cmp3 = new DiffComparator { }
+    val cmp1 = new DiffComparator {
+      override def compare(left: Column, right: Column): Column = left <=> right
+    }
+    val cmp2 = new DiffComparator {
+      override def compare(left: Column, right: Column): Column = left <=> right
+    }
+    val cmp3 = new DiffComparator {
+      override def compare(left: Column, right: Column): Column = left <=> right
+    }
 
     val options = DiffOptions.default
       .withComparator(cmp1, IntegerType)
