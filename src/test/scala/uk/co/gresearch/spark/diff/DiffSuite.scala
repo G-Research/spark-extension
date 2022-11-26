@@ -1571,23 +1571,28 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     }
   }
 
-  test("diff with custom comparator") {
-    withSQLConf(SQLConf.WHOLESTAGE_CODEGEN_ENABLED.key -> "false") {
-      val actualWithoutComparators = leftNumbers.diff(rightNumbers, "id").orderBy($"id")
+  Seq("true", "false").foreach { codegen =>
+    test(s"diff with custom comparator - codegen enabled=$codegen") {
+      withSQLConf(
+        SQLConf.WHOLESTAGE_CODEGEN_ENABLED.key -> codegen,
+        SQLConf.CODEGEN_FALLBACK.key -> "false"
+      ) {
+        // left and right numbers have some differences
+        val actualWithoutComparators = leftNumbers.diff(rightNumbers, "id").orderBy($"id")
 
-      val actualWithTightComparators = leftNumbers.diff(rightNumbers, optionsWithTightComparators, "id").orderBy($"id")
-      val expectedWithTightComparators = actualWithoutComparators
-      assert(actualWithTightComparators.collect() === expectedWithTightComparators.collect())
+        // our tight comparators are just too strict to still see differences
+        val actualWithTightComparators = leftNumbers.diff(rightNumbers, optionsWithTightComparators, "id").orderBy($"id")
+        val expectedWithTightComparators = actualWithoutComparators
+        assert(actualWithTightComparators.collect() === expectedWithTightComparators.collect())
 
-      val actualWithRelaxedComparators = leftNumbers.diff(rightNumbers, optionsWithRelaxedComparators, "id").orderBy($"id")
-      val expectedWithRelaxedComparators = actualWithoutComparators
-        // the comparators are relaxed so that all changes disappear
-        .withColumn("diff", when($"id" === 2, lit("N")).otherwise($"diff"))
-
-      actualWithRelaxedComparators.explain()
-      expectedWithRelaxedComparators.show()
-      actualWithRelaxedComparators.show()
-      assert(actualWithRelaxedComparators.collect() === expectedWithRelaxedComparators.collect())
+        // the relaxed comparators are just relaxed enough to not see any differences
+        // they still see changes to / from null values
+        val actualWithRelaxedComparators = leftNumbers.diff(rightNumbers, optionsWithRelaxedComparators, "id").orderBy($"id")
+        val expectedWithRelaxedComparators = actualWithoutComparators
+          // the comparators are relaxed so that all changes disappear
+          .withColumn("diff", when($"id" === 2, lit("N")).otherwise($"diff"))
+        assert(actualWithRelaxedComparators.collect() === expectedWithRelaxedComparators.collect())
+      }
     }
   }
 
@@ -1658,32 +1663,26 @@ object DiffSuite {
   implicit val floatEnc: Encoder[Float] = Encoders.scalaFloat
   implicit val doubleEnc: Encoder[Double] = Encoders.scalaDouble
 
+  val tightIntComparator: EquivDiffComparator[Int] = EquivDiffComparator((x: Int, y: Int) => math.abs(x - y) < 1)
+  val tightLongComparator: EquivDiffComparator[Long] = EquivDiffComparator((x: Long, y: Long) => math.abs(x - y) < 1)
+  val tightFloatComparator: EquivDiffComparator[Float] = EquivDiffComparator((x: Float, y: Float) => math.abs(x - y) < 0.001)
+  val tightDoubleComparator: EquivDiffComparator[Double] = EquivDiffComparator((x: Double, y: Double) => math.abs(x - y) < 0.001)
+
   val optionsWithTightComparators: DiffOptions = DiffOptions.default
-    .withComparator(
-      OrderingDiffComparator((x: Int, y: Int) => if (x - y <= -1) -1 else if (x - y >= +1) +1 else 0), IntegerType
-    )
-    .withComparator(
-      OrderingDiffComparator((x: Long, y: Long) => if (x - y <= -1) -1 else if (x - y >= +1) +1 else 0), LongType
-    )
-    .withComparator(
-      OrderingDiffComparator((x: Float, y: Float) => if (x - y <= -0.001) -1 else if (x - y >= +0.001) +1 else 0), "floatValue"
-    )
-    .withComparator(
-      OrderingDiffComparator((x: Double, y: Double) => if (x - y <= -0.001) -1 else if (x - y >= +0.001) +1 else 0), "doubleValue"
-    )
+    .withComparator(tightIntComparator, IntegerType)
+    .withComparator(tightLongComparator, LongType)
+    .withComparator(tightFloatComparator, "floatValue")
+    .withComparator(tightDoubleComparator, "doubleValue")
+
+  val relaxedIntComparator: EquivDiffComparator[Int] = EquivDiffComparator((x: Int, y: Int) => math.abs(x - y) <= 1)
+  val relaxedLongComparator: EquivDiffComparator[Long] = EquivDiffComparator((x: Long, y: Long) => math.abs(x - y) <= 1)
+  val relaxedFloatComparator: EquivDiffComparator[Float] = EquivDiffComparator((x: Float, y: Float) => math.abs(x - y) <= 0.001)
+  val relaxedDoubleComparator: EquivDiffComparator[Double] = EquivDiffComparator((x: Double, y: Double) => math.abs(x - y) <= 0.001)
 
   val optionsWithRelaxedComparators: DiffOptions = DiffOptions.default
-    .withComparator(
-      OrderingDiffComparator((x: Int, y: Int) => if (x - y < -1) -1 else if (x - y > +1) +1 else 0), IntegerType
-    )
-    .withComparator(
-      OrderingDiffComparator((x: Long, y: Long) => if (x - y < -1) -1 else if (x - y > +1) +1 else 0), LongType
-    )
-    .withComparator(
-      OrderingDiffComparator((x: Float, y: Float) => if (x - y < -0.001) -1 else if (x - y > +0.001) +1 else 0), "floatValue"
-    )
-    .withComparator(
-      OrderingDiffComparator((x: Double, y: Double) => if (x - y < -0.001) -1 else if (x - y > +0.001) +1 else 0), "doubleValue"
-    )
+    .withComparator(relaxedIntComparator, IntegerType)
+    .withComparator(relaxedLongComparator, LongType)
+    .withComparator(relaxedFloatComparator, "floatValue")
+    .withComparator(relaxedDoubleComparator, "doubleValue")
 
 }

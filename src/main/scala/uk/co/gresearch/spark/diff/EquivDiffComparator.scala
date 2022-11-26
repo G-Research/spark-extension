@@ -2,21 +2,21 @@ package uk.co.gresearch.spark.diff
 
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.encoders.encoderFor
-import org.apache.spark.sql.catalyst.expressions.codegen.CodegenFallback
-import org.apache.spark.sql.catalyst.expressions.{BinaryExpression, BinaryOperator, ExpectsInputTypes, Expression}
-import org.apache.spark.sql.catalyst.util.TypeUtils
+import org.apache.spark.sql.catalyst.expressions.codegen.Block.BlockHelper
+import org.apache.spark.sql.catalyst.expressions.codegen.{CodegenContext, ExprCode, FalseLiteral}
+import org.apache.spark.sql.catalyst.expressions.{BinaryOperator, ExpectsInputTypes, Expression}
 import org.apache.spark.sql.types.{BooleanType, DataType}
 import org.apache.spark.sql.{Column, Encoder}
 
-case class OrderingDiffComparator[T : Encoder](ordering: Ordering[T]) extends DiffComparator {
+case class EquivDiffComparator[T : Encoder](equiv: math.Equiv[T]) extends DiffComparator {
   def compare(left: Column, right: Column): Column = {
-    val comparator = Comparator(left.expr, right.expr, Some(ordering))
+    val comparator = Equiv(left.expr, right.expr, equiv)
     new Column(comparator.asInstanceOf[Expression])
   }
 }
 
-private case class Comparator[T : Encoder](left: Expression, right: Expression, customOrdering: Option[Ordering[T]])
-  extends BinaryOperator with ExpectsInputTypes with CodegenFallback {
+private case class Equiv[T : Encoder](left: Expression, right: Expression, equiv: math.Equiv[T])
+  extends BinaryOperator with ExpectsInputTypes {
 
   override def nullable: Boolean = false
 
@@ -33,27 +33,21 @@ private case class Comparator[T : Encoder](left: Expression, right: Expression, 
       true
     } else if (input1 == null || input2 == null) {
       false
-    } else if (customOrdering.isDefined) {
-      customOrdering.get.equiv(input1, input2)
     } else {
-      // TODO: use case?
-      TypeUtils.getInterpretedOrdering(left.dataType).equiv(input1, input2)
+      equiv.equiv(input1, input2)
     }
   }
 
-  /**
   override def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = {
     val eval1 = left.genCode(ctx)
     val eval2 = right.genCode(ctx)
-    val orderingObj = customOrdering.getOrElse(TypeUtils.getInterpretedOrdering(left.dataType))
-    val ordering = ctx.addReferenceObj("ordering", orderingObj)
+    val equivRef = ctx.addReferenceObj("equiv", equiv, math.Equiv.getClass.getName.stripSuffix("$"))
     ev.copy(code = eval1.code + eval2.code + code"""
         boolean ${ev.value} = (${eval1.isNull} && ${eval2.isNull}) ||
-           (!${eval1.isNull} && !${eval2.isNull} && $ordering.equiv(${eval1.value}, ${eval2.value}));""", isNull = FalseLiteral)
+           (!${eval1.isNull} && !${eval2.isNull} && $equivRef.equiv(${eval1.value}, ${eval2.value}));""", isNull = FalseLiteral)
   }
-  **/
 
-  override protected def withNewChildrenInternal(newLeft: Expression, newRight: Expression): Comparator[T] =
+  override protected def withNewChildrenInternal(newLeft: Expression, newRight: Expression): Equiv[T] =
     copy(left=newLeft, right=newRight)
 
 }
