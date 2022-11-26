@@ -1,7 +1,8 @@
-package uk.co.gresearch.spark.diff
+package uk.co.gresearch.spark.diff.comparator
 
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.catalyst.expressions.Expression
+import uk.co.gresearch.spark.diff.DiffComparator
 
 case class EquivAnyDiffComparator(equiv: math.Equiv[Any]) extends DiffComparator {
   def compare(left: Column, right: Column): Column = {

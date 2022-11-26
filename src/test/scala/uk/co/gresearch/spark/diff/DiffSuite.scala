@@ -22,6 +22,7 @@ import org.apache.spark.sql.types._
 import org.apache.spark.sql.{Dataset, Encoder, Encoders, Row}
 import org.scalatest.funsuite.AnyFunSuite
 import uk.co.gresearch.spark.diff.DiffSuite.{optionsWithRelaxedComparators, optionsWithTightComparators}
+import uk.co.gresearch.spark.diff.comparator.EquivDiffComparator
 import uk.co.gresearch.spark.{SparkTestSession, distinctPrefixFor}
 
 case class Empty()

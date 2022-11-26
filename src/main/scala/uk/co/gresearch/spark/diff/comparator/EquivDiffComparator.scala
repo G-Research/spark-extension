@@ -1,4 +1,4 @@
-package uk.co.gresearch.spark.diff
+package uk.co.gresearch.spark.diff.comparator
 
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.encoders.encoderFor
@@ -7,6 +7,7 @@ import org.apache.spark.sql.catalyst.expressions.codegen.{CodegenContext, ExprCo
 import org.apache.spark.sql.catalyst.expressions.{BinaryExpression, BinaryOperator, Expression}
 import org.apache.spark.sql.types.{BooleanType, DataType}
 import org.apache.spark.sql.{Column, Encoder}
+import uk.co.gresearch.spark.diff.DiffComparator
 
 case class EquivDiffComparator[T : Encoder](equiv: math.Equiv[T]) extends DiffComparator {
   def compare(left: Column, right: Column): Column = {

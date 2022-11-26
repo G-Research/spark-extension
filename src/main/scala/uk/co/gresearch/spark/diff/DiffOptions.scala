@@ -16,12 +16,15 @@
 
 package uk.co.gresearch.spark.diff
 
+import org.apache.spark.sql.{Column, Encoder, TypedColumn}
 import org.apache.spark.sql.types.{DataType, StructField}
 import uk.co.gresearch.spark.diff
 import uk.co.gresearch.spark.diff.DiffMode.{Default, DiffMode}
+import uk.co.gresearch.spark.diff.comparator.{ColumnDiffComparator, DefaultDiffComparator, EquivDiffComparator, EquivTypedDiffComparator}
 
 import scala.annotation.varargs
 import scala.collection.Map
+import scala.math.Equiv
 
 /**
  * The diff mode determines the output columns of the diffing transformation.
@@ -93,6 +96,7 @@ case class DiffOptions(diffColumn: String,
                        changeColumn: Option[String] = None,
                        diffMode: DiffMode = Default,
                        sparseMode: Boolean = false,
+                       defaultTypeComparators: DiffComparator = DefaultDiffComparator,
                        dataTypeComparators: Map[DataType, DiffComparator] = Map.empty,
                        columnNameComparators: Map[String, DiffComparator] = Map.empty) {
   def this(diffColumn: String,
@@ -116,6 +120,7 @@ case class DiffOptions(diffColumn: String,
       changeColumn,
       diffMode,
       sparseMode,
+      DefaultDiffComparator,
       Map.empty,
       Map.empty)
   }
@@ -240,32 +245,96 @@ case class DiffOptions(diffColumn: String,
   }
 
   /**
-   * Fluent method to add a comparator for a data type.
-   * Returns a new immutable DiffOptions instance with the new sparse mode.
+   * Fluent method to add a default comparator.
+   * Returns a new immutable DiffOptions instance with the new default comparator.
    * @return new immutable DiffOptions instance
    */
-  def withComparator(diffComparator: DiffComparator, dataType: DataType): DiffOptions = {
-    if (dataTypeComparators.contains(dataType)) {
-      throw new IllegalArgumentException(s"A comparator for data type $dataType exists already: ${dataTypeComparators.get(dataType)}")
-    }
-    this.copy(dataTypeComparators = dataTypeComparators + (dataType -> diffComparator))
+  def withComparator(diffComparator: DiffComparator): DiffOptions = {
+    this.copy(defaultTypeComparators = diffComparator)
   }
 
   /**
-   * Fluent method to add a comparator for a data type.
-   * Returns a new immutable DiffOptions instance with the new sparse mode.
+   * Fluent method to add a comparator for one or more data types.
+   * Returns a new immutable DiffOptions instance with the new comparator.
+   * @return new immutable DiffOptions instance
+   */
+  def withComparator(diffComparator: DiffComparator, dataType: DataType, dataTypes: DataType*): DiffOptions = {
+    val allDataTypes = dataType +: dataTypes
+    val existingDataTypes = allDataTypes.filter(dataTypeComparators.contains)
+    if (existingDataTypes.nonEmpty) {
+      throw new IllegalArgumentException(
+        s"A comparator for data type${if (existingDataTypes.length > 1) "s" else ""} ${existingDataTypes.mkString(", ")} " +
+          s"exist${if (existingDataTypes.length == 1) "s" else ""} already.")
+    }
+    this.copy(dataTypeComparators = dataTypeComparators ++ allDataTypes.map(dt => dt -> diffComparator))
+  }
+
+  /**
+   * Fluent method to add a comparator for one or more column names.
+   * Returns a new immutable DiffOptions instance with the new comparator.
    * @return new immutable DiffOptions instance
    */
   @varargs
-  def withComparator(diffComparator: DiffComparator, columnName: String*): DiffOptions = {
-    val existingColumnNames = columnName.filter(columnNameComparators.contains)
+  def withComparator(diffComparator: DiffComparator, columnName: String, columnNames: String*): DiffOptions = {
+    val allColumnNames = columnName +: columnNames
+    val existingColumnNames = allColumnNames.filter(columnNameComparators.contains)
     if (existingColumnNames.nonEmpty) {
       throw new IllegalArgumentException(
         s"A comparator for column name${if (existingColumnNames.length > 1) "s" else ""} ${existingColumnNames.mkString(", ")} " +
           s"exist${if (existingColumnNames.length == 1) "s" else ""} already.")
     }
-    this.copy(columnNameComparators = columnNameComparators ++ columnName.map(name => name -> diffComparator))
+    this.copy(columnNameComparators = columnNameComparators ++ allColumnNames.map(name => name -> diffComparator))
   }
+
+  /**
+   * Fluent method to add an equivalent operator as a comparator for one or more data types.
+   * Returns a new immutable DiffOptions instance with the new comparator.
+   * @return new immutable DiffOptions instance
+   */
+  def withComparator[T : Encoder](equiv: Equiv[T], dataType: DataType, dataTypes: DataType*): DiffOptions =
+    withComparator(EquivDiffComparator(equiv), dataType, dataTypes: _*)
+
+  /**
+   * Fluent method to add an equivalent operator as a comparator for one or more column names.
+   * Returns a new immutable DiffOptions instance with the new comparator.
+   * @return new immutable DiffOptions instance
+   */
+  def withComparator[T : Encoder](equiv: Equiv[T], columnName: String, columnNames: String*): DiffOptions =
+    withComparator(EquivDiffComparator(equiv), columnName, columnNames: _*)
+
+  /**
+   * Fluent method to add an equivalent operator as a comparator for one or more data types.
+   * Returns a new immutable DiffOptions instance with the new comparator.
+   * @return new immutable DiffOptions instance
+   */
+  def withComparator[T](equiv: Equiv[T], inputDataType: DataType, dataType: DataType, dataTypes: DataType*): DiffOptions =
+    withComparator(EquivTypedDiffComparator(equiv, inputDataType), dataType, dataTypes: _*)
+
+  /**
+   * Fluent method to add an equivalent operator as a comparator for one or more column names.
+   * Returns a new immutable DiffOptions instance with the new comparator.
+   * @return new immutable DiffOptions instance
+   */
+  @varargs
+  def withComparator[T](equiv: Equiv[T], inputDataType: DataType, columnName: String, columnNames: String*): DiffOptions =
+    withComparator(comparator.EquivTypedDiffComparator(equiv, inputDataType), columnName, columnNames: _*)
+
+  /**
+   * Fluent method to add a functional comparator for one or more data types.
+   * Returns a new immutable DiffOptions instance with the new comparator.
+   * @return new immutable DiffOptions instance
+   */
+  def withComparator[T](comparator: (Column, Column) => TypedColumn[T, Boolean], dataType: DataType, dataTypes: DataType*): DiffOptions =
+    withComparator(ColumnDiffComparator(comparator), dataType, dataTypes: _*)
+
+  /**
+   * Fluent method to add a functional comparator for one or more column names.
+   * Returns a new immutable DiffOptions instance with the new comparator.
+   * @return new immutable DiffOptions instance
+   */
+  @varargs
+  def withComparator[T](comparator: (Column, Column) => TypedColumn[T, Boolean], columnName: String, columnNames: String*): DiffOptions =
+    withComparator(ColumnDiffComparator(comparator), columnName, columnNames: _*)
 
   private[diff] def comparatorFor(column: StructField): DiffComparator =
     columnNameComparators.get(column.name)
@@ -277,5 +346,5 @@ object DiffOptions {
   /**
    * Default diffing options.
    */
-  val default: DiffOptions = DiffOptions("diff", "left", "right", "I", "C", "D", "N", None, Default, false, Map.empty, Map.empty)
+  val default: DiffOptions = DiffOptions("diff", "left", "right", "I", "C", "D", "N", None, Default, sparseMode = false, DefaultDiffComparator, Map.empty, Map.empty)
 }

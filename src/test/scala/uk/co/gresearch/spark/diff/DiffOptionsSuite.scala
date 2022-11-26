@@ -17,6 +17,7 @@
 package uk.co.gresearch.spark.diff
 
 import org.apache.spark.sql.Column
+import org.apache.spark.sql.functions.lit
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
 import org.scalatest.funsuite.AnyFunSuite
@@ -134,6 +135,16 @@ class DiffOptionsSuite extends AnyFunSuite with SparkTestSession {
   test("fluent methods of diff options") {
     assert(DiffMode.Default != DiffMode.LeftSide, "test assumption on default diff mode must hold, otherwise test is trivial")
 
+    val cmp1 = new DiffComparator {
+      override def compare(left: Column, right: Column): Column = lit(true)
+    }
+    val cmp2 = new DiffComparator {
+      override def compare(left: Column, right: Column): Column = lit(true)
+    }
+    val cmp3 = new DiffComparator {
+      override def compare(left: Column, right: Column): Column = lit(true)
+    }
+
     val options = DiffOptions.default
       .withDiffColumn("d")
       .withLeftColumnPrefix("l")
@@ -145,12 +156,14 @@ class DiffOptionsSuite extends AnyFunSuite with SparkTestSession {
       .withChangeColumn("change")
       .withDiffMode(DiffMode.LeftSide)
       .withSparseMode(true)
-      .withComparator(null, IntegerType)
-      .withComparator(null, "col1")
+      .withComparator(cmp1)
+      .withComparator(cmp2, IntegerType)
+      .withComparator(cmp3, "col1")
 
-    val expectedDtCmps = Map(IntegerType.asInstanceOf[DataType] -> null)
-    val expectedColCmps = Map("col1" -> null)
-    val expected = DiffOptions("d", "l", "r", "i", "c", "d", "n", Some("change"), DiffMode.LeftSide, true, expectedDtCmps, expectedColCmps)
+    val dexpectedDefCmp = cmp1
+    val expectedDtCmps = Map(IntegerType.asInstanceOf[DataType] -> cmp2)
+    val expectedColCmps = Map("col1" -> cmp3)
+    val expected = DiffOptions("d", "l", "r", "i", "c", "d", "n", Some("change"), DiffMode.LeftSide, sparseMode = true, dexpectedDefCmp, expectedDtCmps, expectedColCmps)
     assert(options === expected)
   }
 
