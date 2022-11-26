@@ -4,7 +4,7 @@ import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.encoders.encoderFor
 import org.apache.spark.sql.catalyst.expressions.codegen.Block.BlockHelper
 import org.apache.spark.sql.catalyst.expressions.codegen.{CodegenContext, ExprCode, FalseLiteral}
-import org.apache.spark.sql.catalyst.expressions.{BinaryOperator, ExpectsInputTypes, Expression}
+import org.apache.spark.sql.catalyst.expressions.{BinaryExpression, BinaryOperator, Expression}
 import org.apache.spark.sql.types.{BooleanType, DataType}
 import org.apache.spark.sql.{Column, Encoder}
 
@@ -15,14 +15,10 @@ case class EquivDiffComparator[T : Encoder](equiv: math.Equiv[T]) extends DiffCo
   }
 }
 
-private case class Equiv[T : Encoder](left: Expression, right: Expression, equiv: math.Equiv[T])
-  extends BinaryOperator with ExpectsInputTypes {
+private trait EquivExpression[T] extends BinaryExpression {
+  val equiv: math.Equiv[T]
 
   override def nullable: Boolean = false
-
-  def inputType: DataType = encoderFor[T].schema.fields(0).dataType
-
-  override def symbol: String = "≡"
 
   override def dataType: DataType = BooleanType
 
@@ -46,10 +42,25 @@ private case class Equiv[T : Encoder](left: Expression, right: Expression, equiv
         boolean ${ev.value} = (${eval1.isNull} && ${eval2.isNull}) ||
            (!${eval1.isNull} && !${eval2.isNull} && $equivRef.equiv(${eval1.value}, ${eval2.value}));""", isNull = FalseLiteral)
   }
+}
 
+private trait EquivOperator[T] extends BinaryOperator with EquivExpression[T] {
+  val equivInputType: DataType
+
+  override def inputType: DataType = equivInputType
+
+  override def symbol: String = "≡"
+}
+
+private case class Equiv[T](left: Expression, right: Expression, equiv: math.Equiv[T], equivInputType: DataType)
+  extends EquivOperator[T] {
   override protected def withNewChildrenInternal(newLeft: Expression, newRight: Expression): Equiv[T] =
     copy(left=newLeft, right=newRight)
+}
 
+private object Equiv {
+  def apply[T : Encoder](left: Expression, right: Expression, equiv: math.Equiv[T]): Equiv[T] =
+    Equiv(left, right, equiv, encoderFor[T].schema.fields(0).dataType)
 }
 
 case class DoubleEpsilonOrdering(epsilon: Double) extends Ordering[Double] {
