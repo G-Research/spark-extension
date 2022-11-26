@@ -1,0 +1,103 @@
+/*
+ * Copyright 2020 G-Research
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package uk.co.gresearch.spark.diff
+
+import org.apache.spark.sql.functions.{lit, when}
+import org.apache.spark.sql.internal.SQLConf
+import org.apache.spark.sql.types._
+import org.apache.spark.sql.{Dataset, Encoder, Encoders}
+import org.scalatest.funsuite.AnyFunSuite
+import uk.co.gresearch.spark.SparkTestSession
+import uk.co.gresearch.spark.diff.DiffComparatorSuite.{optionsWithRelaxedComparators, optionsWithTightComparators}
+import uk.co.gresearch.spark.diff.comparator.EquivDiffComparator
+
+case class Numbers(id: Int, longValue: Long, floatValue: Float, doubleValue: Double, someInt: Option[Int], someLong: Option[Long])
+
+class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
+
+  import spark.implicits._
+
+  lazy val left: Dataset[Numbers] = Seq(
+    Numbers(1, 1L, 1.0f, 1.0, None, None),
+    Numbers(2, 2L, 2.0f, 2.0, Some(2), Some(2L)),
+    Numbers(3, 3L, 3.0f, 3.0, Some(3), None),
+    Numbers(4, 4L, 4.0f, 4.0, None, Some(4L)),
+  ).toDS()
+
+  lazy val right: Dataset[Numbers] = Seq(
+    Numbers(1, 1L, 1.0f, 1.0, None, None),
+    Numbers(2, 3L, 2.001f, 2.001, Some(3), Some(3L)),
+    Numbers(3, 3L, 3.0f, 3.0, None, Some(3L)),
+    Numbers(5, 5L, 5.0f, 5.0, Some(5), Some(5L)),
+  ).toDS()
+
+  Seq("true", "false").foreach { codegen =>
+    test(s"diff with custom comparator - codegen enabled=$codegen") {
+      withSQLConf(
+        SQLConf.WHOLESTAGE_CODEGEN_ENABLED.key -> codegen,
+        SQLConf.CODEGEN_FALLBACK.key -> "false"
+      ) {
+        // left and right numbers have some differences
+        val actualWithoutComparators = left.diff(right, "id").orderBy($"id")
+
+        // our tight comparators are just too strict to still see differences
+        val actualWithTightComparators = left.diff(right, optionsWithTightComparators, "id").orderBy($"id")
+        val expectedWithTightComparators = actualWithoutComparators
+        assert(actualWithTightComparators.collect() === expectedWithTightComparators.collect())
+
+        // the relaxed comparators are just relaxed enough to not see any differences
+        // they still see changes to / from null values
+        val actualWithRelaxedComparators = left.diff(right, optionsWithRelaxedComparators, "id").orderBy($"id")
+        val expectedWithRelaxedComparators = actualWithoutComparators
+          // the comparators are relaxed so that all changes disappear
+          .withColumn("diff", when($"id" === 2, lit("N")).otherwise($"diff"))
+        assert(actualWithRelaxedComparators.collect() === expectedWithRelaxedComparators.collect())
+      }
+    }
+  }
+
+}
+
+object DiffComparatorSuite {
+  implicit val intEnc: Encoder[Int] = Encoders.scalaInt
+  implicit val longEnc: Encoder[Long] = Encoders.scalaLong
+  implicit val floatEnc: Encoder[Float] = Encoders.scalaFloat
+  implicit val doubleEnc: Encoder[Double] = Encoders.scalaDouble
+
+  val tightIntComparator: EquivDiffComparator[Int] = EquivDiffComparator((x: Int, y: Int) => math.abs(x - y) < 1)
+  val tightLongComparator: EquivDiffComparator[Long] = EquivDiffComparator((x: Long, y: Long) => math.abs(x - y) < 1)
+  val tightFloatComparator: EquivDiffComparator[Float] = EquivDiffComparator((x: Float, y: Float) => math.abs(x - y) < 0.001)
+  val tightDoubleComparator: EquivDiffComparator[Double] = EquivDiffComparator((x: Double, y: Double) => math.abs(x - y) < 0.001)
+
+  val optionsWithTightComparators: DiffOptions = DiffOptions.default
+    .withComparator(tightIntComparator, IntegerType)
+    .withComparator(tightLongComparator, LongType)
+    .withComparator(tightFloatComparator, "floatValue")
+    .withComparator(tightDoubleComparator, "doubleValue")
+
+  val relaxedIntComparator: EquivDiffComparator[Int] = EquivDiffComparator((x: Int, y: Int) => math.abs(x - y) <= 1)
+  val relaxedLongComparator: EquivDiffComparator[Long] = EquivDiffComparator((x: Long, y: Long) => math.abs(x - y) <= 1)
+  val relaxedFloatComparator: EquivDiffComparator[Float] = EquivDiffComparator((x: Float, y: Float) => math.abs(x - y) <= 0.001)
+  val relaxedDoubleComparator: EquivDiffComparator[Double] = EquivDiffComparator((x: Double, y: Double) => math.abs(x - y) <= 0.001)
+
+  val optionsWithRelaxedComparators: DiffOptions = DiffOptions.default
+    .withComparator(relaxedIntComparator, IntegerType)
+    .withComparator(relaxedLongComparator, LongType)
+    .withComparator(relaxedFloatComparator, "floatValue")
+    .withComparator(relaxedDoubleComparator, "doubleValue")
+
+}

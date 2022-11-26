@@ -16,13 +16,11 @@
 
 package uk.co.gresearch.spark.diff
 
-import org.apache.spark.sql.functions.{lit, regexp_replace, when}
+import org.apache.spark.sql.functions.regexp_replace
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.{Dataset, Encoder, Encoders, Row}
+import org.apache.spark.sql.{Dataset, Encoders, Row}
 import org.scalatest.funsuite.AnyFunSuite
-import uk.co.gresearch.spark.diff.DiffSuite.{optionsWithRelaxedComparators, optionsWithTightComparators}
-import uk.co.gresearch.spark.diff.comparator.EquivDiffComparator
 import uk.co.gresearch.spark.{SparkTestSession, distinctPrefixFor}
 
 case class Empty()
@@ -36,7 +34,6 @@ case class Value7(id: Int, value: Option[String], label: Option[String])
 case class Value8(id: Int, seq: Option[Int], value: Option[String], meta: Option[String])
 case class Value9(id: Int, seq: Option[Int], value: Option[String], info: Option[String])
 case class Value9up(ID: Int, SEQ: Option[Int], VALUE: Option[String], INFO: Option[String])
-case class Number(id: Int, longValue: Long, floatValue: Float, doubleValue: Double, someInt: Option[Int], someLong: Option[Long])
 
 case class ValueLeft(left_id: Int, value: Option[String])
 case class ValueRight(right_id: Int, value: Option[String])
@@ -112,18 +109,18 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     Value(4, Some("four"))
   ).toDS()
 
-  lazy val leftNumbers: Dataset[Number] = Seq(
-    Number(1, 1L, 1.0f, 1.0, None, None),
-    Number(2, 2L, 2.0f, 2.0, Some(2), Some(2L)),
-    Number(3, 3L, 3.0f, 3.0, Some(3), None),
-    Number(4, 4L, 4.0f, 4.0, None, Some(4L)),
+  lazy val leftNumbers: Dataset[Numbers] = Seq(
+    Numbers(1, 1L, 1.0f, 1.0, None, None),
+    Numbers(2, 2L, 2.0f, 2.0, Some(2), Some(2L)),
+    Numbers(3, 3L, 3.0f, 3.0, Some(3), None),
+    Numbers(4, 4L, 4.0f, 4.0, None, Some(4L)),
   ).toDS()
 
-  lazy val rightNumbers: Dataset[Number] = Seq(
-    Number(1, 1L, 1.0f, 1.0, None, None),
-    Number(2, 3L, 2.001f, 2.001, Some(3), Some(3L)),
-    Number(3, 3L, 3.0f, 3.0, None, Some(3L)),
-    Number(5, 5L, 5.0f, 5.0, Some(5), Some(5L)),
+  lazy val rightNumbers: Dataset[Numbers] = Seq(
+    Numbers(1, 1L, 1.0f, 1.0, None, None),
+    Numbers(2, 3L, 2.001f, 2.001, Some(3), Some(3L)),
+    Numbers(3, 3L, 3.0f, 3.0, None, Some(3L)),
+    Numbers(5, 5L, 5.0f, 5.0, Some(5), Some(5L)),
   ).toDS()
 
   lazy val left7: Dataset[Value7] = Seq(
@@ -1572,31 +1569,6 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     }
   }
 
-  Seq("true", "false").foreach { codegen =>
-    test(s"diff with custom comparator - codegen enabled=$codegen") {
-      withSQLConf(
-        SQLConf.WHOLESTAGE_CODEGEN_ENABLED.key -> codegen,
-        SQLConf.CODEGEN_FALLBACK.key -> "false"
-      ) {
-        // left and right numbers have some differences
-        val actualWithoutComparators = leftNumbers.diff(rightNumbers, "id").orderBy($"id")
-
-        // our tight comparators are just too strict to still see differences
-        val actualWithTightComparators = leftNumbers.diff(rightNumbers, optionsWithTightComparators, "id").orderBy($"id")
-        val expectedWithTightComparators = actualWithoutComparators
-        assert(actualWithTightComparators.collect() === expectedWithTightComparators.collect())
-
-        // the relaxed comparators are just relaxed enough to not see any differences
-        // they still see changes to / from null values
-        val actualWithRelaxedComparators = leftNumbers.diff(rightNumbers, optionsWithRelaxedComparators, "id").orderBy($"id")
-        val expectedWithRelaxedComparators = actualWithoutComparators
-          // the comparators are relaxed so that all changes disappear
-          .withColumn("diff", when($"id" === 2, lit("N")).otherwise($"diff"))
-        assert(actualWithRelaxedComparators.collect() === expectedWithRelaxedComparators.collect())
-      }
-    }
-  }
-
   def assertDiffWith[T](actual: Seq[T], expected: Seq[T]): Unit = {
     assert(actual.toSet === expected.toSet)
     assert(actual.length === expected.length)
@@ -1655,35 +1627,5 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
   def doTestRequirement(f: => Any, expected: String): Unit = {
     assert(intercept[IllegalArgumentException](f).getMessage === s"requirement failed: $expected")
   }
-
-}
-
-object DiffSuite {
-  implicit val intEnc: Encoder[Int] = Encoders.scalaInt
-  implicit val longEnc: Encoder[Long] = Encoders.scalaLong
-  implicit val floatEnc: Encoder[Float] = Encoders.scalaFloat
-  implicit val doubleEnc: Encoder[Double] = Encoders.scalaDouble
-
-  val tightIntComparator: EquivDiffComparator[Int] = EquivDiffComparator((x: Int, y: Int) => math.abs(x - y) < 1)
-  val tightLongComparator: EquivDiffComparator[Long] = EquivDiffComparator((x: Long, y: Long) => math.abs(x - y) < 1)
-  val tightFloatComparator: EquivDiffComparator[Float] = EquivDiffComparator((x: Float, y: Float) => math.abs(x - y) < 0.001)
-  val tightDoubleComparator: EquivDiffComparator[Double] = EquivDiffComparator((x: Double, y: Double) => math.abs(x - y) < 0.001)
-
-  val optionsWithTightComparators: DiffOptions = DiffOptions.default
-    .withComparator(tightIntComparator, IntegerType)
-    .withComparator(tightLongComparator, LongType)
-    .withComparator(tightFloatComparator, "floatValue")
-    .withComparator(tightDoubleComparator, "doubleValue")
-
-  val relaxedIntComparator: EquivDiffComparator[Int] = EquivDiffComparator((x: Int, y: Int) => math.abs(x - y) <= 1)
-  val relaxedLongComparator: EquivDiffComparator[Long] = EquivDiffComparator((x: Long, y: Long) => math.abs(x - y) <= 1)
-  val relaxedFloatComparator: EquivDiffComparator[Float] = EquivDiffComparator((x: Float, y: Float) => math.abs(x - y) <= 0.001)
-  val relaxedDoubleComparator: EquivDiffComparator[Double] = EquivDiffComparator((x: Double, y: Double) => math.abs(x - y) <= 0.001)
-
-  val optionsWithRelaxedComparators: DiffOptions = DiffOptions.default
-    .withComparator(relaxedIntComparator, IntegerType)
-    .withComparator(relaxedLongComparator, LongType)
-    .withComparator(relaxedFloatComparator, "floatValue")
-    .withComparator(relaxedDoubleComparator, "doubleValue")
 
 }
