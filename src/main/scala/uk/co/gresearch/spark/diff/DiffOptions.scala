@@ -16,11 +16,11 @@
 
 package uk.co.gresearch.spark.diff
 
-import org.apache.spark.sql.{Column, Encoder, TypedColumn}
+import org.apache.spark.sql.Encoder
 import org.apache.spark.sql.types.{DataType, StructField}
 import uk.co.gresearch.spark.diff
 import uk.co.gresearch.spark.diff.DiffMode.{Default, DiffMode}
-import uk.co.gresearch.spark.diff.comparator.{ColumnDiffComparator, DefaultDiffComparator, EquivDiffComparator, EquivTypedDiffComparator}
+import uk.co.gresearch.spark.diff.comparator.{DefaultDiffComparator, EquivDiffComparator}
 
 import scala.annotation.varargs
 import scala.collection.Map
@@ -249,8 +249,35 @@ case class DiffOptions(diffColumn: String,
    * Returns a new immutable DiffOptions instance with the new default comparator.
    * @return new immutable DiffOptions instance
    */
-  def withComparator(diffComparator: DiffComparator): DiffOptions = {
+  def withDefaultComparator(diffComparator: DiffComparator): DiffOptions = {
     this.copy(defaultComparator = diffComparator)
+  }
+
+  /**
+   * Fluent method to add an equivalent operator as a default comparator.
+   * Returns a new immutable DiffOptions instance with the new default comparator.
+   * @return new immutable DiffOptions instance
+   */
+  def withDefaultComparator[T : Encoder](equiv: math.Equiv[T]): DiffOptions = {
+    withDefaultComparator(EquivDiffComparator(equiv))
+  }
+
+  /**
+   * Fluent method to add an equivalent operator as a default comparator.
+   * Returns a new immutable DiffOptions instance with the new default comparator.
+   * @return new immutable DiffOptions instance
+   */
+  def withDefaultComparator[T](equiv: math.Equiv[T], inputDataType: DataType): DiffOptions = {
+    withDefaultComparator(EquivDiffComparator(equiv, inputDataType))
+  }
+
+  /**
+   * Fluent method to add an equivalent operator as a default comparator.
+   * Returns a new immutable DiffOptions instance with the new default comparator.
+   * @return new immutable DiffOptions instance
+   */
+  def withDefaultComparator(equiv: math.Equiv[Any]): DiffOptions = {
+    withDefaultComparator(EquivDiffComparator(equiv))
   }
 
   /**
@@ -308,7 +335,7 @@ case class DiffOptions(diffColumn: String,
    * @return new immutable DiffOptions instance
    */
   def withComparator[T](equiv: Equiv[T], inputDataType: DataType, dataType: DataType, dataTypes: DataType*): DiffOptions =
-    withComparator(EquivTypedDiffComparator(equiv, inputDataType), dataType, dataTypes: _*)
+    withComparator(EquivDiffComparator(equiv, inputDataType), dataType, dataTypes: _*)
 
   /**
    * Fluent method to add an equivalent operator as a comparator for one or more column names.
@@ -317,24 +344,7 @@ case class DiffOptions(diffColumn: String,
    */
   @varargs
   def withComparator[T](equiv: Equiv[T], inputDataType: DataType, columnName: String, columnNames: String*): DiffOptions =
-    withComparator(comparator.EquivTypedDiffComparator(equiv, inputDataType), columnName, columnNames: _*)
-
-  /**
-   * Fluent method to add a functional comparator for one or more data types.
-   * Returns a new immutable DiffOptions instance with the new comparator.
-   * @return new immutable DiffOptions instance
-   */
-  def withComparator[T](comparator: (Column, Column) => TypedColumn[T, Boolean], dataType: DataType, dataTypes: DataType*): DiffOptions =
-    withComparator(ColumnDiffComparator(comparator), dataType, dataTypes: _*)
-
-  /**
-   * Fluent method to add a functional comparator for one or more column names.
-   * Returns a new immutable DiffOptions instance with the new comparator.
-   * @return new immutable DiffOptions instance
-   */
-  @varargs
-  def withComparator[T](comparator: (Column, Column) => TypedColumn[T, Boolean], columnName: String, columnNames: String*): DiffOptions =
-    withComparator(ColumnDiffComparator(comparator), columnName, columnNames: _*)
+    withComparator(EquivDiffComparator(equiv, inputDataType), columnName, columnNames: _*)
 
   private[diff] def comparatorFor(column: StructField): DiffComparator =
     columnNameComparators.get(column.name)

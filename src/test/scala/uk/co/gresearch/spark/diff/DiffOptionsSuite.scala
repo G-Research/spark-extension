@@ -119,7 +119,7 @@ class DiffOptionsSuite extends AnyFunSuite with SparkTestSession {
     val cmp4 = Comparator("cmp4")
 
     val options = DiffOptions.default
-      .withComparator(cmp1)
+      .withDefaultComparator(cmp1)
       .withComparator(cmp2, IntegerType, LongType)
       .withComparator(cmp3, DoubleType)
       .withComparator(cmp4, "col1", "col2")
@@ -157,7 +157,7 @@ class DiffOptionsSuite extends AnyFunSuite with SparkTestSession {
       .withChangeColumn("change")
       .withDiffMode(DiffMode.LeftSide)
       .withSparseMode(true)
-      .withComparator(cmp1)
+      .withDefaultComparator(cmp1)
       .withComparator(cmp2, IntegerType)
       .withComparator(cmp3, "col1")
 

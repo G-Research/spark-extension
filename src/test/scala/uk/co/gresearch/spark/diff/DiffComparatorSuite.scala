@@ -16,10 +16,10 @@
 
 package uk.co.gresearch.spark.diff
 
-import org.apache.spark.sql.functions.{lit, when}
+import org.apache.spark.sql.functions.{abs, lit, when}
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.{Dataset, Encoder, Encoders}
+import org.apache.spark.sql.{Column, Dataset, Encoder, Encoders}
 import org.scalatest.funsuite.AnyFunSuite
 import uk.co.gresearch.spark.SparkTestSession
 import uk.co.gresearch.spark.diff.DiffComparatorSuite.{optionsWithRelaxedComparators, optionsWithTightComparators}
@@ -70,6 +70,23 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
     }
   }
 
+  test("Column comparator") {
+    val options = DiffOptions.default.withDefaultComparator((left: Column, right: Column) => abs(left) <=> abs(right))
+    left.diff(right, options, "id").show()
+  }
+
+  test("Equiv comparator") {
+    val options = DiffOptions.default
+      .withComparator((left: Int, right: Int) => left.abs == right.abs, IntegerType)
+      .withComparator((left: Long, right: Long) => left.abs == right.abs, LongType)
+      .withComparator((left: Float, right: Float) => left.abs == right.abs, FloatType)
+      .withComparator((left: Double, right: Double) => left.abs == right.abs, DoubleType)
+    left.diff(right, options, "id").show()
+  }
+
+  test("Absolute epsilon comparator") {
+    val left = Seq()
+  }
 }
 
 object DiffComparatorSuite {
