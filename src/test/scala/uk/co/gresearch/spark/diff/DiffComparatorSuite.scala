@@ -19,7 +19,7 @@ package uk.co.gresearch.spark.diff
 import org.apache.spark.sql.functions.{abs, lit, when}
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.{Column, Dataset, Encoder, Encoders}
+import org.apache.spark.sql.{AnalysisException, Column, Dataset, Encoder, Encoders}
 import org.scalatest.funsuite.AnyFunSuite
 import uk.co.gresearch.spark.SparkTestSession
 import uk.co.gresearch.spark.diff.DiffComparatorSuite.{optionsWithRelaxedComparators, optionsWithTightComparators}
@@ -146,6 +146,25 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
     }
   }
 
+  Seq(
+    "diff comparator" -> (DiffOptions.default
+      .withDefaultComparator((_: Column, _: Column) => lit(1)),
+      "'(1 AND 1)' requires boolean type, not int"),
+    "encoder equiv" -> (DiffOptions.default
+      .withDefaultComparator((_: Int, _: Int) => true),
+      "'(longValue ≡ longValue)' requires int type, not bigint"),
+    "typed equiv" -> (DiffOptions.default
+      .withDefaultComparator(EquivDiffComparator((left: Int, right: Int) => left.abs == right.abs, IntegerType)),
+      "'(longValue ≡ longValue)' requires int type, not bigint")
+  ).foreach { case (label, (options, expected)) =>
+    test(s"with comparator of incompatible type - $label") {
+      val exception = intercept[AnalysisException] {
+        left.diff(right, options, "id")
+      }
+      assert(exception.message.contains(expected))
+    }
+  }
+
   test("absolute epsilon comparator") {
     val left = Seq()
   }
@@ -178,5 +197,4 @@ object DiffComparatorSuite {
     .withComparator(relaxedLongComparator, LongType)
     .withComparator(relaxedFloatComparator, "floatValue")
     .withComparator(relaxedDoubleComparator, "doubleValue")
-
 }
