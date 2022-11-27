@@ -111,7 +111,7 @@ class DiffOptionsSuite extends AnyFunSuite with SparkTestSession {
 
   test("diff options with comparators") {
     case class Comparator(name: String) extends DiffComparator {
-      override def compare(left: Column, right: Column): Column = DefaultDiffComparator.compare(left, right)
+      override def equiv(left: Column, right: Column): Column = DefaultDiffComparator.equiv(left, right)
     }
     val cmp1 = Comparator("cmp1")
     val cmp2 = Comparator("cmp2")
@@ -137,13 +137,13 @@ class DiffOptionsSuite extends AnyFunSuite with SparkTestSession {
     assert(DiffMode.Default != DiffMode.LeftSide, "test assumption on default diff mode must hold, otherwise test is trivial")
 
     val cmp1 = new DiffComparator {
-      override def compare(left: Column, right: Column): Column = lit(true)
+      override def equiv(left: Column, right: Column): Column = lit(true)
     }
     val cmp2 = new DiffComparator {
-      override def compare(left: Column, right: Column): Column = lit(true)
+      override def equiv(left: Column, right: Column): Column = lit(true)
     }
     val cmp3 = new DiffComparator {
-      override def compare(left: Column, right: Column): Column = lit(true)
+      override def equiv(left: Column, right: Column): Column = lit(true)
     }
 
     val options = DiffOptions.default

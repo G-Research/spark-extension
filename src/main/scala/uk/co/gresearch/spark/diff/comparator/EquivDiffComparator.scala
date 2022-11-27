@@ -20,7 +20,7 @@ object EquivDiffComparator {
 
   private trait ExpressionEquivDiffComparator[T] extends EquivDiffComparator[T] {
     def equiv(left: Expression, right: Expression): EquivExpression[T]
-    def compare(left: Column, right: Column): Column =
+    def equiv(left: Column, right: Column): Column =
       new Column(equiv(left.expr, right.expr).asInstanceOf[Expression])
   }
 

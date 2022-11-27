@@ -211,7 +211,7 @@ class Differ(options: DiffOptions) {
     val rightWithExists = right.withColumn(existsColumnName, lit(1))
     val joinCondition = pkColumns.map(c => leftWithExists(backticks(c)) <=> rightWithExists(backticks(c))).reduce(_ && _)
     val unChanged = valueVolumnsWithComparator.map { case (c, cmp) =>
-      cmp.compare(leftWithExists(backticks(c)), rightWithExists(backticks(c)))
+      cmp.equiv(leftWithExists(backticks(c)), rightWithExists(backticks(c)))
     }.reduceOption(_ && _)
     val changeCondition = not(unChanged.getOrElse(lit(true)))
 

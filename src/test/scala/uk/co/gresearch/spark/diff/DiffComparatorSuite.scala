@@ -19,11 +19,11 @@ package uk.co.gresearch.spark.diff
 import org.apache.spark.sql.functions.{abs, lit, when}
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.{AnalysisException, Column, Dataset, Encoder, Encoders}
+import org.apache.spark.sql._
 import org.scalatest.funsuite.AnyFunSuite
 import uk.co.gresearch.spark.SparkTestSession
 import uk.co.gresearch.spark.diff.DiffComparatorSuite.{optionsWithRelaxedComparators, optionsWithTightComparators}
-import uk.co.gresearch.spark.diff.comparator.EquivDiffComparator
+import uk.co.gresearch.spark.diff.comparator.{EpsilonDiffComparator, EquivDiffComparator}
 
 case class Numbers(id: Int, longValue: Long, floatValue: Float, doubleValue: Double, someInt: Option[Int], someLong: Option[Long])
 
@@ -52,27 +52,31 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
     Numbers(5, 5L, 5.0f, 5.0, Some(5), Some(5L)),
   ).toDS()
 
+  def doTest(optionsWithTightComparators: DiffOptions, optionsWithRelaxedComparators: DiffOptions): Unit = {
+    // left and right numbers have some differences
+    val actualWithoutComparators = left.diff(right, "id").orderBy($"id")
+
+    // our tight comparators are just too strict to still see differences
+    val actualWithTightComparators = left.diff(right, optionsWithTightComparators, "id").orderBy($"id")
+    val expectedWithTightComparators = actualWithoutComparators
+    assert(actualWithTightComparators.collect() === expectedWithTightComparators.collect())
+
+    // the relaxed comparators are just relaxed enough to not see any differences
+    // they still see changes to / from null values
+    val actualWithRelaxedComparators = left.diff(right, optionsWithRelaxedComparators, "id").orderBy($"id")
+    val expectedWithRelaxedComparators = actualWithoutComparators
+      // the comparators are relaxed so that all changes disappear
+      .withColumn("diff", when($"id" === 2, lit("N")).otherwise($"diff"))
+    assert(actualWithRelaxedComparators.collect() === expectedWithRelaxedComparators.collect())
+  }
+
   Seq("true", "false").foreach { codegen =>
     test(s"diff with custom comparator - codegen enabled=$codegen") {
       withSQLConf(
         SQLConf.WHOLESTAGE_CODEGEN_ENABLED.key -> codegen,
         SQLConf.CODEGEN_FALLBACK.key -> "false"
       ) {
-        // left and right numbers have some differences
-        val actualWithoutComparators = left.diff(right, "id").orderBy($"id")
-
-        // our tight comparators are just too strict to still see differences
-        val actualWithTightComparators = left.diff(right, optionsWithTightComparators, "id").orderBy($"id")
-        val expectedWithTightComparators = actualWithoutComparators
-        assert(actualWithTightComparators.collect() === expectedWithTightComparators.collect())
-
-        // the relaxed comparators are just relaxed enough to not see any differences
-        // they still see changes to / from null values
-        val actualWithRelaxedComparators = left.diff(right, optionsWithRelaxedComparators, "id").orderBy($"id")
-        val expectedWithRelaxedComparators = actualWithoutComparators
-          // the comparators are relaxed so that all changes disappear
-          .withColumn("diff", when($"id" === 2, lit("N")).otherwise($"diff"))
-        assert(actualWithRelaxedComparators.collect() === expectedWithRelaxedComparators.collect())
+        doTest(optionsWithTightComparators, optionsWithRelaxedComparators)
       }
     }
   }
@@ -165,8 +169,28 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
     }
   }
 
-  test("absolute epsilon comparator") {
-    val left = Seq()
+  test("absolute epsilon comparator (inclusive)") {
+    val optionsWithTightComparator = DiffOptions.default.withDefaultComparator(EpsilonDiffComparator(0.5, relative = false, inclusive = true))
+    val optionsWithRelaxedComparator = DiffOptions.default.withDefaultComparator(EpsilonDiffComparator(1.0, relative = false, inclusive = true))
+    doTest(optionsWithTightComparator, optionsWithRelaxedComparator)
+  }
+
+  test("absolute epsilon comparator (exclusive)") {
+    val optionsWithTightComparator = DiffOptions.default.withDefaultComparator(EpsilonDiffComparator(1.0, relative = false, inclusive = false))
+    val optionsWithRelaxedComparator = DiffOptions.default.withDefaultComparator(EpsilonDiffComparator(1.001, relative = false, inclusive = false))
+    doTest(optionsWithTightComparator, optionsWithRelaxedComparator)
+  }
+
+  test("relative epsilon comparator (inclusive)") {
+    val optionsWithTightComparator = DiffOptions.default.withDefaultComparator(EpsilonDiffComparator(0.1, relative = true, inclusive = true))
+    val optionsWithRelaxedComparator = DiffOptions.default.withDefaultComparator(EpsilonDiffComparator(1/3.0, relative = true, inclusive = true))
+    doTest(optionsWithTightComparator, optionsWithRelaxedComparator)
+  }
+
+  test("relative epsilon comparator (exclusive)") {
+    val optionsWithTightComparator = DiffOptions.default.withDefaultComparator(EpsilonDiffComparator(1/3.0, relative = true, inclusive = false))
+    val optionsWithRelaxedComparator = DiffOptions.default.withDefaultComparator(EpsilonDiffComparator(1/3.0 + .001, relative = true, inclusive = false))
+    doTest(optionsWithTightComparator, optionsWithRelaxedComparator)
   }
 }
 
