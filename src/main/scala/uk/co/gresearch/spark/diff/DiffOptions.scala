@@ -96,7 +96,7 @@ case class DiffOptions(diffColumn: String,
                        changeColumn: Option[String] = None,
                        diffMode: DiffMode = Default,
                        sparseMode: Boolean = false,
-                       defaultTypeComparators: DiffComparator = DefaultDiffComparator,
+                       defaultComparator: DiffComparator = DefaultDiffComparator,
                        dataTypeComparators: Map[DataType, DiffComparator] = Map.empty,
                        columnNameComparators: Map[String, DiffComparator] = Map.empty) {
   def this(diffColumn: String,
@@ -250,7 +250,7 @@ case class DiffOptions(diffColumn: String,
    * @return new immutable DiffOptions instance
    */
   def withComparator(diffComparator: DiffComparator): DiffOptions = {
-    this.copy(defaultTypeComparators = diffComparator)
+    this.copy(defaultComparator = diffComparator)
   }
 
   /**
@@ -339,7 +339,7 @@ case class DiffOptions(diffColumn: String,
   private[diff] def comparatorFor(column: StructField): DiffComparator =
     columnNameComparators.get(column.name)
       .orElse(dataTypeComparators.get(column.dataType))
-      .getOrElse(DefaultDiffComparator)
+      .getOrElse(defaultComparator)
 }
 
 object DiffOptions {

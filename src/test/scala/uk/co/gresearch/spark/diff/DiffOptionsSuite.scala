@@ -22,6 +22,7 @@ import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
 import org.scalatest.funsuite.AnyFunSuite
 import uk.co.gresearch.spark.SparkTestSession
+import uk.co.gresearch.spark.diff.comparator.DefaultDiffComparator
 
 class DiffOptionsSuite extends AnyFunSuite with SparkTestSession {
 
@@ -109,27 +110,27 @@ class DiffOptionsSuite extends AnyFunSuite with SparkTestSession {
   }
 
   test("diff options with comparators") {
-    val cmp1 = new DiffComparator {
-      override def compare(left: Column, right: Column): Column = left <=> right
+    case class Comparator(name: String) extends DiffComparator {
+      override def compare(left: Column, right: Column): Column = DefaultDiffComparator.compare(left, right)
     }
-    val cmp2 = new DiffComparator {
-      override def compare(left: Column, right: Column): Column = left <=> right
-    }
-    val cmp3 = new DiffComparator {
-      override def compare(left: Column, right: Column): Column = left <=> right
-    }
+    val cmp1 = Comparator("cmp1")
+    val cmp2 = Comparator("cmp2")
+    val cmp3 = Comparator("cmp3")
+    val cmp4 = Comparator("cmp4")
 
     val options = DiffOptions.default
-      .withComparator(cmp1, IntegerType)
-      .withComparator(cmp2, DoubleType)
-      .withComparator(cmp3, "col1", "col2")
+      .withComparator(cmp1)
+      .withComparator(cmp2, IntegerType, LongType)
+      .withComparator(cmp3, DoubleType)
+      .withComparator(cmp4, "col1", "col2")
 
-    assert(options.comparatorFor(StructField("col1", IntegerType)) === Some(cmp3))
-    assert(options.comparatorFor(StructField("col1", LongType)) === Some(cmp3))
-    assert(options.comparatorFor(StructField("col2", StringType)) === Some(cmp3))
-    assert(options.comparatorFor(StructField("col3", IntegerType)) === Some(cmp1))
-    assert(options.comparatorFor(StructField("col4", DoubleType)) === Some(cmp2))
-    assert(options.comparatorFor(StructField("col5", LongType)) === None)
+    assert(options.comparatorFor(StructField("col1", IntegerType)) === cmp4)
+    assert(options.comparatorFor(StructField("col1", LongType)) === cmp4)
+    assert(options.comparatorFor(StructField("col2", StringType)) === cmp4)
+    assert(options.comparatorFor(StructField("col3", IntegerType)) === cmp2)
+    assert(options.comparatorFor(StructField("col3", LongType)) === cmp2)
+    assert(options.comparatorFor(StructField("col4", DoubleType)) === cmp3)
+    assert(options.comparatorFor(StructField("col5", FloatType)) === cmp1)
   }
 
   test("fluent methods of diff options") {
