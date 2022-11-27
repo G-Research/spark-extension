@@ -9,10 +9,31 @@ import org.apache.spark.sql.types.{BooleanType, DataType}
 import org.apache.spark.sql.{Column, Encoder}
 import uk.co.gresearch.spark.diff.DiffComparator
 
-case class EquivDiffComparator[T : Encoder](equiv: math.Equiv[T]) extends DiffComparator {
-  def compare(left: Column, right: Column): Column = {
-    val comparator = Equiv(left.expr, right.expr, equiv)
-    new Column(comparator.asInstanceOf[Expression])
+trait EquivDiffComparator[T] extends DiffComparator {
+  val equiv: math.Equiv[T]
+}
+
+object EquivDiffComparator {
+  def apply[T : Encoder](equiv: math.Equiv[T]): EquivDiffComparator[T] = EncoderEquivDiffComparator(equiv)
+  def apply[T](equiv: math.Equiv[T], inputType: DataType): EquivDiffComparator[T] = TypedEquivDiffComparator(equiv, inputType)
+  def apply(equiv: math.Equiv[Any]): EquivDiffComparator[Any] = EquivAnyDiffComparator(equiv)
+
+  private trait ExpressionEquivDiffComparator[T] extends EquivDiffComparator[T] {
+    def equiv(left: Expression, right: Expression): EquivExpression[T]
+    def compare(left: Column, right: Column): Column =
+      new Column(equiv(left.expr, right.expr).asInstanceOf[Expression])
+  }
+
+  private case class EncoderEquivDiffComparator[T : Encoder](equiv: math.Equiv[T]) extends ExpressionEquivDiffComparator[T] {
+    def equiv(left: Expression, right: Expression): Equiv[T] = Equiv(left, right, equiv)
+  }
+
+  private case class TypedEquivDiffComparator[T](equiv: math.Equiv[T], inputType: DataType) extends ExpressionEquivDiffComparator[T] {
+    def equiv(left: Expression, right: Expression): Equiv[T] = Equiv(left, right, equiv, inputType)
+  }
+
+  private case class EquivAnyDiffComparator(equiv: math.Equiv[Any]) extends ExpressionEquivDiffComparator[Any] {
+    def equiv(left: Expression, right: Expression): EquivExpression[Any] = EquivAny(left, right, equiv)
   }
 }
 
@@ -64,15 +85,9 @@ private object Equiv {
     Equiv(left, right, equiv, encoderFor[T].schema.fields(0).dataType)
 }
 
-case class DoubleEpsilonOrdering(epsilon: Double) extends Ordering[Double] {
-  override def compare(x: Double, y: Double): Int = {
-    val delta = math.min(math.abs(x), math.abs(y)) * epsilon
-    if (math.abs(x - y) <= delta) {
-      0
-    } else if (x < y) {
-      -1
-    } else {
-      1
-    }
-  }
+private case class EquivAny(left: Expression, right: Expression, equiv: math.Equiv[Any])
+  extends EquivExpression[Any] {
+
+  override protected def withNewChildrenInternal(newLeft: Expression, newRight: Expression): EquivAny =
+    copy(left = newLeft, right = newRight)
 }
