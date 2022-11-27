@@ -24,7 +24,6 @@ import uk.co.gresearch.spark.diff.comparator.{DefaultDiffComparator, EquivDiffCo
 
 import scala.annotation.varargs
 import scala.collection.Map
-import scala.math.Equiv
 
 /**
  * The diff mode determines the output columns of the diffing transformation.
@@ -318,7 +317,7 @@ case class DiffOptions(diffColumn: String,
    * Returns a new immutable DiffOptions instance with the new comparator.
    * @return new immutable DiffOptions instance
    */
-  def withComparator[T : Encoder](equiv: Equiv[T], dataType: DataType, dataTypes: DataType*): DiffOptions =
+  def withComparator[T : Encoder](equiv: math.Equiv[T], dataType: DataType, dataTypes: DataType*): DiffOptions =
     withComparator(EquivDiffComparator(equiv), dataType, dataTypes: _*)
 
   /**
@@ -326,7 +325,7 @@ case class DiffOptions(diffColumn: String,
    * Returns a new immutable DiffOptions instance with the new comparator.
    * @return new immutable DiffOptions instance
    */
-  def withComparator[T : Encoder](equiv: Equiv[T], columnName: String, columnNames: String*): DiffOptions =
+  def withComparator[T : Encoder](equiv: math.Equiv[T], columnName: String, columnNames: String*): DiffOptions =
     withComparator(EquivDiffComparator(equiv), columnName, columnNames: _*)
 
   /**
@@ -334,8 +333,8 @@ case class DiffOptions(diffColumn: String,
    * Returns a new immutable DiffOptions instance with the new comparator.
    * @return new immutable DiffOptions instance
    */
-  def withComparator[T](equiv: Equiv[T], inputDataType: DataType, dataType: DataType, dataTypes: DataType*): DiffOptions =
-    withComparator(EquivDiffComparator(equiv, inputDataType), dataType, dataTypes: _*)
+  def withComparator(equiv: math.Equiv[Any], dataType: DataType, dataTypes: DataType*): DiffOptions =
+    withComparator(EquivDiffComparator(equiv), dataType, dataTypes: _*)
 
   /**
    * Fluent method to add an equivalent operator as a comparator for one or more column names.
@@ -343,8 +342,8 @@ case class DiffOptions(diffColumn: String,
    * @return new immutable DiffOptions instance
    */
   @varargs
-  def withComparator[T](equiv: Equiv[T], inputDataType: DataType, columnName: String, columnNames: String*): DiffOptions =
-    withComparator(EquivDiffComparator(equiv, inputDataType), columnName, columnNames: _*)
+  def withComparator(equiv: math.Equiv[Any], columnName: String, columnNames: String*): DiffOptions =
+    withComparator(EquivDiffComparator(equiv), columnName, columnNames: _*)
 
   private[diff] def comparatorFor(column: StructField): DiffComparator =
     columnNameComparators.get(column.name)
