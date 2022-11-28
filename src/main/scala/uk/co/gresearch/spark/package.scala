@@ -28,7 +28,9 @@ import uk.co.gresearch.spark.group.SortedGroupByDataset
 import java.io.IOException
 import scala.util.Properties
 
-package object spark extends Logging {
+package object spark extends Logging with SparkVersion {
+
+  val compatVersion: (Int, Int) = (majorVersion, minorVersion)
 
   /**
    * Provides a prefix that makes any string distinct w.r.t. the given strings.
