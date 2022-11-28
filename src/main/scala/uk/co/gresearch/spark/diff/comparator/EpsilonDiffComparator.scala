@@ -19,4 +19,10 @@ case class EpsilonDiffComparator(epsilon: Double, relative: Boolean = true, incl
 
     left.isNull && right.isNull || left.isNotNull && right.isNotNull && inEpsilon(abs(left - right))
   }
+
+  def asAbsolute(): EpsilonDiffComparator = if (relative) copy(relative = false) else this
+  def asRelative(): EpsilonDiffComparator = if (relative) this else copy(relative = true)
+
+  def asInclusive(): EpsilonDiffComparator = if (inclusive) this else copy(inclusive = true)
+  def asExclusive(): EpsilonDiffComparator = if (inclusive) copy(inclusive = false) else this
 }

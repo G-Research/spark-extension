@@ -16,4 +16,7 @@ case class DurationDiffComparator(duration: Duration, inclusive: Boolean = true)
     left.isNull && right.isNull ||
       left.isNotNull && right.isNotNull && inDuration(abs(left - right))
   }
+
+  def asInclusive(): DurationDiffComparator = if (inclusive) this else copy(inclusive = true)
+  def asExclusive(): DurationDiffComparator = if (inclusive) copy(inclusive = false) else this
 }

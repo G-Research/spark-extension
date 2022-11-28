@@ -1,6 +1,7 @@
 package uk.co.gresearch.spark.diff
 
-import org.apache.spark.sql.types.DataType
+import org.apache.spark.sql.functions.lit
+import org.apache.spark.sql.types.{DataType, Decimal}
 import org.apache.spark.sql.{Column, Encoder}
 import uk.co.gresearch.spark.diff.comparator._
 
@@ -19,9 +20,7 @@ object DiffComparator {
   def equiv[T](equiv: math.Equiv[T], inputType: DataType): EquivDiffComparator[T] = EquivDiffComparator(equiv, inputType)
   def equiv(equiv: math.Equiv[Any]): EquivDiffComparator[Any] = EquivDiffComparator(equiv)
 
-  def epsilon(epsilon: Double, relative: Boolean = true, inclusive: Boolean = true): EpsilonDiffComparator =
-    EpsilonDiffComparator(epsilon, relative = relative, inclusive = inclusive)
+  def epsilon(epsilon: Double): EpsilonDiffComparator = EpsilonDiffComparator(epsilon)
 
-  def duration(duration: Duration, inclusive: Boolean = true): DurationDiffComparator =
-    DurationDiffComparator(duration, inclusive = inclusive)
+  def duration(duration: Duration): DurationDiffComparator = DurationDiffComparator(duration)
 }

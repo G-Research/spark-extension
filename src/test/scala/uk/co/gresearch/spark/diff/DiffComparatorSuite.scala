@@ -16,19 +16,20 @@
 
 package uk.co.gresearch.spark.diff
 
+import org.apache.spark.sql._
+import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
 import org.apache.spark.sql.functions.{abs, lit, when}
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
-import org.apache.spark.sql._
 import org.scalatest.funsuite.AnyFunSuite
 import uk.co.gresearch.spark.SparkTestSession
-import uk.co.gresearch.spark.diff.DiffComparatorSuite.{optionsWithRelaxedComparators, optionsWithTightComparators}
-import uk.co.gresearch.spark.diff.comparator.{DefaultDiffComparator, DurationDiffComparator, EpsilonDiffComparator, EquivDiffComparator, NullSafeEqualDiffComparator}
+import uk.co.gresearch.spark.diff.DiffComparatorSuite.{optionsWithRelaxedComparators, optionsWithTightComparators, decimalEnc}
+import uk.co.gresearch.spark.diff.comparator._
 
 import java.sql.{Date, Timestamp}
 import java.time.Duration
 
-case class Numbers(id: Int, longValue: Long, floatValue: Float, doubleValue: Double, someInt: Option[Int], someLong: Option[Long])
+case class Numbers(id: Int, longValue: Long, floatValue: Float, doubleValue: Double, decimalValue: Decimal, someInt: Option[Int], someLong: Option[Long])
 case class Dates(id: Int, date: Date)
 case class Times(id: Int, time: Timestamp)
 
@@ -37,24 +38,24 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
   import spark.implicits._
 
   lazy val left: Dataset[Numbers] = Seq(
-    Numbers(1, 1L, 1.0f, 1.0, None, None),
-    Numbers(2, 2L, 2.0f, 2.0, Some(2), Some(2L)),
-    Numbers(3, 3L, 3.0f, 3.0, Some(3), None),
-    Numbers(4, 4L, 4.0f, 4.0, None, Some(4L)),
+    Numbers(1, 1L, 1.0f, 1.0, Decimal(10, 2, 3), None, None),
+    Numbers(2, 2L, 2.0f, 2.0, Decimal(20, 2, 3), Some(2), Some(2L)),
+    Numbers(3, 3L, 3.0f, 3.0, Decimal(30, 2, 3), Some(3), None),
+    Numbers(4, 4L, 4.0f, 4.0, Decimal(40, 2, 3), None, Some(4L)),
   ).toDS()
 
   lazy val right: Dataset[Numbers] = Seq(
-    Numbers(1, 1L, 1.0f, 1.0, None, None),
-    Numbers(2, 3L, 2.001f, 2.001, Some(3), Some(3L)),
-    Numbers(3, 3L, 3.0f, 3.0, None, Some(3L)),
-    Numbers(5, 5L, 5.0f, 5.0, Some(5), Some(5L)),
+    Numbers(1, 1L, 1.0f, 1.0, Decimal(10, 2, 3), None, None),
+    Numbers(2, 3L, 2.001f, 2.001, Decimal(21, 2, 3), Some(3), Some(3L)),
+    Numbers(3, 3L, 3.0f, 3.0, Decimal(30, 2, 3), None, Some(3L)),
+    Numbers(5, 5L, 5.0f, 5.0, Decimal(50, 2, 3), Some(5), Some(5L)),
   ).toDS()
 
   lazy val rightSign: Dataset[Numbers] = Seq(
-    Numbers(1, 1L, 1.0f, 1.0, None, None),
-    Numbers(2, -2L, -2.0f, -2.0, Some(-2), Some(-2L)),
-    Numbers(3, 3L, 3.0f, 3.0, None, Some(3L)),
-    Numbers(5, 5L, 5.0f, 5.0, Some(5), Some(5L)),
+    Numbers(1, 1L, 1.0f, 1.0, Decimal(10, 2, 3), None, None),
+    Numbers(2, -2L, -2.0f, -2.0, Decimal(-20, 2, 3), Some(-2), Some(-2L)),
+    Numbers(3, 3L, 3.0f, 3.0, Decimal(30, 2, 3), None, Some(3L)),
+    Numbers(5, 5L, 5.0f, 5.0, Decimal(50, 2, 3), Some(5), Some(5L)),
   ).toDS()
 
   lazy val leftDates: Dataset[Dates] = Seq(
@@ -126,52 +127,65 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
       // see "encoder equiv for type …" tests below
       .withComparator((left: Long, right: Long) => left.abs == right.abs, LongType)
       .withComparator((left: Float, right: Float) => left.abs == right.abs, FloatType)
-      .withComparator((left: Double, right: Double) => left.abs == right.abs, DoubleType),
+      .withComparator((left: Double, right: Double) => left.abs == right.abs, DoubleType)
+      .withComparator((left: Decimal, right: Decimal) => left.abs == right.abs, "decimalValue"),
     "default typed equiv" -> DiffOptions.default
       .withDefaultComparator(EquivDiffComparator((left: Int, right: Int) => left.abs == right.abs, IntegerType))
       // the non-default comparator here are required because the default only supports int
       // see "encoder equiv for type …" tests below
       .withComparator((left: Long, right: Long) => left.abs == right.abs, LongType)
       .withComparator((left: Float, right: Float) => left.abs == right.abs, FloatType)
-      .withComparator((left: Double, right: Double) => left.abs == right.abs, DoubleType),
+      .withComparator((left: Double, right: Double) => left.abs == right.abs, DoubleType)
+      .withComparator((left: Decimal, right: Decimal) => left.abs == right.abs, "decimalValue"),
     "default any equiv" -> DiffOptions.default
       .withDefaultComparator((_: Any, _: Any) => true),
 
     "diff comparator for type" -> DiffOptions.default
       .withComparator((left: Column, right: Column) => abs(left) <=> abs(right), IntegerType)
-      .withComparator((left: Column, right: Column) => abs(left) <=> abs(right), LongType, FloatType, DoubleType),
+      .withComparator((left: Column, right: Column) => abs(left) <=> abs(right), LongType, FloatType, DoubleType)
+      // decimal comparator can only be added for column name
+      .withComparator((left: Decimal, right: Decimal) => left.abs == right.abs, "decimalValue"),
     "diff comparator for name" -> DiffOptions.default
       .withComparator((left: Column, right: Column) => abs(left) <=> abs(right), "someInt")
-      .withComparator((left: Column, right: Column) => abs(left) <=> abs(right), "longValue", "floatValue", "doubleValue", "someLong"),
+      .withComparator((left: Column, right: Column) => abs(left) <=> abs(right), "longValue", "floatValue", "doubleValue", "someLong", "decimalValue"),
 
     "encoder equiv for type" -> DiffOptions.default
       .withComparator((left: Int, right: Int) => left.abs == right.abs, IntegerType)
       .withComparator((left: Long, right: Long) => left.abs == right.abs, LongType)
       .withComparator((left: Float, right: Float) => left.abs == right.abs, FloatType)
-      .withComparator((left: Double, right: Double) => left.abs == right.abs, DoubleType),
+      .withComparator((left: Double, right: Double) => left.abs == right.abs, DoubleType)
+      // decimal comparator can only be added for column name
+      .withComparator((left: Decimal, right: Decimal) => left.abs == right.abs, "decimalValue"),
     "encoder equiv for column name" -> DiffOptions.default
       .withComparator((left: Int, right: Int) => left.abs == right.abs, "someInt")
       .withComparator((left: Long, right: Long) => left.abs == right.abs, "longValue", "someLong")
       .withComparator((left: Float, right: Float) => left.abs == right.abs, "floatValue")
-      .withComparator((left: Double, right: Double) => left.abs == right.abs, "doubleValue"),
+      .withComparator((left: Double, right: Double) => left.abs == right.abs, "doubleValue")
+      .withComparator((left: Decimal, right: Decimal) => left.abs == right.abs, "decimalValue"),
 
     "typed equiv for type" -> DiffOptions.default
       .withComparator(EquivDiffComparator((left: Int, right: Int) => left.abs == right.abs, IntegerType), IntegerType)
       .withComparator(EquivDiffComparator((left: Long, right: Long) => left.abs == right.abs, LongType), LongType)
       .withComparator(EquivDiffComparator((left: Float, right: Float) => left.abs == right.abs, FloatType), FloatType)
-      .withComparator(EquivDiffComparator((left: Double, right: Double) => left.abs == right.abs, DoubleType), DoubleType),
+      .withComparator(EquivDiffComparator((left: Double, right: Double) => left.abs == right.abs, DoubleType), DoubleType)
+      // decimal comparator can only be added for column name
+      .withComparator((left: Decimal, right: Decimal) => left.abs == right.abs, "decimalValue"),
     "typed equiv for column name" -> DiffOptions.default
       .withComparator(EquivDiffComparator((left: Int, right: Int) => left.abs == right.abs, IntegerType), "someInt")
       .withComparator(EquivDiffComparator((left: Long, right: Long) => left.abs == right.abs, LongType), "longValue", "someLong")
       .withComparator(EquivDiffComparator((left: Float, right: Float) => left.abs == right.abs, FloatType), "floatValue")
-      .withComparator(EquivDiffComparator((left: Double, right: Double) => left.abs == right.abs, DoubleType), "doubleValue"),
+      .withComparator(EquivDiffComparator((left: Double, right: Double) => left.abs == right.abs, DoubleType), "doubleValue")
+      // decimal comparator can only be added for column name
+      .withComparator((left: Decimal, right: Decimal) => left.abs == right.abs, "decimalValue"),
 
     "any equiv for type" -> DiffOptions.default
       .withComparator((_: Any, _: Any) => true, IntegerType)
-      .withComparator((_: Any, _: Any) => true, LongType, FloatType, DoubleType),
+      .withComparator((_: Any, _: Any) => true, LongType, FloatType, DoubleType)
+      // decimal comparator can only be added for column name
+      .withComparator((left: Decimal, right: Decimal) => left.abs == right.abs, "decimalValue"),
     "any equiv for column name" -> DiffOptions.default
       .withComparator((_: Any, _: Any) => true, "someInt")
-      .withComparator((_: Any, _: Any) => true, "longValue", "floatValue", "doubleValue", "someLong")
+      .withComparator((_: Any, _: Any) => true, "longValue", "floatValue", "doubleValue", "someLong", "decimalValue")
   ).foreach { case (label, options) =>
     test(s"with comparator - $label") {
       val diffWithoutComparators = left.diff(rightSign, "id")
@@ -224,60 +238,50 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
   }
 
   test("absolute epsilon comparator (inclusive)") {
-    //noinspection RedundantDefaultArgument
-    val optionsWithTightComparator = DiffOptions.default.withDefaultComparator(EpsilonDiffComparator(0.5, relative = false, inclusive = true))
-    //noinspection RedundantDefaultArgument
-    val optionsWithRelaxedComparator = DiffOptions.default.withDefaultComparator(EpsilonDiffComparator(1.0, relative = false, inclusive = true))
+    val optionsWithTightComparator = DiffOptions.default.withDefaultComparator(DiffComparator.epsilon(0.5).asAbsolute().asInclusive())
+    val optionsWithRelaxedComparator = DiffOptions.default.withDefaultComparator(DiffComparator.epsilon(1.0).asAbsolute().asInclusive())
     doTest(optionsWithTightComparator, optionsWithRelaxedComparator)
   }
 
   test("absolute epsilon comparator (exclusive)") {
-    val optionsWithTightComparator = DiffOptions.default.withDefaultComparator(EpsilonDiffComparator(1.0, relative = false, inclusive = false))
-    val optionsWithRelaxedComparator = DiffOptions.default.withDefaultComparator(EpsilonDiffComparator(1.001, relative = false, inclusive = false))
+    val optionsWithTightComparator = DiffOptions.default.withDefaultComparator(DiffComparator.epsilon(1.0).asAbsolute().asExclusive())
+    val optionsWithRelaxedComparator = DiffOptions.default.withDefaultComparator(DiffComparator.epsilon(1.001).asAbsolute().asExclusive())
     doTest(optionsWithTightComparator, optionsWithRelaxedComparator)
   }
 
   test("relative epsilon comparator (inclusive)") {
-    //noinspection RedundantDefaultArgument
-    val optionsWithTightComparator = DiffOptions.default.withDefaultComparator(EpsilonDiffComparator(0.1, relative = true, inclusive = true))
-    //noinspection RedundantDefaultArgument
-    val optionsWithRelaxedComparator = DiffOptions.default.withDefaultComparator(EpsilonDiffComparator(1/3.0, relative = true, inclusive = true))
+    val optionsWithTightComparator = DiffOptions.default.withDefaultComparator(DiffComparator.epsilon(0.1).asRelative().asInclusive())
+    val optionsWithRelaxedComparator = DiffOptions.default.withDefaultComparator(DiffComparator.epsilon(1/3.0).asRelative().asInclusive())
     doTest(optionsWithTightComparator, optionsWithRelaxedComparator)
   }
 
   test("relative epsilon comparator (exclusive)") {
-    //noinspection RedundantDefaultArgument
-    val optionsWithTightComparator = DiffOptions.default.withDefaultComparator(EpsilonDiffComparator(1/3.0, relative = true, inclusive = false))
-    //noinspection RedundantDefaultArgument
-    val optionsWithRelaxedComparator = DiffOptions.default.withDefaultComparator(EpsilonDiffComparator(1/3.0 + .001, relative = true, inclusive = false))
+    val optionsWithTightComparator = DiffOptions.default.withDefaultComparator(DiffComparator.epsilon(1/3.0).asRelative().asExclusive())
+    val optionsWithRelaxedComparator = DiffOptions.default.withDefaultComparator(DiffComparator.epsilon(1/3.0 + .001).asRelative().asExclusive())
     doTest(optionsWithTightComparator, optionsWithRelaxedComparator)
   }
 
   test("duration comparator with date (inclusive)") {
-    //noinspection RedundantDefaultArgument
-    val optionsWithTightComparator = DiffOptions.default.withComparator(DurationDiffComparator(Duration.ofHours(23), inclusive = true), "date")
-    //noinspection RedundantDefaultArgument
-    val optionsWithRelaxedComparator = DiffOptions.default.withComparator(DurationDiffComparator(Duration.ofHours(24), inclusive = true), "date")
+    val optionsWithTightComparator = DiffOptions.default.withComparator(DiffComparator.duration(Duration.ofHours(23)).asInclusive(), "date")
+    val optionsWithRelaxedComparator = DiffOptions.default.withComparator(DiffComparator.duration(Duration.ofHours(24)).asInclusive(), "date")
     doTest(optionsWithTightComparator, optionsWithRelaxedComparator, leftDates.toDF, rightDates.toDF)
   }
 
   test("duration comparator with date (exclusive)") {
-    val optionsWithTightComparator = DiffOptions.default.withComparator(DurationDiffComparator(Duration.ofHours(24), inclusive = false), "date")
-    val optionsWithRelaxedComparator = DiffOptions.default.withComparator(DurationDiffComparator(Duration.ofHours(25), inclusive = false), "date")
+    val optionsWithTightComparator = DiffOptions.default.withComparator(DiffComparator.duration(Duration.ofHours(24)).asExclusive(), "date")
+    val optionsWithRelaxedComparator = DiffOptions.default.withComparator(DiffComparator.duration(Duration.ofHours(25)).asExclusive(), "date")
     doTest(optionsWithTightComparator, optionsWithRelaxedComparator, leftDates.toDF, rightDates.toDF)
   }
 
   test("duration comparator with time (inclusive)") {
-    //noinspection RedundantDefaultArgument
-    val optionsWithTightComparator = DiffOptions.default.withComparator(DurationDiffComparator(Duration.ofSeconds(59), inclusive = true), "time")
-    //noinspection RedundantDefaultArgument
-    val optionsWithRelaxedComparator = DiffOptions.default.withComparator(DurationDiffComparator(Duration.ofSeconds(60), inclusive = true), "time")
+    val optionsWithTightComparator = DiffOptions.default.withComparator(DiffComparator.duration(Duration.ofSeconds(59)).asInclusive(), "time")
+    val optionsWithRelaxedComparator = DiffOptions.default.withComparator(DiffComparator.duration(Duration.ofSeconds(60)).asInclusive(), "time")
     doTest(optionsWithTightComparator, optionsWithRelaxedComparator, leftTimes.toDF, rightTimes.toDF)
   }
 
   test("duration comparator with time (exclusive)") {
-    val optionsWithTightComparator = DiffOptions.default.withComparator(DurationDiffComparator(Duration.ofSeconds(60), inclusive = false), "time")
-    val optionsWithRelaxedComparator = DiffOptions.default.withComparator(DurationDiffComparator(Duration.ofSeconds(61), inclusive = false), "time")
+    val optionsWithTightComparator = DiffOptions.default.withComparator(DiffComparator.duration(Duration.ofSeconds(60)).asExclusive(), "time")
+    val optionsWithRelaxedComparator = DiffOptions.default.withComparator(DiffComparator.duration(Duration.ofSeconds(61)).asExclusive(), "time")
     doTest(optionsWithTightComparator, optionsWithRelaxedComparator, leftTimes.toDF, rightTimes.toDF)
   }
 
@@ -291,12 +295,12 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
 
   Seq(
     "default" -> (() => DiffComparator.default(), DefaultDiffComparator),
-    "nullSafeEqual" -> (() => DiffComparator.default(), NullSafeEqualDiffComparator),
+    "nullSafeEqual" -> (() => DiffComparator.nullSafeEqual(), NullSafeEqualDiffComparator),
     "equiv with encoder" -> (() => DiffComparator.equiv(IntEquiv), EquivDiffComparator(IntEquiv)),
     "equiv with type" -> (() => DiffComparator.equiv(IntEquiv, IntegerType), EquivDiffComparator(IntEquiv, IntegerType)),
     "equiv with any" -> (() => DiffComparator.equiv(AnyEquiv), EquivDiffComparator(AnyEquiv)),
-    "epsilon" -> (() => DiffComparator.epsilon(1.0, relative = false, inclusive = false), EpsilonDiffComparator(1.0, relative = false, inclusive = false)),
-    "duration" -> (() => DiffComparator.duration(Duration.ofSeconds(1), inclusive = false), DurationDiffComparator(Duration.ofSeconds(1), inclusive = false)),
+    "epsilon" -> (() => DiffComparator.epsilon(1.0).asAbsolute().asExclusive(), EpsilonDiffComparator(1.0, relative = false, inclusive = false)),
+    "duration" -> (() => DiffComparator.duration(Duration.ofSeconds(1)).asExclusive(), DurationDiffComparator(Duration.ofSeconds(1), inclusive = false)),
   ).foreach { case (label, (method, expected)) =>
     test(s"DiffComparator.$label") {
       val actual = method()
@@ -310,26 +314,31 @@ object DiffComparatorSuite {
   implicit val longEnc: Encoder[Long] = Encoders.scalaLong
   implicit val floatEnc: Encoder[Float] = Encoders.scalaFloat
   implicit val doubleEnc: Encoder[Double] = Encoders.scalaDouble
+  implicit val decimalEnc: Encoder[Decimal] = ExpressionEncoder()
 
   val tightIntComparator: EquivDiffComparator[Int] = EquivDiffComparator((x: Int, y: Int) => math.abs(x - y) < 1)
   val tightLongComparator: EquivDiffComparator[Long] = EquivDiffComparator((x: Long, y: Long) => math.abs(x - y) < 1)
   val tightFloatComparator: EquivDiffComparator[Float] = EquivDiffComparator((x: Float, y: Float) => math.abs(x - y) < 0.001)
   val tightDoubleComparator: EquivDiffComparator[Double] = EquivDiffComparator((x: Double, y: Double) => math.abs(x - y) < 0.001)
+  val tightDecimalComparator: EquivDiffComparator[Decimal] = EquivDiffComparator[Decimal]((x: Decimal, y: Decimal) => (x - y).abs < Decimal(0.001))
 
   val optionsWithTightComparators: DiffOptions = DiffOptions.default
     .withComparator(tightIntComparator, IntegerType)
     .withComparator(tightLongComparator, LongType)
     .withComparator(tightFloatComparator, "floatValue")
     .withComparator(tightDoubleComparator, "doubleValue")
+    .withComparator(tightDecimalComparator, "decimalValue")
 
   val relaxedIntComparator: EquivDiffComparator[Int] = EquivDiffComparator((x: Int, y: Int) => math.abs(x - y) <= 1)
   val relaxedLongComparator: EquivDiffComparator[Long] = EquivDiffComparator((x: Long, y: Long) => math.abs(x - y) <= 1)
   val relaxedFloatComparator: EquivDiffComparator[Float] = EquivDiffComparator((x: Float, y: Float) => math.abs(x - y) <= 0.001)
   val relaxedDoubleComparator: EquivDiffComparator[Double] = EquivDiffComparator((x: Double, y: Double) => math.abs(x - y) <= 0.001)
+  val relaxedDecimalComparator: EquivDiffComparator[Decimal] = EquivDiffComparator[Decimal]((x: Decimal, y: Decimal) => (x - y).abs <= Decimal(0.001))
 
   val optionsWithRelaxedComparators: DiffOptions = DiffOptions.default
     .withComparator(relaxedIntComparator, IntegerType)
     .withComparator(relaxedLongComparator, LongType)
     .withComparator(relaxedFloatComparator, "floatValue")
     .withComparator(relaxedDoubleComparator, "doubleValue")
+    .withComparator(relaxedDecimalComparator, "decimalValue")
 }
