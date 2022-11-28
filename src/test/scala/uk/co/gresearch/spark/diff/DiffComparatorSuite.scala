@@ -23,9 +23,14 @@ import org.apache.spark.sql._
 import org.scalatest.funsuite.AnyFunSuite
 import uk.co.gresearch.spark.SparkTestSession
 import uk.co.gresearch.spark.diff.DiffComparatorSuite.{optionsWithRelaxedComparators, optionsWithTightComparators}
-import uk.co.gresearch.spark.diff.comparator.{EpsilonDiffComparator, EquivDiffComparator}
+import uk.co.gresearch.spark.diff.comparator.{DurationDiffComparator, EpsilonDiffComparator, EquivDiffComparator}
+
+import java.sql.{Date, Timestamp}
+import java.time.Duration
 
 case class Numbers(id: Int, longValue: Long, floatValue: Float, doubleValue: Double, someInt: Option[Int], someLong: Option[Long])
+case class Dates(id: Int, date: Date)
+case class Times(id: Int, time: Timestamp)
 
 class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
 
@@ -52,7 +57,38 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
     Numbers(5, 5L, 5.0f, 5.0, Some(5), Some(5L)),
   ).toDS()
 
-  def doTest(optionsWithTightComparators: DiffOptions, optionsWithRelaxedComparators: DiffOptions): Unit = {
+  lazy val leftDates: Dataset[Dates] = Seq(
+    Dates(1, Date.valueOf("2000-01-01")),
+    Dates(2, Date.valueOf("2000-01-02")),
+    Dates(3, Date.valueOf("2000-01-03")),
+    Dates(4, Date.valueOf("2000-01-04")),
+  ).toDS()
+
+  lazy val rightDates: Dataset[Dates] = Seq(
+    Dates(1, Date.valueOf("2000-01-01")),
+    Dates(2, Date.valueOf("2000-01-03")),
+    Dates(3, Date.valueOf("2000-01-03")),
+    Dates(5, Date.valueOf("2000-01-05")),
+  ).toDS()
+
+  lazy val leftTimes: Dataset[Times] = Seq(
+    Times(1, Timestamp.valueOf("2000-01-01 12:01:00")),
+    Times(2, Timestamp.valueOf("2000-01-02 12:02:00")),
+    Times(3, Timestamp.valueOf("2000-01-03 12:03:00")),
+    Times(4, Timestamp.valueOf("2000-01-04 12:04:00")),
+  ).toDS()
+
+  lazy val rightTimes: Dataset[Times] = Seq(
+    Times(1, Timestamp.valueOf("2000-01-01 12:01:00")),
+    Times(2, Timestamp.valueOf("2000-01-02 12:03:00")),
+    Times(3, Timestamp.valueOf("2000-01-03 12:03:00")),
+    Times(5, Timestamp.valueOf("2000-01-04 12:05:00")),
+  ).toDS()
+
+  def doTest(optionsWithTightComparators: DiffOptions,
+             optionsWithRelaxedComparators: DiffOptions,
+             left: DataFrame = this.left.toDF(),
+             right: DataFrame = this.right.toDF()): Unit = {
     // left and right numbers have some differences
     val actualWithoutComparators = left.diff(right, "id").orderBy($"id")
 
@@ -209,6 +245,30 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
     val optionsWithTightComparator = DiffOptions.default.withDefaultComparator(EpsilonDiffComparator(1/3.0, relative = true, inclusive = false))
     val optionsWithRelaxedComparator = DiffOptions.default.withDefaultComparator(EpsilonDiffComparator(1/3.0 + .001, relative = true, inclusive = false))
     doTest(optionsWithTightComparator, optionsWithRelaxedComparator)
+  }
+
+  test("duration comparator with date (inclusive)") {
+    val optionsWithTightComparator = DiffOptions.default.withComparator(DurationDiffComparator(Duration.ofHours(23), inclusive = true), "date")
+    val optionsWithRelaxedComparator = DiffOptions.default.withComparator(DurationDiffComparator(Duration.ofHours(24), inclusive = true), "date")
+    doTest(optionsWithTightComparator, optionsWithRelaxedComparator, leftDates.toDF, rightDates.toDF)
+  }
+
+  test("duration comparator with date (exclusive)") {
+    val optionsWithTightComparator = DiffOptions.default.withComparator(DurationDiffComparator(Duration.ofHours(24), inclusive = false), "date")
+    val optionsWithRelaxedComparator = DiffOptions.default.withComparator(DurationDiffComparator(Duration.ofHours(25), inclusive = false), "date")
+    doTest(optionsWithTightComparator, optionsWithRelaxedComparator, leftDates.toDF, rightDates.toDF)
+  }
+
+  test("duration comparator with time (inclusive)") {
+    val optionsWithTightComparator = DiffOptions.default.withComparator(DurationDiffComparator(Duration.ofSeconds(59), inclusive = true), "time")
+    val optionsWithRelaxedComparator = DiffOptions.default.withComparator(DurationDiffComparator(Duration.ofSeconds(60), inclusive = true), "time")
+    doTest(optionsWithTightComparator, optionsWithRelaxedComparator, leftTimes.toDF, rightTimes.toDF)
+  }
+
+  test("duration comparator with time (exclusive)") {
+    val optionsWithTightComparator = DiffOptions.default.withComparator(DurationDiffComparator(Duration.ofSeconds(60), inclusive = false), "time")
+    val optionsWithRelaxedComparator = DiffOptions.default.withComparator(DurationDiffComparator(Duration.ofSeconds(61), inclusive = false), "time")
+    doTest(optionsWithTightComparator, optionsWithRelaxedComparator, leftTimes.toDF, rightTimes.toDF)
   }
 }
 

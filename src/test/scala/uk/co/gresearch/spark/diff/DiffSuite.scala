@@ -109,20 +109,6 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     Value(4, Some("four"))
   ).toDS()
 
-  lazy val leftNumbers: Dataset[Numbers] = Seq(
-    Numbers(1, 1L, 1.0f, 1.0, None, None),
-    Numbers(2, 2L, 2.0f, 2.0, Some(2), Some(2L)),
-    Numbers(3, 3L, 3.0f, 3.0, Some(3), None),
-    Numbers(4, 4L, 4.0f, 4.0, None, Some(4L)),
-  ).toDS()
-
-  lazy val rightNumbers: Dataset[Numbers] = Seq(
-    Numbers(1, 1L, 1.0f, 1.0, None, None),
-    Numbers(2, 3L, 2.001f, 2.001, Some(3), Some(3L)),
-    Numbers(3, 3L, 3.0f, 3.0, None, Some(3L)),
-    Numbers(5, 5L, 5.0f, 5.0, Some(5), Some(5L)),
-  ).toDS()
-
   lazy val left7: Dataset[Value7] = Seq(
     Value7(1, Some("one"), Some("one label")),
     Value7(2, Some("two"), Some("two labels")),
