@@ -1,7 +1,6 @@
 package uk.co.gresearch.spark.diff
 
-import org.apache.spark.sql.functions.lit
-import org.apache.spark.sql.types.{DataType, Decimal}
+import org.apache.spark.sql.types.{DataType, MapType}
 import org.apache.spark.sql.{Column, Encoder}
 import uk.co.gresearch.spark.diff.comparator._
 
@@ -23,4 +22,6 @@ object DiffComparator {
   def epsilon(epsilon: Double): EpsilonDiffComparator = EpsilonDiffComparator(epsilon)
 
   def duration(duration: Duration): DurationDiffComparator = DurationDiffComparator(duration)
+
+  def map[K: Encoder, V: Encoder](): DiffComparator = MapDiffComparator[K, V]()
 }

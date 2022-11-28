@@ -19,7 +19,7 @@ object EquivDiffComparator {
   def apply[T](equiv: math.Equiv[T], inputType: DataType): EquivDiffComparator[T] = TypedEquivDiffComparator(equiv, inputType)
   def apply(equiv: math.Equiv[Any]): EquivDiffComparator[Any] = EquivAnyDiffComparator(equiv)
 
-  private trait ExpressionEquivDiffComparator[T] extends EquivDiffComparator[T] {
+  private[comparator] trait ExpressionEquivDiffComparator[T] extends EquivDiffComparator[T] {
     def equiv(left: Expression, right: Expression): EquivExpression[T]
     def equiv(left: Column, right: Column): Column =
       new Column(equiv(left.expr, right.expr).asInstanceOf[Expression])
@@ -29,7 +29,7 @@ object EquivDiffComparator {
     def equiv(left: Expression, right: Expression): Equiv[T] = Equiv(left, right, equiv)
   }
 
-  private case class TypedEquivDiffComparator[T](equiv: math.Equiv[T], inputType: DataType) extends ExpressionEquivDiffComparator[T] {
+  private[comparator] case class TypedEquivDiffComparator[T](equiv: math.Equiv[T], inputType: DataType) extends ExpressionEquivDiffComparator[T] {
     def equiv(left: Expression, right: Expression): Equiv[T] = Equiv(left, right, equiv, inputType)
   }
 

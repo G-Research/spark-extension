@@ -32,6 +32,7 @@ import java.time.Duration
 case class Numbers(id: Int, longValue: Long, floatValue: Float, doubleValue: Double, decimalValue: Decimal, someInt: Option[Int], someLong: Option[Long])
 case class Dates(id: Int, date: Date)
 case class Times(id: Int, time: Timestamp)
+case class Maps(id: Int, map: Map[Int, Long])
 
 class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
 
@@ -84,6 +85,20 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
     Times(2, Timestamp.valueOf("2000-01-02 12:03:00")),
     Times(3, Timestamp.valueOf("2000-01-03 12:03:00")),
     Times(5, Timestamp.valueOf("2000-01-04 12:05:00")),
+  ).toDS()
+
+  lazy val leftMaps: Dataset[Maps] = Seq(
+    Maps(1, Map(1 -> 1L, 2 -> 2L, 3 -> 3L)),
+    Maps(2, Map(1 -> 2L, 2 -> 2L, 3 -> 3L)),
+    Maps(3, Map(1 -> 3L, 2 -> 2L, 3 -> 3L)),
+    Maps(4, Map(1 -> 4L, 2 -> 2L, 3 -> 3L)),
+  ).toDS()
+
+  lazy val rightMaps: Dataset[Maps] = Seq(
+    Maps(1, Map(1 -> 1L, 2 -> 2L, 3 -> 3L)),
+    Maps(2, Map(1 -> 2L, 2 -> 3L, 3 -> 3L)),
+    Maps(3, Map(1 -> 3L, 2 -> 2L, 4 -> 4L)),
+    Maps(5, Map(1 -> 4L, 2 -> 2L, 3 -> 3L)),
   ).toDS()
 
   def doTest(optionsWithTightComparators: DiffOptions,
@@ -283,6 +298,26 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
     val optionsWithTightComparator = DiffOptions.default.withComparator(DiffComparator.duration(Duration.ofSeconds(60)).asExclusive(), "time")
     val optionsWithRelaxedComparator = DiffOptions.default.withComparator(DiffComparator.duration(Duration.ofSeconds(61)).asExclusive(), "time")
     doTest(optionsWithTightComparator, optionsWithRelaxedComparator, leftTimes.toDF, rightTimes.toDF)
+  }
+
+  Seq("true", "false").foreach { codegen =>
+    test(s"map comparator - codegen enabled=$codegen") {
+      withSQLConf(
+        SQLConf.WHOLESTAGE_CODEGEN_ENABLED.key -> codegen,
+        SQLConf.CODEGEN_FALLBACK.key -> "false"
+      ) {
+        val options = DiffOptions.default.withComparator(DiffComparator.map[Int, Long](), "map")
+
+        val actual = leftMaps.diff(rightMaps, options, "id").orderBy($"id").collect()
+        val diffs = Seq((1, "N"), (2, "C"), (3, "C"), (4, "D"), (5, "I")).toDF("id", "diff")
+        val expected = leftMaps.withColumnRenamed("map", "left_map")
+          .join(rightMaps.withColumnRenamed("map", "right_map"), Seq("id"), "fullouter")
+          .join(diffs, "id")
+          .select($"diff", $"id", $"left_map", $"right_map")
+          .orderBy($"id").collect()
+        assert(actual === expected)
+      }
+    }
   }
 
   case object IntEquiv extends math.Equiv[Int] {
