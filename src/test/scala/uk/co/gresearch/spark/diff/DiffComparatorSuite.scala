@@ -153,19 +153,26 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
   Seq(
     "diff comparator" -> (DiffOptions.default
       .withDefaultComparator((_: Column, _: Column) => lit(1)),
-      "'(1 AND 1)' requires boolean type, not int"),
+      Seq("'(1 AND 1)' requires boolean type, not int")),
     "encoder equiv" -> (DiffOptions.default
       .withDefaultComparator((_: Int, _: Int) => true),
-      "'(longValue ≡ longValue)' requires int type, not bigint"),
+      Seq(
+        "'(`longValue` ≡ `longValue`)' requires int type, not bigint",  // Spark 3.0 and 3.1
+        "'(longValue ≡ longValue)' requires int type, not bigint"  // Spark 3.2 and beyond
+      )),
     "typed equiv" -> (DiffOptions.default
       .withDefaultComparator(EquivDiffComparator((left: Int, right: Int) => left.abs == right.abs, IntegerType)),
-      "'(longValue ≡ longValue)' requires int type, not bigint")
-  ).foreach { case (label, (options, expected)) =>
+      Seq(
+        "'(`longValue` ≡ `longValue`)' requires int type, not bigint",  // Spark 3.0 and 3.1
+        "'(longValue ≡ longValue)' requires int type, not bigint"  // Spark 3.2 and beyond
+      ))
+  ).foreach { case (label, (options, expecteds)) =>
     test(s"with comparator of incompatible type - $label") {
       val exception = intercept[AnalysisException] {
         left.diff(right, options, "id")
       }
-      assert(exception.message.contains(expected))
+      assert(expecteds.nonEmpty)
+      assert(expecteds.exists(expected => exception.message.contains(expected)))
     }
   }
 
