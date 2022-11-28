@@ -153,26 +153,37 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
   Seq(
     "diff comparator" -> (DiffOptions.default
       .withDefaultComparator((_: Column, _: Column) => lit(1)),
-      Seq("'(1 AND 1)' requires boolean type, not int")),
+      Seq(
+        "'(1 AND 1)' requires boolean type, not int",  // until Spark 3.3
+        "\"(1 AND 1)\" due to data type mismatch: " +  // Spark 3.4 and beyond
+          "the binary operator requires the input type \"BOOLEAN\", not \"INT\"."
+      )
+    ),
     "encoder equiv" -> (DiffOptions.default
       .withDefaultComparator((_: Int, _: Int) => true),
       Seq(
         "'(`longValue` ≡ `longValue`)' requires int type, not bigint",  // Spark 3.0 and 3.1
-        "'(longValue ≡ longValue)' requires int type, not bigint"  // Spark 3.2 and beyond
-      )),
+        "'(longValue ≡ longValue)' requires int type, not bigint",  // Spark 3.2 and 3.3
+        "\"(longValue ≡ longValue)\" due to data type mismatch: " +  // Spark 3.4 and beyond
+          "the binary operator requires the input type \"INT\", not \"BIGINT\"."
+      )
+    ),
     "typed equiv" -> (DiffOptions.default
       .withDefaultComparator(EquivDiffComparator((left: Int, right: Int) => left.abs == right.abs, IntegerType)),
       Seq(
         "'(`longValue` ≡ `longValue`)' requires int type, not bigint",  // Spark 3.0 and 3.1
-        "'(longValue ≡ longValue)' requires int type, not bigint"  // Spark 3.2 and beyond
-      ))
+        "'(longValue ≡ longValue)' requires int type, not bigint",  // Spark 3.2 and 3.3
+        "\"(longValue ≡ longValue)\" due to data type mismatch: " +  // Spark 3.4 and beyond
+          "the binary operator requires the input type \"INT\", not \"BIGINT\"."
+      )
+    )
   ).foreach { case (label, (options, expecteds)) =>
     test(s"with comparator of incompatible type - $label") {
       val exception = intercept[AnalysisException] {
         left.diff(right, options, "id")
       }
       assert(expecteds.nonEmpty)
-      assert(expecteds.exists(expected => exception.message.contains(expected)))
+      assert(expecteds.exists(expected => exception.message.contains(expected)), exception.message)
     }
   }
 
