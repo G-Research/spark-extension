@@ -98,6 +98,7 @@ case class DiffOptions(diffColumn: String,
                        defaultComparator: DiffComparator = DefaultDiffComparator,
                        dataTypeComparators: Map[DataType, DiffComparator] = Map.empty,
                        columnNameComparators: Map[String, DiffComparator] = Map.empty) {
+  def this() = this("diff", "left", "right", "I", "C", "D", "N")
   def this(diffColumn: String,
            leftColumnPrefix: String,
            rightColumnPrefix: String,
@@ -284,6 +285,7 @@ case class DiffOptions(diffColumn: String,
    * Returns a new immutable DiffOptions instance with the new comparator.
    * @return new immutable DiffOptions instance
    */
+  @varargs
   def withComparator(diffComparator: DiffComparator, dataType: DataType, dataTypes: DataType*): DiffOptions = {
     val allDataTypes = dataType +: dataTypes
     val existingDataTypes = allDataTypes.filter(dataTypeComparators.contains)
@@ -329,10 +331,31 @@ case class DiffOptions(diffColumn: String,
     withComparator(EquivDiffComparator(equiv), columnName, columnNames: _*)
 
   /**
+   * Fluent method to add an equivalent operator as a comparator for one or more column names.
+   * Returns a new immutable DiffOptions instance with the new comparator.
+   * @note Java-specific method
+   * @return new immutable DiffOptions instance
+   */
+  @varargs
+  def withComparator[T](equiv: math.Equiv[T], encoder: Encoder[T], dataType: DataType, dataTypes: DataType*): DiffOptions =
+    withComparator(EquivDiffComparator(equiv)(encoder), dataType, dataTypes: _*)
+
+  /**
+   * Fluent method to add an equivalent operator as a comparator for one or more column names.
+   * Returns a new immutable DiffOptions instance with the new comparator.
+   * @note Java-specific method
+   * @return new immutable DiffOptions instance
+   */
+  @varargs
+  def withComparator[T](equiv: math.Equiv[T], encoder: Encoder[T], columnName: String, columnNames: String*): DiffOptions =
+    withComparator(EquivDiffComparator(equiv)(encoder), columnName, columnNames: _*)
+
+  /**
    * Fluent method to add an equivalent operator as a comparator for one or more data types.
    * Returns a new immutable DiffOptions instance with the new comparator.
    * @return new immutable DiffOptions instance
    */
+  @varargs
   def withComparator(equiv: math.Equiv[Any], dataType: DataType, dataTypes: DataType*): DiffOptions =
     withComparator(EquivDiffComparator(equiv), dataType, dataTypes: _*)
 
@@ -355,5 +378,5 @@ object DiffOptions {
   /**
    * Default diffing options.
    */
-  val default: DiffOptions = DiffOptions("diff", "left", "right", "I", "C", "D", "N", None, Default, sparseMode = false, DefaultDiffComparator, Map.empty, Map.empty)
+  val default: DiffOptions = new DiffOptions()
 }
