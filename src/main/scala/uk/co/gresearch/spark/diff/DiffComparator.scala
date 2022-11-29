@@ -1,6 +1,6 @@
 package uk.co.gresearch.spark.diff
 
-import org.apache.spark.sql.types.{DataType, MapType}
+import org.apache.spark.sql.types.DataType
 import org.apache.spark.sql.{Column, Encoder}
 import uk.co.gresearch.spark.diff.comparator._
 
@@ -8,6 +8,10 @@ import java.time.Duration
 
 trait DiffComparator {
   def equiv(left: Column, right: Column): Column
+}
+
+trait TypedDiffComparator extends DiffComparator {
+  def inputType: DataType
 }
 
 object DiffComparator {

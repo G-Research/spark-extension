@@ -138,23 +138,31 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
     "default diff comparator" -> DiffOptions.default
       .withDefaultComparator((left: Column, right: Column) => abs(left) <=> abs(right)),
     "default encoder equiv" -> DiffOptions.default
-      .withDefaultComparator((_: Int, _: Int) => true)
+      .withDefaultComparator((left: Int, right: Int) => left.abs == right.abs)
       // the non-default comparator here are required because the default only supports int
-      // see "encoder equiv for type …" tests below
-      .withComparator((left: Long, right: Long) => left.abs == right.abs, LongType)
-      .withComparator((left: Float, right: Float) => left.abs == right.abs, FloatType)
-      .withComparator((left: Double, right: Double) => left.abs == right.abs, DoubleType)
-      .withComparator((left: Decimal, right: Decimal) => left.abs == right.abs, DecimalType(38, 18)),
+      // see "encoder equiv" test below
+      .withComparator((left: Long, right: Long) => left.abs == right.abs)
+      .withComparator((left: Float, right: Float) => left.abs == right.abs)
+      .withComparator((left: Double, right: Double) => left.abs == right.abs)
+      .withComparator((left: Decimal, right: Decimal) => left.abs == right.abs),
     "default typed equiv" -> DiffOptions.default
-      .withDefaultComparator(EquivDiffComparator((left: Int, right: Int) => left.abs == right.abs, IntegerType))
+      .withDefaultComparator((left: Int, right: Int) => left.abs == right.abs, IntegerType)
       // the non-default comparator here are required because the default only supports int
-      // see "encoder equiv for type …" tests below
-      .withComparator((left: Long, right: Long) => left.abs == right.abs, LongType)
-      .withComparator((left: Float, right: Float) => left.abs == right.abs, FloatType)
-      .withComparator((left: Double, right: Double) => left.abs == right.abs, DoubleType)
-      .withComparator((left: Decimal, right: Decimal) => left.abs == right.abs, DecimalType(38, 18)),
+      // see "encoder equiv" test below
+      .withComparator((left: Long, right: Long) => left.abs == right.abs)
+      .withComparator((left: Float, right: Float) => left.abs == right.abs)
+      .withComparator((left: Double, right: Double) => left.abs == right.abs)
+      .withComparator((left: Decimal, right: Decimal) => left.abs == right.abs),
     "default any equiv" -> DiffOptions.default
       .withDefaultComparator((_: Any, _: Any) => true),
+
+    "typed diff comparator" -> DiffOptions.default
+      .withComparator(EquivDiffComparator((left: Int, right: Int) => left.abs == right.abs))
+      .withComparator((left: Column, right: Column) => abs(left) <=> abs(right), LongType, FloatType, DoubleType, DecimalType(38, 18)),
+    "typed diff comparator for type" -> DiffOptions.default
+      // only works if data type is equal to input type of typed diff comparator
+      .withComparator(EquivDiffComparator((left: Int, right: Int) => left.abs == right.abs), IntegerType)
+      .withComparator((left: Column, right: Column) => abs(left) <=> abs(right), LongType, FloatType, DoubleType, DecimalType(38, 18)),
 
     "diff comparator for type" -> DiffOptions.default
       .withComparator((left: Column, right: Column) => abs(left) <=> abs(right), IntegerType)
@@ -163,31 +171,24 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
       .withComparator((left: Column, right: Column) => abs(left) <=> abs(right), "someInt")
       .withComparator((left: Column, right: Column) => abs(left) <=> abs(right), "longValue", "floatValue", "doubleValue", "someLong", "decimalValue"),
 
-    "encoder equiv for type" -> DiffOptions.default
-      .withComparator((left: Int, right: Int) => left.abs == right.abs, IntegerType)
-      .withComparator((left: Long, right: Long) => left.abs == right.abs, LongType)
-      .withComparator((left: Float, right: Float) => left.abs == right.abs, FloatType)
-      .withComparator((left: Double, right: Double) => left.abs == right.abs, DoubleType)
-      .withComparator((left: Decimal, right: Decimal) => left.abs == right.abs, DecimalType(38, 18)),
+    "encoder equiv" -> DiffOptions.default
+      .withComparator((left: Int, right: Int) => left.abs == right.abs)
+      .withComparator((left: Long, right: Long) => left.abs == right.abs)
+      .withComparator((left: Float, right: Float) => left.abs == right.abs)
+      .withComparator((left: Double, right: Double) => left.abs == right.abs)
+      .withComparator((left: Decimal, right: Decimal) => left.abs == right.abs),
     "encoder equiv for column name" -> DiffOptions.default
       .withComparator((left: Int, right: Int) => left.abs == right.abs, "someInt")
       .withComparator((left: Long, right: Long) => left.abs == right.abs, "longValue", "someLong")
       .withComparator((left: Float, right: Float) => left.abs == right.abs, "floatValue")
       .withComparator((left: Double, right: Double) => left.abs == right.abs, "doubleValue")
       .withComparator((left: Decimal, right: Decimal) => left.abs == right.abs, "decimalValue"),
-
-    "typed equiv for type" -> DiffOptions.default
-      .withComparator(EquivDiffComparator((left: Int, right: Int) => left.abs == right.abs, IntegerType), IntegerType)
-      .withComparator(EquivDiffComparator((left: Long, right: Long) => left.abs == right.abs, LongType), LongType)
-      .withComparator(EquivDiffComparator((left: Float, right: Float) => left.abs == right.abs, FloatType), FloatType)
-      .withComparator(EquivDiffComparator((left: Double, right: Double) => left.abs == right.abs, DoubleType), DoubleType)
-      .withComparator((left: Decimal, right: Decimal) => left.abs == right.abs, DecimalType(38, 18)),
-    "typed equiv for column name" -> DiffOptions.default
-      .withComparator(EquivDiffComparator((left: Int, right: Int) => left.abs == right.abs, IntegerType), "someInt")
-      .withComparator(EquivDiffComparator((left: Long, right: Long) => left.abs == right.abs, LongType), "longValue", "someLong")
-      .withComparator(EquivDiffComparator((left: Float, right: Float) => left.abs == right.abs, FloatType), "floatValue")
-      .withComparator(EquivDiffComparator((left: Double, right: Double) => left.abs == right.abs, DoubleType), "doubleValue")
-      .withComparator(EquivDiffComparator((left: Decimal, right: Decimal) => left.abs == right.abs, DecimalType(38, 18)), "decimalValue"),
+    "equiv encoder for column name" -> DiffOptions.default
+      .withComparator((left: Int, right: Int) => left.abs == right.abs, Encoders.scalaInt, "someInt")
+      .withComparator((left: Long, right: Long) => left.abs == right.abs, Encoders.scalaLong, "longValue", "someLong")
+      .withComparator((left: Float, right: Float) => left.abs == right.abs, Encoders.scalaFloat, "floatValue")
+      .withComparator((left: Double, right: Double) => left.abs == right.abs, Encoders.scalaDouble, "doubleValue")
+      .withComparator((left: Decimal, right: Decimal) => left.abs == right.abs, ExpressionEncoder[Decimal](), "decimalValue"),
 
     "any equiv for type" -> DiffOptions.default
       .withComparator((_: Any, _: Any) => true, IntegerType)
@@ -244,6 +245,14 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
       assert(expecteds.nonEmpty)
       assert(expecteds.exists(expected => exception.message.contains(expected)), exception.message)
     }
+  }
+
+  test("typed diff comparator for other data type") {
+    val exception = intercept[IllegalArgumentException] {
+      DiffOptions.default
+        .withComparator(EquivDiffComparator((left: Int, right: Int) => left.abs == right.abs), LongType)
+    }
+    assert(exception.getMessage.contains("Comparator with input type IntegerType cannot be used for data type LongType"))
   }
 
   test("absolute epsilon comparator (inclusive)") {

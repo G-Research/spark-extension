@@ -26,7 +26,6 @@ import org.junit.Test;
 import scala.Tuple3;
 import scala.math.Equiv;
 
-import java.math.*;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -208,7 +207,7 @@ public class DiffJavaTests {
 
         Equiv<Double> equivDouble = (Double x, Double y) -> x == null && y == null || x != null && y != null &&
                 abs(x - y) <= 0.1000000001;
-        testDiffWithComparator(new DiffOptions().withComparator(equivDouble, Encoders.DOUBLE(), DataTypes.DoubleType));
+        testDiffWithComparator(new DiffOptions().withComparator(equivDouble, Encoders.DOUBLE()));
         testDiffWithComparator(new DiffOptions().withComparator(equivDouble, Encoders.DOUBLE(), "score"));
 
         Equiv<Object> equivAny = (x, y) -> x == null && y == null || x instanceof Double && y instanceof Double &&

@@ -8,15 +8,17 @@ import org.apache.spark.sql.catalyst.expressions.{BinaryExpression, BinaryOperat
 import org.apache.spark.sql.types.{BooleanType, DataType}
 import org.apache.spark.sql.{Column, Encoder}
 import uk.co.gresearch.spark.BinaryLikeWithNewChildrenInternal
-import uk.co.gresearch.spark.diff.DiffComparator
+import uk.co.gresearch.spark.diff.{DiffComparator, TypedDiffComparator}
 
 trait EquivDiffComparator[T] extends DiffComparator {
   val equiv: math.Equiv[T]
 }
 
+trait TypedEquivDiffComparator[T] extends EquivDiffComparator[T] with TypedDiffComparator
+
 object EquivDiffComparator {
-  def apply[T : Encoder](equiv: math.Equiv[T]): EquivDiffComparator[T] = EncoderEquivDiffComparator(equiv)
-  def apply[T](equiv: math.Equiv[T], inputType: DataType): EquivDiffComparator[T] = TypedEquivDiffComparator(equiv, inputType)
+  def apply[T : Encoder](equiv: math.Equiv[T]): TypedEquivDiffComparator[T] = EncoderEquivDiffComparator(equiv)
+  def apply[T](equiv: math.Equiv[T], inputType: DataType): TypedEquivDiffComparator[T] = InputTypedEquivDiffComparator(equiv, inputType)
   def apply(equiv: math.Equiv[Any]): EquivDiffComparator[Any] = EquivAnyDiffComparator(equiv)
 
   private[comparator] trait ExpressionEquivDiffComparator[T] extends EquivDiffComparator[T] {
@@ -25,11 +27,14 @@ object EquivDiffComparator {
       new Column(equiv(left.expr, right.expr).asInstanceOf[Expression])
   }
 
-  private case class EncoderEquivDiffComparator[T : Encoder](equiv: math.Equiv[T]) extends ExpressionEquivDiffComparator[T] {
-    def equiv(left: Expression, right: Expression): Equiv[T] = Equiv(left, right, equiv)
+  private case class EncoderEquivDiffComparator[T : Encoder](equiv: math.Equiv[T])
+    extends ExpressionEquivDiffComparator[T] with TypedEquivDiffComparator[T] {
+    override def inputType: DataType = encoderFor[T].schema.fields(0).dataType
+    def equiv(left: Expression, right: Expression): Equiv[T] = Equiv(left, right, equiv, inputType)
   }
 
-  private[comparator] case class TypedEquivDiffComparator[T](equiv: math.Equiv[T], inputType: DataType) extends ExpressionEquivDiffComparator[T] {
+  private[comparator] case class InputTypedEquivDiffComparator[T](equiv: math.Equiv[T], inputType: DataType)
+    extends ExpressionEquivDiffComparator[T] with TypedEquivDiffComparator[T] {
     def equiv(left: Expression, right: Expression): Equiv[T] = Equiv(left, right, equiv, inputType)
   }
 
@@ -79,11 +84,6 @@ private case class Equiv[T](left: Expression, right: Expression, equiv: math.Equ
   extends EquivOperator[T] {
   override protected def withNewChildrenInternal(newLeft: Expression, newRight: Expression): Equiv[T] =
     copy(left=newLeft, right=newRight)
-}
-
-private object Equiv {
-  def apply[T : Encoder](left: Expression, right: Expression, equiv: math.Equiv[T]): Equiv[T] =
-    Equiv(left, right, equiv, encoderFor[T].schema.fields(0).dataType)
 }
 
 private case class EquivAny(left: Expression, right: Expression, equiv: math.Equiv[Any])

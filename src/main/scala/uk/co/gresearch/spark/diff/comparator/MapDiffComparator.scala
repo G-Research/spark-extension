@@ -5,7 +5,7 @@ import org.apache.spark.sql.catalyst.expressions.UnsafeMapData
 import org.apache.spark.sql.types.{DataType, MapType}
 import org.apache.spark.sql.{Column, Encoder}
 import uk.co.gresearch.spark.diff.DiffComparator
-import uk.co.gresearch.spark.diff.comparator.EquivDiffComparator.TypedEquivDiffComparator
+import uk.co.gresearch.spark.diff.comparator.EquivDiffComparator.InputTypedEquivDiffComparator
 
 case class MapDiffComparator[K, V](private val comparator: EquivDiffComparator[UnsafeMapData]) extends DiffComparator {
   override def equiv(left: Column, right: Column): Column = comparator.equiv(left, right)
@@ -43,7 +43,7 @@ case object MapDiffComparator {
     val valueType = encoderFor[V].schema.fields(0).dataType
     val equiv = MapDiffEquiv(keyType, valueType)
     val dataType = MapType(keyType, valueType)
-    val comparator = TypedEquivDiffComparator[UnsafeMapData](equiv, dataType)
+    val comparator = InputTypedEquivDiffComparator[UnsafeMapData](equiv, dataType)
     MapDiffComparator[K, V](comparator)
   }
 }

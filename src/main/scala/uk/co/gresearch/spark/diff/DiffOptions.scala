@@ -254,7 +254,8 @@ case class DiffOptions(diffColumn: String,
   }
 
   /**
-   * Fluent method to add an equivalent operator as a default comparator.
+   * Fluent method to add a typed equivalent operator as a default comparator.
+   * The encoder defines the input type of the comparator.
    * Returns a new immutable DiffOptions instance with the new default comparator.
    * @return new immutable DiffOptions instance
    */
@@ -263,7 +264,7 @@ case class DiffOptions(diffColumn: String,
   }
 
   /**
-   * Fluent method to add an equivalent operator as a default comparator.
+   * Fluent method to add a typed equivalent operator as a default comparator.
    * Returns a new immutable DiffOptions instance with the new default comparator.
    * @return new immutable DiffOptions instance
    */
@@ -281,6 +282,19 @@ case class DiffOptions(diffColumn: String,
   }
 
   /**
+   * Fluent method to add a comparator for its input data type.
+   * Returns a new immutable DiffOptions instance with the new comparator.
+   * @return new immutable DiffOptions instance
+   */
+  def withComparator(diffComparator: TypedDiffComparator): DiffOptions = {
+    if (dataTypeComparators.contains(diffComparator.inputType)) {
+      throw new IllegalArgumentException(
+        s"A comparator for data type ${diffComparator.inputType} exists already.")
+    }
+    this.copy(dataTypeComparators = dataTypeComparators ++ Map(diffComparator.inputType -> diffComparator))
+  }
+
+  /**
    * Fluent method to add a comparator for one or more data types.
    * Returns a new immutable DiffOptions instance with the new comparator.
    * @return new immutable DiffOptions instance
@@ -288,6 +302,14 @@ case class DiffOptions(diffColumn: String,
   @varargs
   def withComparator(diffComparator: DiffComparator, dataType: DataType, dataTypes: DataType*): DiffOptions = {
     val allDataTypes = dataType +: dataTypes
+
+    diffComparator match {
+      case typed: TypedDiffComparator if allDataTypes.exists(_ != typed.inputType) =>
+        throw new IllegalArgumentException(s"Comparator with input type ${typed.inputType} " +
+          s"cannot be used for data type ${allDataTypes.filter(_ != typed.inputType).mkString(", ")}")
+      case _ =>
+    }
+
     val existingDataTypes = allDataTypes.filter(dataTypeComparators.contains)
     if (existingDataTypes.nonEmpty) {
       throw new IllegalArgumentException(
@@ -315,30 +337,22 @@ case class DiffOptions(diffColumn: String,
   }
 
   /**
-   * Fluent method to add an equivalent operator as a comparator for one or more data types.
+   * Fluent method to add a typed equivalent operator as a comparator for its input data type.
+   * The encoder defines the input type of the comparator.
    * Returns a new immutable DiffOptions instance with the new comparator.
    * @return new immutable DiffOptions instance
    */
-  def withComparator[T : Encoder](equiv: math.Equiv[T], dataType: DataType, dataTypes: DataType*): DiffOptions =
-    withComparator(EquivDiffComparator(equiv), dataType, dataTypes: _*)
+  def withComparator[T : Encoder](equiv: math.Equiv[T]): DiffOptions =
+    withComparator(EquivDiffComparator(equiv))
 
   /**
-   * Fluent method to add an equivalent operator as a comparator for one or more column names.
+   * Fluent method to add a typed equivalent operator as a comparator for one or more column names.
+   * The encoder defines the input type of the comparator.
    * Returns a new immutable DiffOptions instance with the new comparator.
    * @return new immutable DiffOptions instance
    */
   def withComparator[T : Encoder](equiv: math.Equiv[T], columnName: String, columnNames: String*): DiffOptions =
     withComparator(EquivDiffComparator(equiv), columnName, columnNames: _*)
-
-  /**
-   * Fluent method to add an equivalent operator as a comparator for one or more column names.
-   * Returns a new immutable DiffOptions instance with the new comparator.
-   * @note Java-specific method
-   * @return new immutable DiffOptions instance
-   */
-  @varargs
-  def withComparator[T](equiv: math.Equiv[T], encoder: Encoder[T], dataType: DataType, dataTypes: DataType*): DiffOptions =
-    withComparator(EquivDiffComparator(equiv)(encoder), dataType, dataTypes: _*)
 
   /**
    * Fluent method to add an equivalent operator as a comparator for one or more column names.
