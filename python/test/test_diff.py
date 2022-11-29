@@ -21,10 +21,12 @@ import unittest
 import re
 
 from pyspark.sql import Row
+from pyspark.sql.functions import col, when
+from pyspark.sql.types import IntegerType, DateType
 from py4j.java_gateway import JavaObject
 
 from spark_common import SparkTest
-from gresearch.spark.diff import Differ, DiffOptions, DiffMode
+from gresearch.spark.diff import Differ, DiffOptions, DiffMode, DiffComparator
 
 
 class DiffTest(SparkTest):
@@ -252,10 +254,13 @@ class DiffTest(SparkTest):
                 class_name = re.sub(r'\$.*$', '', expected.getClass().getName())
                 if class_name in ['scala.None']:  # how does the Some(?) look like?
                     actual = 'Some({})'.format(actual) if actual is not None else 'None'
+                if class_name in ['scala.collection.immutable.Map', 'scala.collection.mutable.Map']:
+                    actual = f'Map({", ".join(f"{key} -> {value._to_java(jvm).toString()}" for key, value in actual.items())})'
                 expected = expected.toString()
 
-            if attr == 'diff_mode':
+            if attr in ['diff_mode', 'default_comparator']:
                 # does the Python default diff mode resolve to the same Java diff mode enum value?
+                # does the Python diff comparator resolve to the same Java diff comparator?
                 self.assertEqual(expected, actual._to_java(jvm).toString(), '{} == {} ?'.format(attr, const))
             else:
                 self.assertEqual(expected, actual, '{} == {} ?'.format(attr, const))
@@ -273,6 +278,10 @@ class DiffTest(SparkTest):
         self.assertIsNotNone(DiffMode.Default.name, jmodes.Default().toString())
 
     def test_diff_fluent_setters(self):
+        cmp1 = DiffComparator.default()
+        cmp2 = DiffComparator.epsilon(0.01)
+        cmp3 = DiffComparator.duration('PT24H')
+
         default = DiffOptions()
         options = default \
             .with_diff_column('d') \
@@ -284,7 +293,10 @@ class DiffTest(SparkTest):
             .with_nochange_diff_value('n') \
             .with_change_column('c') \
             .with_diff_mode(DiffMode.SideBySide) \
-            .with_sparse_mode(True)
+            .with_sparse_mode(True) \
+            .with_default_comparator(cmp1) \
+            .with_data_type_comparator(cmp2, IntegerType()) \
+            .with_column_name_comparator(cmp3, 'value')
 
         self.assertEqual(options.diff_column, 'd')
         self.assertEqual(options.left_column_prefix, 'l')
@@ -296,6 +308,9 @@ class DiffTest(SparkTest):
         self.assertEqual(options.change_column, 'c')
         self.assertEqual(options.diff_mode, DiffMode.SideBySide)
         self.assertEqual(options.sparse_mode, True)
+        self.assertEqual(options.default_comparator, cmp1)
+        self.assertEqual(options.data_type_comparators, {IntegerType(): cmp2})
+        self.assertEqual(options.column_name_comparators, {'value': cmp3})
 
         self.assertNotEqual(options.diff_column, default.diff_column)
         self.assertNotEqual(options.left_column_prefix, default.left_column_prefix)
@@ -319,6 +334,42 @@ class DiffTest(SparkTest):
         self.assertIsNone(without_change.change_column)
         self.assertEqual(without_change.diff_mode, DiffMode.SideBySide)
         self.assertEqual(without_change.sparse_mode, True)
+
+    def test_diff_with_comparators(self):
+        options = DiffOptions() \
+            .with_default_comparator(DiffComparator.nullSafeEqual()) \
+            .with_data_type_comparator(DiffComparator.duration('PT24H'), DateType()) \
+            .with_column_name_comparator(DiffComparator.epsilon(0.1).as_relative(), 'val')
+
+        diff = self.left_df.diff_with_options(self.right_df, options, 'id').orderBy('id').collect()
+        expected = self.spark.createDataFrame(self.expected_diff) \
+            .withColumn("diff", when(col("id") == 1, "N").otherwise(col("diff"))) \
+            .collect()
+
+        self.assertEqual(expected, diff)
+
+    def test_diff_options_with_duplicate_comparators(self):
+        options = DiffOptions() \
+            .with_data_type_comparator(DiffComparator.default(), DateType(), IntegerType()) \
+            .with_column_name_comparator(DiffComparator.default(), 'col1', 'col2')
+
+        with self.assertRaisesRegex(ValueError, "A comparator for data type date exists already."):
+            options.with_data_type_comparator(DiffComparator.default(), DateType())
+
+        with self.assertRaisesRegex(ValueError, "A comparator for data type int exists already."):
+            options.with_data_type_comparator(DiffComparator.default(), IntegerType())
+
+        with self.assertRaisesRegex(ValueError, "A comparator for data types date, int exists already."):
+            options.with_data_type_comparator(DiffComparator.default(), DateType(), IntegerType())
+
+        with self.assertRaisesRegex(ValueError, "A comparator for column name col1 exists already."):
+            options.with_column_name_comparator(DiffComparator.default(), 'col1')
+
+        with self.assertRaisesRegex(ValueError, "A comparator for column name col2 exists already."):
+            options.with_column_name_comparator(DiffComparator.default(), 'col2')
+
+        with self.assertRaisesRegex(ValueError, "A comparator for column names col1, col2 exists already."):
+            options.with_column_name_comparator(DiffComparator.default(), 'col1', 'col2')
 
 
 if __name__ == '__main__':

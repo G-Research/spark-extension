@@ -82,6 +82,7 @@ object DiffMode extends Enumeration {
  * @param changeColumn name of change column
  * @param diffMode diff output format
  * @param sparseMode un-changed values are null on both sides
+ * @param defaultComparator default custom comparator
  * @param dataTypeComparators custom comparator for some data type
  * @param columnNameComparators custom comparator for some column name
  */
@@ -305,16 +306,16 @@ case class DiffOptions(diffColumn: String,
 
     diffComparator match {
       case typed: TypedDiffComparator if allDataTypes.exists(_ != typed.inputType) =>
-        throw new IllegalArgumentException(s"Comparator with input type ${typed.inputType} " +
-          s"cannot be used for data type ${allDataTypes.filter(_ != typed.inputType).mkString(", ")}")
+        throw new IllegalArgumentException(s"Comparator with input type ${typed.inputType.simpleString} " +
+          s"cannot be used for data type ${allDataTypes.filter(_ != typed.inputType).map(_.simpleString).sorted.mkString(", ")}")
       case _ =>
     }
 
     val existingDataTypes = allDataTypes.filter(dataTypeComparators.contains)
     if (existingDataTypes.nonEmpty) {
       throw new IllegalArgumentException(
-        s"A comparator for data type${if (existingDataTypes.length > 1) "s" else ""} ${existingDataTypes.mkString(", ")} " +
-          s"exist${if (existingDataTypes.length == 1) "s" else ""} already.")
+        s"A comparator for data type${if (existingDataTypes.length > 1) "s" else ""} " +
+          s"${existingDataTypes.map(_.simpleString).sorted.mkString(", ")} exists already.")
     }
     this.copy(dataTypeComparators = dataTypeComparators ++ allDataTypes.map(dt => dt -> diffComparator))
   }
@@ -330,8 +331,8 @@ case class DiffOptions(diffColumn: String,
     val existingColumnNames = allColumnNames.filter(columnNameComparators.contains)
     if (existingColumnNames.nonEmpty) {
       throw new IllegalArgumentException(
-        s"A comparator for column name${if (existingColumnNames.length > 1) "s" else ""} ${existingColumnNames.mkString(", ")} " +
-          s"exist${if (existingColumnNames.length == 1) "s" else ""} already.")
+        s"A comparator for column name${if (existingColumnNames.length > 1) "s" else ""} " +
+          s"${existingColumnNames.sorted.mkString(", ")} exists already.")
     }
     this.copy(columnNameComparators = columnNameComparators ++ allColumnNames.map(name => name -> diffComparator))
   }

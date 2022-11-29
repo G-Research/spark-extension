@@ -247,14 +247,6 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
     }
   }
 
-  test("typed diff comparator for other data type") {
-    val exception = intercept[IllegalArgumentException] {
-      DiffOptions.default
-        .withComparator(EquivDiffComparator((left: Int, right: Int) => left.abs == right.abs), LongType)
-    }
-    assert(exception.getMessage.contains("Comparator with input type IntegerType cannot be used for data type LongType"))
-  }
-
   test("absolute epsilon comparator (inclusive)") {
     val optionsWithTightComparator = DiffOptions.default.withDefaultComparator(DiffComparator.epsilon(0.5).asAbsolute().asInclusive())
     val optionsWithRelaxedComparator = DiffOptions.default.withDefaultComparator(DiffComparator.epsilon(1.0).asAbsolute().asInclusive())

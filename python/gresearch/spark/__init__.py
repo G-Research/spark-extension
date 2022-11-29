@@ -12,11 +12,11 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from typing import List, Any, Union, List, Optional, Sequence
+from typing import Any, Union, List, Optional, Mapping
 
 from py4j.java_gateway import JVMView, JavaObject
 from pyspark.sql import DataFrame
-from pyspark.sql.column import Column, _to_seq, _to_list, _to_java_column
+from pyspark.sql.column import Column
 from pyspark.sql.context import SQLContext
 from pyspark.sql.session import SparkSession
 from pyspark.storagelevel import StorageLevel
@@ -25,6 +25,10 @@ from pyspark.storagelevel import StorageLevel
 def _to_seq(jvm: JVMView, list: List[Any]) -> JavaObject:
     array = jvm.java.util.ArrayList(list)
     return jvm.scala.collection.JavaConverters.asScalaIteratorConverter(array.iterator()).asScala().toSeq()
+
+
+def _to_map(jvm: JVMView, map: Mapping[Any, Any]) -> JavaObject:
+    return _get_scala_object(jvm, "scala.collection.JavaConverters").mapAsScalaMap(map)
 
 
 def _get_scala_object(jvm: JVMView, name: str) -> JavaObject:

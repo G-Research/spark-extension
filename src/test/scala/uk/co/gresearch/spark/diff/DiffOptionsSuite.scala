@@ -22,9 +22,11 @@ import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
 import org.scalatest.funsuite.AnyFunSuite
 import uk.co.gresearch.spark.SparkTestSession
-import uk.co.gresearch.spark.diff.comparator.DefaultDiffComparator
+import uk.co.gresearch.spark.diff.comparator.{DefaultDiffComparator, EquivDiffComparator}
 
 class DiffOptionsSuite extends AnyFunSuite with SparkTestSession {
+
+  import spark.implicits._
 
   test("diff options with empty diff column name") {
     // test the copy method (constructor), not the fluent methods
@@ -131,6 +133,51 @@ class DiffOptionsSuite extends AnyFunSuite with SparkTestSession {
     assert(options.comparatorFor(StructField("col3", LongType)) === cmp2)
     assert(options.comparatorFor(StructField("col4", DoubleType)) === cmp3)
     assert(options.comparatorFor(StructField("col5", FloatType)) === cmp1)
+  }
+
+  Seq(
+    (
+      "single type",
+      (options: DiffOptions) => options.withComparator(DiffComparator.default(), IntegerType),
+      "A comparator for data type int exists already."
+    ),
+    (
+      "multiple types",
+      (options: DiffOptions) => options.withComparator(DiffComparator.default(), IntegerType, FloatType),
+      "A comparator for data types float, int exists already."
+    ),
+    (
+      "single column",
+      (options: DiffOptions) => options.withComparator(DiffComparator.default(), "col1"),
+      "A comparator for column name col1 exists already."
+    ),
+    (
+      "multiple columns",
+      (options: DiffOptions) => options.withComparator(DiffComparator.default(), "col2", "col1"),
+      "A comparator for column names col1, col2 exists already."
+    ),
+  ).foreach { case (label, call, expected) =>
+    test(s"diff options with duplicate comparator - $label") {
+      val options = DiffOptions.default
+        .withComparator(DiffComparator.default(), IntegerType, FloatType)
+        .withComparator(DiffComparator.default(), "col1", "col2")
+      val exception = intercept[IllegalArgumentException] { call(options) }
+      assert(exception.getMessage === expected)
+    }
+  }
+
+  test("diff options with typed diff comparator for other data type") {
+    val exceptionSingle = intercept[IllegalArgumentException] {
+      DiffOptions.default
+        .withComparator(EquivDiffComparator((left: Int, right: Int) => left.abs == right.abs), LongType)
+    }
+    assert(exceptionSingle.getMessage.contains("Comparator with input type int cannot be used for data type bigint"))
+
+    val exceptionMulti = intercept[IllegalArgumentException] {
+      DiffOptions.default
+        .withComparator(EquivDiffComparator((left: Int, right: Int) => left.abs == right.abs), LongType, FloatType)
+    }
+    assert(exceptionMulti.getMessage.contains("Comparator with input type int cannot be used for data type bigint, float"))
   }
 
   test("fluent methods of diff options") {
