@@ -106,6 +106,7 @@ This `diff` transformation provides the following features:
   * diff column name (default: `"diff"`), if default name exists in diff result schema
   * diff action labels (defaults: `"N"`, `"I"`, `"D"`, `"C"`), allows custom diff notation,
 e.g. Unix diff left-right notation (<, >) or git before-after format (+, -, -+)
+  * custom equality operators (e.g. double comparison with epsilon threshold)
   * different diff result formats
   * sparse diffing mode
 * optionally provides a *change column* that lists all non-id column names that have changed (only for `"C"` action rows)
@@ -127,6 +128,9 @@ Diffing can be configured via an optional `DiffOptions` instance (see [Methods](
 |`changeColumn`      |*none*   |An array with the names of all columns that have changed values is provided in this column (only for unchanged and changed rows, *null* otherwise).|
 |`diffMode`          |`DiffModes.Default`|Configures the diff output format. For details see [Diff Modes](#diff-modes) section below.|
 |`sparseMode`        |`false`  |When `true`, only values that have changed are provided on left and right side, `null` is used for un-changed values.|
+|`defaultComparator` |`DiffComparator.default()`|The default equality for all value columns.|
+|`dataTypeComparators`|_empty_ |Map from data types to comparators.|
+|`columnNameComparators`|_empty_|Map from column names to comparators.|
 
 Either construct an instance via the constructor …
 
@@ -151,6 +155,9 @@ val options = DiffOptions.default
   .withChangeColumn("changes")
   .withDiffMode(DiffModes.Default)
   .withSparseMode(true)
+  .withDefaultComparator(DiffComparator.epsilon(0.001))
+  .withComparator(DiffComparator.epsilon(0.001), DoubleType)
+  .withComparator(DiffComparator.epsilon(0.001), "float_column")
 ```
 
 ### Diffing Modes
@@ -254,6 +261,66 @@ Above [Column by Column](#column-by-column) example would look in sparse mode as
 |N    |4    |null      |null       |null        |null        |
 |D    |5    |five      |null       |number five |null        |
 |I    |6    |null      |six        |null        |number six  |
+
+
+### Comparators (Equality)
+
+Values are compared for equality with the default `<=>` operator, which
+is `true` when either both sides are `null`, or both sides are not null and equal.
+
+There are the following alternative comparators provided:
+
+|Comparator|Description|
+|:---------|:----------|
+|`DiffComparator.epsilon(epsilon).asAbsolute()`|Two values are equal when they are at most `epsilon` apart.|
+|`DiffComparator.epsilon(epsilon).asRelative()`|Two values are equal when they are at most `epsilon * larger` apart, while `larger` is the larger of the two values (after removing the sign).|
+|`DiffComparator.duration(duration)`|Two `DateType` or `TimestampType` values are equal when they are at most `duration` apart. Duration is an instance of `java.time.Duration`.|
+|`DiffComparator.map[K,V]()`|Two `Map[K,V]` values are equal when they match in all their keys and values.|
+
+An example:
+
+    val left = Seq((1, 1.0), (2, 2.0), (3, 3.0)).toDF("id", "value")
+    val right = Seq((1, 1.0), (2, 2.02), (4, 4.0)).toDF("id", "value")
+    left.diff(right, "id").show()
+
+|diff| id|left_value|right_value|
+|----|---|----------|-----------|
+|   N|  1|       1.0|        1.0|
+|   C|  2|       2.0|       2.02|
+|   D|  3|       3.0|       null|
+|   I|  4|      null|        4.0|
+
+The second row is considered a `"C"`hange because `2.0 != 2.02`. With an inclusive relative epsilon of 1%,
+this difference is considered equal:
+
+    val options = DiffOptions.default
+      .withComparator(DiffComparator.epsilon(0.01).asRelative().asInclusive(), DoubleType)
+    left.diff(right, options, "id").show()
+
+|diff| id|left_value|right_value|
+|----|---|----------|-----------|
+|   N|  1|       1.0|        1.0|
+|   N|  2|       2.0|       2.02|
+|   D|  3|       3.0|       null|
+|   I|  4|      null|        4.0|
+
+The user can provide custom comparator implementations by either implementing `scala.math.Equiv[T]`,
+or by implementing `uk.co.gresearch.spark.diff.DiffComparator`:
+
+    val intEquiv: Equiv[Int] = (x: Int, y: Int) => x == null && y == null || x != null && y != null && x.equals(y)
+    val anyEquiv: Equiv[Any] = (x: Any, y: Any) => x == null && y == null || x != null && y != null && x.equals(y)
+
+    val comparator: DiffComparator = (left: Column, right: Column) => left <=> right
+
+    import spark.implicits._
+
+    val options = DiffOptions.default
+      .withComparator(intEquiv)
+      .withComparator(anyEquiv, LongType, DoubleType)
+      .withComparator(anyEquiv, "column1", "column2")
+
+      .withComparator(comparator, StringType, FloatType)
+      .withComparator(comparator, "column3", "column4")
 
 
 ## Methods (Scala)
