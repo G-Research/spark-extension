@@ -41,22 +41,25 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
   lazy val left: Dataset[Numbers] = Seq(
     Numbers(1, 1L, 1.0f, 1.0, Decimal(10, 8, 3), None, None),
     Numbers(2, 2L, 2.0f, 2.0, Decimal(20, 8, 3), Some(2), Some(2L)),
-    Numbers(3, 3L, 3.0f, 3.0, Decimal(30, 8, 3), Some(3), None),
-    Numbers(4, 4L, 4.0f, 4.0, Decimal(40, 8, 3), None, Some(4L)),
+    Numbers(3, 3L, 3.0f, 3.0, Decimal(30, 8, 3), Some(3), Some(3L)),
+    Numbers(4, 4L, 4.0f, 4.0, Decimal(40, 8, 3), Some(4), None),
+    Numbers(5, 5L, 5.0f, 5.0, Decimal(50, 8, 3), None, Some(5L)),
   ).toDS()
 
   lazy val right: Dataset[Numbers] = Seq(
     Numbers(1, 1L, 1.0f, 1.0, Decimal(10, 8, 3), None, None),
     Numbers(2, 3L, 2.001f, 2.001, Decimal(21, 8, 3), Some(3), Some(3L)),
-    Numbers(3, 3L, 3.0f, 3.0, Decimal(30, 8, 3), None, Some(3L)),
-    Numbers(5, 5L, 5.0f, 5.0, Decimal(50, 8, 3), Some(5), Some(5L)),
+    Numbers(3, 5L, 3.01f, 3.01, Decimal(32, 8, 3), Some(5), Some(5L)),
+    Numbers(4, 4L, 4.0f, 4.0, Decimal(40, 8, 3), None, Some(4L)),
+    Numbers(6, 6L, 6.0f, 6.0, Decimal(60, 8, 3), Some(6), Some(6L)),
   ).toDS()
 
   lazy val rightSign: Dataset[Numbers] = Seq(
     Numbers(1, 1L, 1.0f, 1.0, Decimal(10, 8, 3), None, None),
     Numbers(2, -2L, -2.0f, -2.0, Decimal(-20, 8, 3), Some(-2), Some(-2L)),
-    Numbers(3, 3L, 3.0f, 3.0, Decimal(30, 8, 3), None, Some(3L)),
-    Numbers(5, 5L, 5.0f, 5.0, Decimal(50, 8, 3), Some(5), Some(5L)),
+    Numbers(3, -4L, -4.0f, -4.0, Decimal(-40, 8, 3), Some(-4), Some(-4L)),
+    Numbers(4, 4L, 4.0f, 4.0, Decimal(40, 8, 3), None, Some(4L)),
+    Numbers(6, 6L, 6.0f, 6.0, Decimal(60, 8, 3), Some(6), Some(6L)),
   ).toDS()
 
   lazy val leftDates: Dataset[Dates] = Seq(
@@ -133,6 +136,8 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
     }
   }
 
+  def alwaysTrueEquiv: math.Equiv[Any] = (_: Any, _: Any) => true
+
   Seq(
     "default diff comparator" -> DiffOptions.default
       .withDefaultComparator((left: Column, right: Column) => abs(left) <=> abs(right)),
@@ -190,18 +195,22 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
       .withComparator((left: Decimal, right: Decimal) => left.abs == right.abs, ExpressionEncoder[Decimal](), "decimalValue"),
 
     "any equiv for type" -> DiffOptions.default
-      .withComparator((_: Any, _: Any) => true, IntegerType)
-      .withComparator((_: Any, _: Any) => true, LongType, FloatType, DoubleType, DecimalType(38, 18)),
+      .withComparator(alwaysTrueEquiv, IntegerType)
+      .withComparator(alwaysTrueEquiv, LongType, FloatType, DoubleType, DecimalType(38, 18)),
     "any equiv for column name" -> DiffOptions.default
-      .withComparator((_: Any, _: Any) => true, "someInt")
-      .withComparator((_: Any, _: Any) => true, "longValue", "floatValue", "doubleValue", "someLong", "decimalValue")
+      .withComparator(alwaysTrueEquiv, "someInt")
+      .withComparator(alwaysTrueEquiv, "longValue", "floatValue", "doubleValue", "someLong", "decimalValue")
   ).foreach { case (label, options) =>
     test(s"with comparator - $label") {
       val diffWithoutComparators = left.diff(rightSign, "id")
-      assert(diffWithoutComparators.where($"diff" === "C").count() === 2)
 
-      val expected = diffWithoutComparators.withColumn("diff", when($"id" === 2, lit("N")).otherwise($"diff"))
-      assert(expected.where($"diff" === "C").count() === 1)
+      assert(diffWithoutComparators.where($"diff" === "C").count() === 3)
+
+      val allValuesEqual = Set("default any equiv", "any equiv for type", "any equiv for column name").contains(label)
+      val unchangedIds = if (allValuesEqual) Seq(2, 3) else Seq(2)
+      val expected = diffWithoutComparators.withColumn("diff", when($"id".isin(unchangedIds: _*), lit("N")).otherwise($"diff"))
+      expected.show()
+      assert(expected.where($"diff" === "C").count() === 3 - unchangedIds.size)
 
       val actual = left.diff(rightSign, options, "id").orderBy($"id").collect()
       assert(actual !== diffWithoutComparators.orderBy($"id").collect())
