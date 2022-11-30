@@ -337,8 +337,6 @@ class DiffTest(SparkTest):
 
     def test_diff_with_comparators(self):
         options = DiffOptions() \
-            .with_default_comparator(DiffComparator.nullSafeEqual()) \
-            .with_data_type_comparator(DiffComparator.duration('PT24H'), DateType()) \
             .with_column_name_comparator(DiffComparator.epsilon(0.1).as_relative(), 'val')
 
         diff = self.left_df.diff_with_options(self.right_df, options, 'id').orderBy('id').collect()
