@@ -104,8 +104,7 @@ This `diff` transformation provides the following features:
 * detects *null* value insertion / deletion
 * configurable via `DiffOptions`:
   * diff column name (default: `"diff"`), if default name exists in diff result schema
-  * diff action labels (defaults: `"N"`, `"I"`, `"D"`, `"C"`), allows custom diff notation,
-e.g. Unix diff left-right notation (<, >) or git before-after format (+, -, -+)
+  * diff action labels (defaults: `"N"`, `"I"`, `"D"`, `"C"`), allows custom diff notation,<br/> e.g. Unix diff left-right notation (<, >) or git before-after format (+, -, -+)
   * custom equality operators (e.g. double comparison with epsilon threshold)
   * different diff result formats
   * sparse diffing mode
@@ -266,7 +265,7 @@ Above [Column by Column](#column-by-column) example would look in sparse mode as
 ### Comparators (Equality)
 
 Values are compared for equality with the default `<=>` operator, which
-is `true` when either both sides are `null`, or both sides are not null and equal.
+is `true` when both sides are `null`, or both sides are not null and equal.
 
 There are the following alternative comparators provided:
 
@@ -280,18 +279,18 @@ There are the following alternative comparators provided:
 An example:
 
     val left = Seq((1, 1.0), (2, 2.0), (3, 3.0)).toDF("id", "value")
-    val right = Seq((1, 1.0), (2, 2.02), (4, 4.0)).toDF("id", "value")
+    val right = Seq((1, 1.0), (2, 2.02), (3, 3.05)).toDF("id", "value")
     left.diff(right, "id").show()
 
 |diff| id|left_value|right_value|
 |----|---|----------|-----------|
 |   N|  1|       1.0|        1.0|
 |   C|  2|       2.0|       2.02|
-|   D|  3|       3.0|       null|
-|   I|  4|      null|        4.0|
+|   C|  3|       3.0|       3.05|
 
-The second row is considered a `"C"`hange because `2.0 != 2.02`. With an inclusive relative epsilon of 1%,
-this difference is considered equal:
+The second and third rows are considered `"C"`hanged because `2.0 != 2.02` and `3.0 != 3.05`, respectively.
+
+With an inclusive relative epsilon of 1%, `2.0 != 2.02` is considered equal, while `3.0 != 3.05` is still not equal:
 
     val options = DiffOptions.default
       .withComparator(DiffComparator.epsilon(0.01).asRelative().asInclusive(), DoubleType)
@@ -301,11 +300,10 @@ this difference is considered equal:
 |----|---|----------|-----------|
 |   N|  1|       1.0|        1.0|
 |   N|  2|       2.0|       2.02|
-|   D|  3|       3.0|       null|
-|   I|  4|      null|        4.0|
+|   C|  3|       3.0|       3.05|
 
-The user can provide custom comparator implementations by either implementing `scala.math.Equiv[T]`,
-or by implementing `uk.co.gresearch.spark.diff.DiffComparator`:
+The user can provide custom comparator implementations by implementing `scala.math.Equiv[T]`
+or `uk.co.gresearch.spark.diff.DiffComparator`:
 
     val intEquiv: Equiv[Int] = (x: Int, y: Int) => x == null && y == null || x != null && y != null && x.equals(y)
     val anyEquiv: Equiv[Any] = (x: Any, y: Any) => x == null && y == null || x != null && y != null && x.equals(y)
