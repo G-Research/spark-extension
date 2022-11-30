@@ -122,9 +122,8 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
     assert(actualWithRelaxedComparators.collect() === expectedWithRelaxedComparators.collect())
   }
 
-  /** Seq("true", "false").foreach { codegen =>**/
-  val codegen = "false"
-    test(s"diff with custom comparator - codegen enabled=false") {
+  Seq("true", "false").foreach { codegen =>
+    test(s"diff with custom comparator - codegen enabled=$codegen") {
       withSQLConf(
         SQLConf.WHOLESTAGE_CODEGEN_ENABLED.key -> codegen,
         SQLConf.CODEGEN_FALLBACK.key -> "false"
@@ -132,7 +131,7 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
         doTest(optionsWithTightComparators, optionsWithRelaxedComparators)
       }
     }
-//  }
+  }
 
   Seq(
     "default diff comparator" -> DiffOptions.default
