@@ -264,15 +264,15 @@ Above [Column by Column](#column-by-column) example would look in sparse mode as
 
 ### Comparators (Equality)
 
-Values are compared for equality with the default `<=>` operator, which
-is `true` when both sides are `null`, or both sides are not null and equal.
+Values are compared for equality with the default `<=>` operator, which considers values
+equal when both sides are `null`, or both sides are not `null` and equal.
 
-There are the following alternative comparators provided:
+The following alternative comparators are provided:
 
 |Comparator|Description|
 |:---------|:----------|
-|`DiffComparator.epsilon(epsilon)`|Two values are equal when they are at most `epsilon` apart.<br/><br/>The comparator can be configured to use `epsilon` as an absolute (`.asAbsolute()`) threshold, or as relative (`.asRelative()`) to the larger value. Further, the threshold itself can be considered equal (`.asInclusive()`) or not equal (`.asExclusive()`):<ul><li>`DiffComparator.epsilon(epsilon).asAbsolute().asInclusive()`: `abs(left - right) ≤ epsilon`</li><li>`DiffComparator.epsilon(epsilon).asAbsolute().asExclusive()`: `abs(left - right) < epsilon`</li><li>`DiffComparator.epsilon(epsilon).asRelative().asInclusive()`: `abs(left - right) ≤ epsilon * max(abs(left), abs(right))`</li><li>`DiffComparator.epsilon(epsilon).asRelative().asExclusive()`: `abs(left - right) < epsilon * max(abs(left), abs(right))`</li></ul>|
-|`DiffComparator.duration(duration)`|Two `DateType` or `TimestampType` values are equal when they are at most `duration` apart. Duration is an instance of `java.time.Duration`.<br/><br/>The comparator can be configured to consider `duration` as equal (`.asInclusive()`) or not equal (`.asExclusive()`):<ul><li>`DiffComparator.duration(duration).asInclusive()`: `left - right ≤ duration`</li><li>`DiffComparator.duration(duration).asExclusive()`: `left - right < duration`</li></lu>|
+|`DiffComparator.epsilon(epsilon)`|Two values are equal when they are at most `epsilon` apart.<br/><br/>The comparator can be configured to use `epsilon` as an absolute (`.asAbsolute()`) threshold, or as relative (`.asRelative()`) to the larger value. Further, the threshold itself can be considered equal (`.asInclusive()`) or not equal (`.asExclusive()`):<ul><li>`DiffComparator.epsilon(epsilon).asAbsolute().asInclusive()`:<br/>`x` and `y` are equal iff `abs(x - y) ≤ epsilon`</li><li>`DiffComparator.epsilon(epsilon).asAbsolute().asExclusive()`:<br/>`x` and `y` are equal iff `abs(x - y) < epsilon`</li><li>`DiffComparator.epsilon(epsilon).asRelative().asInclusive()`:<br/>`x` and `y` are equal iff `abs(x - y) ≤ epsilon * max(abs(x), abs(y))`</li><li>`DiffComparator.epsilon(epsilon).asRelative().asExclusive()`:<br/>`x` and `y` are equal iff `abs(x - y) < epsilon * max(abs(x), abs(y))`</li></ul>|
+|`DiffComparator.duration(duration)`|Two `DateType` or `TimestampType` values are equal when they are at most `duration` apart. That duration is an instance of `java.time.Duration`.<br/><br/>The comparator can be configured to consider `duration` as equal (`.asInclusive()`) or not equal (`.asExclusive()`):<ul><li>`DiffComparator.duration(duration).asInclusive()`:<br/>`x` and `y` are equal iff `x - y ≤ duration`</li><li>`DiffComparator.duration(duration).asExclusive()`:<br/>`x` and `y` are equal iff `x - y < duration`</li></lu>|
 |`DiffComparator.map[K,V]()`|Two `Map[K,V]` values are equal when they match in all their keys and values.|
 
 An example:
