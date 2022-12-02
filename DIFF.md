@@ -102,12 +102,12 @@ This `diff` transformation provides the following features:
 * provides typed `diffAs` and `diffWith` transformations
 * supports *null* values in id and non-id columns
 * detects *null* value insertion / deletion
-* configurable via `DiffOptions`:
+* [configurable](#configuring-diff) via `DiffOptions`:
   * diff column name (default: `"diff"`), if default name exists in diff result schema
   * diff action labels (defaults: `"N"`, `"I"`, `"D"`, `"C"`), allows custom diff notation,<br/> e.g. Unix diff left-right notation (<, >) or git before-after format (+, -, -+)
-  * custom equality operators (e.g. double comparison with epsilon threshold)
-  * different diff result formats
-  * sparse diffing mode
+  * [custom equality operators](#comparators-equality) (e.g. double comparison with epsilon threshold)
+  * [different diff result formats](#diffing-modes)
+  * [sparse diffing mode](#sparse-mode)
 * optionally provides a *change column* that lists all non-id column names that have changed (only for `"C"` action rows)
 * guarantees that no duplicate columns exist in the result, throws a readable exception otherwise
 
