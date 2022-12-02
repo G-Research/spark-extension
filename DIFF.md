@@ -271,9 +271,8 @@ There are the following alternative comparators provided:
 
 |Comparator|Description|
 |:---------|:----------|
-|`DiffComparator.epsilon(epsilon).asAbsolute()`|Two values are equal when they are at most `epsilon` apart.|
-|`DiffComparator.epsilon(epsilon).asRelative()`|Two values are equal when they are at most `epsilon * larger` apart, while `larger` is the larger of the two values (after removing the sign).|
-|`DiffComparator.duration(duration)`|Two `DateType` or `TimestampType` values are equal when they are at most `duration` apart. Duration is an instance of `java.time.Duration`.|
+|`DiffComparator.epsilon(epsilon)`|Two values are equal when they are at most `epsilon` apart.<br/><br/>The comparator can be configured to use `epsilon` as an absolute (`.asAbsolute()`) threshold, or as relative (`.asRelative()`) to the larger value. Further, the threshold itself can be considered equal (`.asInclusive()`) or not equal (`.asExclusive()`):<ul><li>`DiffComparator.epsilon(epsilon).asAbsolute().asInclusive()`: `abs(left - right) ≤ epsilon`</li><li>`DiffComparator.epsilon(epsilon).asAbsolute().asExclusive()`: `abs(left - right) < epsilon`</li><li>`DiffComparator.epsilon(epsilon).asRelative().asInclusive()`: `abs(left - right) ≤ epsilon * max(abs(left), abs(right))`</li><li>`DiffComparator.epsilon(epsilon).asRelative().asExclusive()`: `abs(left - right) < epsilon * max(abs(left), abs(right))`</li></ul>|
+|`DiffComparator.duration(duration)`|Two `DateType` or `TimestampType` values are equal when they are at most `duration` apart. Duration is an instance of `java.time.Duration`.<br/><br/>The comparator can be configured to consider `duration` as equal (`.asInclusive()`) or not equal (`.asExclusive()`):<ul><li>`DiffComparator.duration(duration).asInclusive()`: `left - right ≤ duration`</li><li>`DiffComparator.duration(duration).asExclusive()`: `left - right < duration`</li></lu>|
 |`DiffComparator.map[K,V]()`|Two `Map[K,V]` values are equal when they match in all their keys and values.|
 
 An example:
