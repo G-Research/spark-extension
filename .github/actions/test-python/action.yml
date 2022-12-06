@@ -1,10 +1,13 @@
-name: 'Test'
+name: 'Test Python'
 author: 'EnricoMi'
-description: 'A GitHub Action that tests spark-extension'
+description: 'A GitHub Action that tests Python spark-extension'
 
+# pyspark is not available for snapshots or scala other than 2.12
+# we would have to compile spark from sources for this, not worth it
+# so this action only works with scala 2.12 and non-snapshot spark versions
 inputs:
   spark-version:
-    description: Spark version, e.g. 3.4.0 or 3.4.0-SNAPSHOT
+    description: Spark version, e.g. 3.4.0
     required: true
   scala-version:
     description: Scala version, e.g. 2.12.15
@@ -48,9 +51,6 @@ runs:
       distribution: 'zulu'
 
   - name: Cache Pip packages
-    # pyspark is not available for snapshots or scala other than 2.12
-    # we would have to compile spark from sources for this, not worth it
-    if: inputs.scala-compat-version == '2.12' && ! contains(inputs.spark-version, 'SNAPSHOT')
     uses: actions/cache@v3
     with:
       path: ~/.cache/pip
@@ -58,17 +58,11 @@ runs:
       restore-keys: ${{ runner.os }}-pip-test-${{ inputs.python-version }}-
 
   - name: Setup Python
-    # pyspark is not available for snapshots or scala other than 2.12
-    # we would have to compile spark from sources for this, not worth it
-    if: inputs.scala-compat-version == '2.12' && ! contains(inputs.spark-version, 'SNAPSHOT')
     uses: actions/setup-python@v4
     with:
       python-version: ${{ inputs.python-version }}
 
   - name: Install Python dependencies
-    # pyspark is not available for snapshots or scala other than 2.12
-    # we would have to compile spark from sources for this, not worth it
-    if: inputs.scala-compat-version == '2.12' && ! contains(inputs.spark-version, 'SNAPSHOT')
     run: |
       python -m pip install --upgrade pip
       pip install pypandoc
@@ -76,24 +70,11 @@ runs:
       pip install pytest
     shell: bash
 
-  - name: Scala and Java Tests
-    run: mvn --batch-mode test
-    shell: bash
-
   - name: Python Tests
-    # pyspark is not available for snapshots or scala other than 2.12
-    # we would have to compile spark from sources for this, not worth it
-    if: inputs.scala-compat-version == '2.12' && ! contains(inputs.spark-version, 'SNAPSHOT')
     env:
       PYTHONPATH: python:python/test
     run: |
-      mkdir -p target/surefire-reports
-      python -m pytest python/test --junit-xml target/surefire-reports/pytest.xml
-    shell: bash
-
-  - name: Generate Unit Test Report
-    if: failure()
-    run: mvn --batch-mode surefire-report:report-only
+      python -m pytest python/test --junit-xml pytest.xml
     shell: bash
 
   - name: Upload Unit Test Results
@@ -101,10 +82,7 @@ runs:
     uses: actions/upload-artifact@v3
     with:
       name: Unit Test Results (Spark ${{ inputs.spark-version }} Scala ${{ inputs.scala-version }} Python ${{ inputs.python-version }})
-      path: |
-        target/surefire-reports/*.xml
-        !target/surefire-reports/TEST-org.scalatest*.xml
-        target/site/surefire-report.html
+      path: pytest.xml
 
 branding:
   icon: 'check-circle'
