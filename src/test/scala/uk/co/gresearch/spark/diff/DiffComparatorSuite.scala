@@ -209,7 +209,6 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
       val allValuesEqual = Set("default any equiv", "any equiv for type", "any equiv for column name").contains(label)
       val unchangedIds = if (allValuesEqual) Seq(2, 3) else Seq(2)
       val expected = diffWithoutComparators.withColumn("diff", when($"id".isin(unchangedIds: _*), lit("N")).otherwise($"diff"))
-      expected.show()
       assert(expected.where($"diff" === "C").count() === 3 - unchangedIds.size)
 
       val actual = left.diff(rightSign, options, "id").orderBy($"id").collect()
