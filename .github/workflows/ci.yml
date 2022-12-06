@@ -197,7 +197,7 @@ jobs:
       fail-fast: false
       matrix:
         spark-compat-version: ['3.0', '3.1', '3.2', '3.3']
-        python-version: ['3.8', '3.9', '3.10', '3.11']
+        python-version: ['3.8', '3.9', '3.10']
 
         include:
           - spark-compat-version: '3.0'
