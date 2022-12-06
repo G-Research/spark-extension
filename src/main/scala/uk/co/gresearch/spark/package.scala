@@ -30,7 +30,8 @@ import scala.util.Properties
 
 package object spark extends Logging with SparkVersion {
 
-  val compatVersion: (Int, Int) = (majorVersion, minorVersion)
+  val SparkCompatVersion: (Int, Int) = (SparkCompatMajorVersion, SparkCompatMinorVersion)
+  val SparkCompatVersionString: String = s"$SparkCompatMajorVersion.$SparkCompatMinorVersion"
 
   /**
    * Provides a prefix that makes any string distinct w.r.t. the given strings.
@@ -41,7 +42,11 @@ package object spark extends Logging with SparkVersion {
     "_" * (existing.map(_.takeWhile(_ == '_').length).reduceOption(_ max _).getOrElse(0) + 1)
   }
 
-  private[spark] lazy val getSparkVersion: Option[String] = {
+  /**
+   * Detects the Spark version by inspecting the classpath.
+   * Falls back to the Spark version that this package is compiled for.
+   */
+  private[spark] lazy val getSparkVersion: String = {
     val scalaCompatVersionOpt = Properties.releaseVersion.map(_.split("\\.").take(2).mkString("."))
     scalaCompatVersionOpt.flatMap { scalaCompatVersion =>
       val propFilePath = s"META-INF/maven/org.apache.spark/spark-sql_$scalaCompatVersion/pom.properties"
@@ -65,15 +70,14 @@ package object spark extends Logging with SparkVersion {
           )
         }
       }
-    }
+    }.getOrElse(s"$SparkCompatVersionString.x")
   }
 
   private[spark] def writePartitionedByRequiresCaching[T](ds: Dataset[T]): Boolean = {
-    val enabled = ds.sparkSession.conf.get(SQLConf.ADAPTIVE_EXECUTION_ENABLED.key, SQLConf.ADAPTIVE_EXECUTION_ENABLED.defaultValue.getOrElse(true).toString)
     ds.sparkSession.conf.get(
       SQLConf.ADAPTIVE_EXECUTION_ENABLED.key,
       SQLConf.ADAPTIVE_EXECUTION_ENABLED.defaultValue.getOrElse(true).toString
-    ).equalsIgnoreCase("true") && getSparkVersion.exists(ver =>
+    ).equalsIgnoreCase("true") && Some(getSparkVersion).exists(ver =>
       ver.startsWith("3.0.") || ver.startsWith("3.1.") || ver.startsWith("3.2.") || ver.startsWith("3.3.")
     )
   }

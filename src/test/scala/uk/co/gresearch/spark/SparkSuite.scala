@@ -25,15 +25,17 @@ import org.scalatest.funsuite.AnyFunSuite
 import uk.co.gresearch.ExtendedAny
 import uk.co.gresearch.spark.SparkSuite.Value
 
-class SparkSuite extends AnyFunSuite with SparkTestSession {
+class SparkSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
 
   import spark.implicits._
 
   val emptyDataset: Dataset[Value] = spark.emptyDataset[Value]
   val emptyDataFrame: DataFrame = spark.createDataFrame(Seq.empty[Value])
 
-  test("get spark version") {
-    assert(getSparkVersion.isDefined)
+  test("Get Spark version") {
+    assert(getSparkVersion.startsWith(s"$SparkCompatMajorVersion.$SparkCompatMinorVersion."))
+    assert(SparkCompatVersion === (SparkCompatMajorVersion, SparkCompatMinorVersion))
+    assert(SparkCompatVersionString === s"$SparkCompatMajorVersion.$SparkCompatMinorVersion")
   }
 
   Seq(MEMORY_AND_DISK, MEMORY_ONLY, DISK_ONLY, NONE).foreach { level =>

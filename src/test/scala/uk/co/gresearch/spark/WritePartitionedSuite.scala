@@ -47,7 +47,7 @@ class WritePartitionedSuite extends AnyFunSuite with SparkTestSession {
 
   test("write partitionedBy requires caching with AQE enabled") {
     withSQLConf(SQLConf.ADAPTIVE_EXECUTION_ENABLED.key -> "true") {
-      getSparkVersion
+      Some(getSparkVersion)
         .map(version => Set("3.0.", "3.1.", "3.2.", "3.3.").contains(version.substring(0, 4)))
         .foreach(expected => assert(writePartitionedByRequiresCaching(values) === expected))
     }
