@@ -128,8 +128,8 @@ jobs:
         spark-version: ${{ matrix.spark-version }}
         scala-version: ${{ matrix.scala-version }}
 
-  test:
-    name: Test (Spark ${{ matrix.spark-version }} Scala ${{ matrix.scala-version }} Python ${{ matrix.python-version }})
+  test-jvm:
+    name: Test (Spark ${{ matrix.spark-version }} Scala ${{ matrix.scala-version }})
     runs-on: ubuntu-latest
     needs: build
 
@@ -138,7 +138,6 @@ jobs:
       matrix:
         spark-compat-version: ['3.0', '3.1', '3.2', '3.3']
         scala-compat-version: ['2.12', '2.13']
-        python-version: ['3.8']
 
         exclude:
           - spark-compat-version: '3.0'
@@ -175,6 +174,49 @@ jobs:
             scala-compat-version: '2.13'
             scala-version: '2.13.8'
 
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Test
+      uses: ./.github/actions/test-jvm
+      with:
+        spark-version: ${{ matrix.spark-version }}
+        scala-version: ${{ matrix.scala-version }}
+        spark-compat-version: ${{ matrix.spark-compat-version }}
+        scala-compat-version: ${{ matrix.scala-compat-version }}
+
+  # pyspark is not available for snapshots or scala other than 2.12
+  # we would have to compile spark from sources for this, not worth it
+  test-python:
+    name: Test (Spark ${{ matrix.spark-version }} Scala ${{ matrix.scala-version }} Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    needs: build
+
+    strategy:
+      fail-fast: false
+      matrix:
+        spark-compat-version: ['3.0', '3.1', '3.2', '3.3']
+        python-version: ['3.8', '3.9', '3.10', '3.11']
+
+        include:
+          - spark-compat-version: '3.0'
+            spark-version: '3.0.3'
+            scala-compat-version: '2.12'
+            scala-version: '2.12.10'
+          - spark-compat-version: '3.1'
+            spark-version: '3.1.3'
+            scala-compat-version: '2.12'
+            scala-version: '2.12.10'
+          - spark-compat-version: '3.2'
+            spark-version: '3.2.3'
+            scala-compat-version: '2.12'
+            scala-version: '2.12.15'
+          - spark-compat-version: '3.3'
+            spark-version: '3.3.1'
+            scala-compat-version: '2.12'
+            scala-version: '2.12.15'
+
           - spark-compat-version: '3.0'
             spark-version: '3.0.3'
             scala-compat-version: '2.12'
@@ -187,20 +229,20 @@ jobs:
             python-version: '3.7'
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
 
-    - name: Test
-      uses: ./.github/actions/test
-      with:
-        spark-version: ${{ matrix.spark-version }}
-        scala-version: ${{ matrix.scala-version }}
-        spark-compat-version: ${{ matrix.spark-compat-version }}
-        scala-compat-version: ${{ matrix.scala-compat-version }}
-        python-version: ${{ matrix.python-version }}
+      - name: Test
+        uses: ./.github/actions/test-python
+        with:
+          spark-version: ${{ matrix.spark-version }}
+          scala-version: ${{ matrix.scala-version }}
+          spark-compat-version: ${{ matrix.spark-compat-version }}
+          scala-compat-version: ${{ matrix.scala-compat-version }}
+          python-version: ${{ matrix.python-version }}
 
-  test-snapshots:
-    name: Test (Spark ${{ matrix.spark-version }} Scala ${{ matrix.scala-version }} Python ${{ matrix.python-version }})
+  test-snapshots-jvm:
+    name: Test (Spark ${{ matrix.spark-version }} Scala ${{ matrix.scala-version }})
     runs-on: ubuntu-latest
     needs: build-snapshots
 
@@ -209,7 +251,6 @@ jobs:
       matrix:
         spark-compat-version: ['3.0', '3.1', '3.2', '3.3', '3.4']
         scala-compat-version: ['2.12', '2.13']
-        python-version: ['3.8']
 
         exclude:
           - spark-compat-version: '3.0'
@@ -254,29 +295,17 @@ jobs:
             scala-compat-version: '2.13'
             scala-version: '2.13.8'
 
-          - spark-compat-version: '3.0'
-            spark-version: '3.0.4-SNAPSHOT'
-            scala-compat-version: '2.12'
-            scala-version: '2.12.10'
-            python-version: '3.7'
-          - spark-compat-version: '3.1'
-            spark-version: '3.1.4-SNAPSHOT'
-            scala-compat-version: '2.12'
-            scala-version: '2.12.10'
-            python-version: '3.7'
-
     steps:
     - name: Checkout
       uses: actions/checkout@v3
 
     - name: Test
-      uses: ./.github/actions/test
+      uses: ./.github/actions/test-jvm
       with:
         spark-version: ${{ matrix.spark-version }}
         scala-version: ${{ matrix.scala-version }}
         spark-compat-version: ${{ matrix.spark-compat-version }}
         scala-compat-version: ${{ matrix.scala-compat-version }}
-        python-version: ${{ matrix.python-version }}
 
   event_file:
     name: "Event File"
