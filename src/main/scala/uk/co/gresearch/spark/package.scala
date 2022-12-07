@@ -80,8 +80,8 @@ package object spark extends Logging with SparkVersion {
       SQLConf.ADAPTIVE_EXECUTION_ENABLED.defaultValue.getOrElse(true).toString
     ).equalsIgnoreCase("true") && Some(getSparkVersion).exists(ver =>
       ver.startsWith("3.0.") || ver.startsWith("3.1.") ||
-        ver.equals("3.2.x") || ver.equals("3.2.0") || ver.equals("3.2.1") || ver.equals("3.2.2") ||
-        ver.equals("3.3.x") || ver.equals("3.3.0") || ver.equals("3.3.1")
+        ver.equals("3.2.x") || ver.startsWith("3.2.0") || ver.startsWith("3.2.1") || ver.startsWith("3.2.2") ||
+        ver.equals("3.3.x") || ver.startsWith("3.3.0") || ver.startsWith("3.3.1")
     )
   }
 
