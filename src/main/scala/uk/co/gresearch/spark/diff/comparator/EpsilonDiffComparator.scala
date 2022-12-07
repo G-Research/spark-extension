@@ -2,7 +2,6 @@ package uk.co.gresearch.spark.diff.comparator
 
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.functions.{abs, greatest}
-import uk.co.gresearch.spark.diff.DiffComparator
 
 case class EpsilonDiffComparator(epsilon: Double, relative: Boolean = true, inclusive: Boolean = true)
   extends DiffComparator {

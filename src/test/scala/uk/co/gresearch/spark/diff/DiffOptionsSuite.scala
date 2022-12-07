@@ -22,7 +22,7 @@ import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
 import org.scalatest.funsuite.AnyFunSuite
 import uk.co.gresearch.spark.SparkTestSession
-import uk.co.gresearch.spark.diff.comparator.{DefaultDiffComparator, EquivDiffComparator}
+import uk.co.gresearch.spark.diff.comparator.{DefaultDiffComparator, DiffComparator, EquivDiffComparator}
 
 class DiffOptionsSuite extends AnyFunSuite with SparkTestSession {
 
@@ -138,29 +138,29 @@ class DiffOptionsSuite extends AnyFunSuite with SparkTestSession {
   Seq(
     (
       "single type",
-      (options: DiffOptions) => options.withComparator(DiffComparator.default(), IntegerType),
+      (options: DiffOptions) => options.withComparator(DiffComparators.default(), IntegerType),
       "A comparator for data type int exists already."
     ),
     (
       "multiple types",
-      (options: DiffOptions) => options.withComparator(DiffComparator.default(), IntegerType, FloatType),
+      (options: DiffOptions) => options.withComparator(DiffComparators.default(), IntegerType, FloatType),
       "A comparator for data types float, int exists already."
     ),
     (
       "single column",
-      (options: DiffOptions) => options.withComparator(DiffComparator.default(), "col1"),
+      (options: DiffOptions) => options.withComparator(DiffComparators.default(), "col1"),
       "A comparator for column name col1 exists already."
     ),
     (
       "multiple columns",
-      (options: DiffOptions) => options.withComparator(DiffComparator.default(), "col2", "col1"),
+      (options: DiffOptions) => options.withComparator(DiffComparators.default(), "col2", "col1"),
       "A comparator for column names col1, col2 exists already."
     ),
   ).foreach { case (label, call, expected) =>
     test(s"diff options with duplicate comparator - $label") {
       val options = DiffOptions.default
-        .withComparator(DiffComparator.default(), IntegerType, FloatType)
-        .withComparator(DiffComparator.default(), "col1", "col2")
+        .withComparator(DiffComparators.default(), IntegerType, FloatType)
+        .withComparator(DiffComparators.default(), "col1", "col2")
       val exception = intercept[IllegalArgumentException] { call(options) }
       assert(exception.getMessage === expected)
     }

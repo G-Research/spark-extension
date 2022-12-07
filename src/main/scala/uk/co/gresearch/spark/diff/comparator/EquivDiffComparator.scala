@@ -8,7 +8,6 @@ import org.apache.spark.sql.catalyst.expressions.{BinaryExpression, BinaryOperat
 import org.apache.spark.sql.types.{BooleanType, DataType}
 import org.apache.spark.sql.{Column, Encoder}
 import uk.co.gresearch.spark.BinaryLikeWithNewChildrenInternal
-import uk.co.gresearch.spark.diff.{DiffComparator, TypedDiffComparator}
 
 trait EquivDiffComparator[T] extends DiffComparator {
   val equiv: math.Equiv[T]
