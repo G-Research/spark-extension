@@ -28,7 +28,7 @@ runs:
   - name: Fetch Binaries Artifact
     uses: actions/download-artifact@v3
     with:
-      name: Binaries-${{ inputs.spark-version }}-${{ inputs.scala-version }}
+      name: Binaries-${{ inputs.spark-compat-version }}-${{ inputs.scala-version }}
       path: .
 
   - name: Cache Maven packages
