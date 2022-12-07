@@ -202,7 +202,7 @@ package object spark extends Logging with SparkVersion {
             "See https://issues.apache.org/jira/browse/SPARK-40588")
         case (false, true) if !unpersistHandle.get.isInstanceOf[NoopUnpersistHandle] =>
           info("UnpersistHandle provided to DataFrame.writePartitionedBy is not needed as " +
-            "partitioned-writing with AQE disabled or Spark 3.2.3, 3.3.1 or 3.4 and above " +
+            "partitioned-writing with AQE disabled or Spark 3.2.3, 3.3.2 or 3.4 and above " +
             "does not require caching intermediate DataFrame.")
           unpersistHandle.get.setDataFrame(ds.sparkSession.emptyDataFrame)
         case _ =>
