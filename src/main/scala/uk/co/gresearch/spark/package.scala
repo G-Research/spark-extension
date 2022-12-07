@@ -78,7 +78,9 @@ package object spark extends Logging with SparkVersion {
       SQLConf.ADAPTIVE_EXECUTION_ENABLED.key,
       SQLConf.ADAPTIVE_EXECUTION_ENABLED.defaultValue.getOrElse(true).toString
     ).equalsIgnoreCase("true") && Some(getSparkVersion).exists(ver =>
-      ver.startsWith("3.0.") || ver.startsWith("3.1.") || ver.startsWith("3.2.") || ver.startsWith("3.3.")
+      ver.startsWith("3.0.") || ver.startsWith("3.1.") ||
+        ver.equals("3.2.x") || ver.equals("3.2.0") || ver.equals("3.2.1") || ver.equals("3.2.2") ||
+        ver.equals("3.3.x") || ver.equals("3.3.0") || ver.equals("3.3.1")
     )
   }
 
@@ -192,12 +194,14 @@ package object spark extends Logging with SparkVersion {
       val requiresCaching = writePartitionedByRequiresCaching(ds)
       (requiresCaching, unpersistHandle.isDefined) match {
         case (true, false) =>
-          warning("Partitioned-writing with AQE enabled and Spark 3.0 to 3.3 requires caching " +
-            "an intermediate DataFrame, which calling code has to unpersist once writing is done. " +
+          warning("Partitioned-writing with AQE enabled and Spark 3.0, 3.1, 3.2 below 3.2.3, " +
+            "and 3.3 below 3.3.2 requires caching an intermediate DataFrame, " +
+            "which calling code has to unpersist once writing is done. " +
             "Please provide an UnpersistHandle to DataFrame.writePartitionedBy, or UnpersistHandle.Noop.")
         case (false, true) if !unpersistHandle.get.isInstanceOf[NoopUnpersistHandle] =>
           info("UnpersistHandle provided to DataFrame.writePartitionedBy is not needed as " +
-            "partitioned-writing with AQE disabled or Spark 3.4 and above does not require caching intermediate DataFrame.")
+            "partitioned-writing with AQE disabled or Spark 3.2.3, 3.3.1 or 3.4 and above " +
+            "does not require caching intermediate DataFrame.")
           unpersistHandle.get.setDataFrame(ds.sparkSession.emptyDataFrame)
         case _ =>
       }
