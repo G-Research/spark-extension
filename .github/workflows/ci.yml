@@ -128,6 +128,7 @@ jobs:
       with:
         spark-version: ${{ matrix.spark-version }}
         scala-version: ${{ matrix.scala-version }}
+        spark-compat-version: ${{ matrix.spark-compat-version }}-snapshot
 
   test-jvm:
     name: Test (Spark ${{ matrix.spark-version }} Scala ${{ matrix.scala-version }})
@@ -305,7 +306,7 @@ jobs:
       with:
         spark-version: ${{ matrix.spark-version }}
         scala-version: ${{ matrix.scala-version }}
-        spark-compat-version: ${{ matrix.spark-compat-version }}
+        spark-compat-version: ${{ matrix.spark-compat-version }}-snapshot
         scala-compat-version: ${{ matrix.scala-compat-version }}
 
   event_file:
