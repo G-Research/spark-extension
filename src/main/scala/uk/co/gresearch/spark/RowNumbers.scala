@@ -5,9 +5,6 @@ import org.apache.spark.sql.{Column, DataFrame, Dataset, functions}
 import org.apache.spark.sql.functions.{coalesce, col, lit, max, monotonically_increasing_id, spark_partition_id, sum}
 import org.apache.spark.storage.StorageLevel
 
-import uk.co.gresearch._
-
-
 case class RowNumbersFunc(rowNumberColumnName: String = "row_number",
                           storageLevel: StorageLevel = StorageLevel.MEMORY_AND_DISK,
                           unpersistHandle: UnpersistHandle = UnpersistHandle.Noop,

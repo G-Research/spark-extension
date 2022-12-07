@@ -99,6 +99,7 @@ case class DiffOptions(diffColumn: String,
                        defaultComparator: DiffComparator = DefaultDiffComparator,
                        dataTypeComparators: Map[DataType, DiffComparator] = Map.empty,
                        columnNameComparators: Map[String, DiffComparator] = Map.empty) {
+  // Constructor for Java to construct default options
   def this() = this("diff", "left", "right", "I", "C", "D", "N")
   def this(diffColumn: String,
            leftColumnPrefix: String,
