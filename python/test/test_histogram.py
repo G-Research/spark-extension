@@ -13,6 +13,7 @@
 #  limitations under the License.
 
 from spark_common import SparkTest
+import gresearch.spark
 
 
 class HistogramTest(SparkTest):

@@ -15,6 +15,7 @@
 from pyspark.storagelevel import StorageLevel
 
 from spark_common import SparkTest
+import gresearch.spark
 
 
 class RowNumberTest(SparkTest):
