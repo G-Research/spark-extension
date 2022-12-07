@@ -9,6 +9,9 @@ inputs:
   scala-version:
     description: Scala version, e.g. 2.12.15
     required: true
+  spark-compat-version:
+    description: Spark compatibility version, e.g. 3.4
+    required: true
 
 runs:
   using: 'composite'
@@ -41,7 +44,7 @@ runs:
   - name: Upload Binaries
     uses: actions/upload-artifact@v3
     with:
-      name: Binaries-${{ inputs.spark-version }}-${{ inputs.scala-version }}
+      name: Binaries-${{ inputs.spark-compat-version }}-${{ inputs.scala-version }}
       path: |
         *
         !.*
