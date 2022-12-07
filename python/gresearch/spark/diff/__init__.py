@@ -11,14 +11,17 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+import dataclasses
+from dataclasses import dataclass
 from enum import Enum
-from typing import Union
+from typing import Optional, Dict, Mapping, Any, Callable
 
 from py4j.java_gateway import JavaObject, JVMView
 from pyspark.sql import DataFrame
+from pyspark.sql.types import DataType
 
-from gresearch.spark import _to_seq
+from gresearch.spark import _to_seq, _to_map, _get_scala_object
+from gresearch.spark.diff.comparator import DiffComparator, DefaultDiffComparator
 
 
 class DiffMode(Enum):
@@ -34,6 +37,7 @@ class DiffMode(Enum):
         return jvm.uk.co.gresearch.spark.diff.DiffMode.withNameOption(self.name).get()
 
 
+@dataclass(frozen=True)
 class DiffOptions:
     """
     Configuration class for diffing Datasets.
@@ -59,27 +63,19 @@ class DiffOptions:
     :param sparse_mode: sparse mode
     :type sparse_mode: bool
     """
-    def __init__(self,
-                 diff_column: str = 'diff',
-                 left_column_prefix: str = 'left',
-                 right_column_prefix: str = 'right',
-                 insert_diff_value: str = 'I',
-                 change_diff_value: str = 'C',
-                 delete_diff_value: str = 'D',
-                 nochange_diff_value: str = 'N',
-                 change_column: str = None,
-                 diff_mode: DiffMode = DiffMode.Default,
-                 sparse_mode: bool = False):
-        self.diff_column = diff_column
-        self.left_column_prefix = left_column_prefix
-        self.right_column_prefix = right_column_prefix
-        self.insert_diff_value = insert_diff_value
-        self.change_diff_value = change_diff_value
-        self.delete_diff_value = delete_diff_value
-        self.nochange_diff_value = nochange_diff_value
-        self.change_column = change_column
-        self.diff_mode = diff_mode
-        self.sparse_mode = sparse_mode
+    diff_column: str = 'diff'
+    left_column_prefix: str = 'left'
+    right_column_prefix: str = 'right'
+    insert_diff_value: str = 'I'
+    change_diff_value: str = 'C'
+    delete_diff_value: str = 'D'
+    nochange_diff_value: str = 'N'
+    change_column: Optional[str] = None
+    diff_mode: DiffMode = DiffMode.Default
+    sparse_mode: bool = False
+    default_comparator: DiffComparator = DefaultDiffComparator()
+    data_type_comparators: Dict[DataType, DiffComparator] = dataclasses.field(default_factory=lambda: dict())
+    column_name_comparators: Dict[str, DiffComparator] = dataclasses.field(default_factory=lambda: dict())
 
     def with_diff_column(self, diff_column: str) -> 'DiffOptions':
         """
@@ -91,18 +87,7 @@ class DiffOptions:
         :return: new immutable DiffOptions instance
         :rtype: DiffOptions
         """
-        return DiffOptions(
-            diff_column=diff_column,
-            left_column_prefix=self.left_column_prefix,
-            right_column_prefix=self.right_column_prefix,
-            insert_diff_value=self.insert_diff_value,
-            change_diff_value=self.change_diff_value,
-            delete_diff_value=self.delete_diff_value,
-            nochange_diff_value=self.nochange_diff_value,
-            change_column=self.change_column,
-            diff_mode=self.diff_mode,
-            sparse_mode=self.sparse_mode
-        )
+        return dataclasses.replace(self, diff_column=diff_column)
 
     def with_left_column_prefix(self, left_column_prefix: str) -> 'DiffOptions':
         """
@@ -114,18 +99,7 @@ class DiffOptions:
         :return: new immutable DiffOptions instance
         :rtype: DiffOptions
         """
-        return DiffOptions(
-            diff_column=self.diff_column,
-            left_column_prefix=left_column_prefix,
-            right_column_prefix=self.right_column_prefix,
-            insert_diff_value=self.insert_diff_value,
-            change_diff_value=self.change_diff_value,
-            delete_diff_value=self.delete_diff_value,
-            nochange_diff_value=self.nochange_diff_value,
-            change_column=self.change_column,
-            diff_mode=self.diff_mode,
-            sparse_mode=self.sparse_mode
-        )
+        return dataclasses.replace(self, left_column_prefix=left_column_prefix)
 
     def with_right_column_prefix(self, right_column_prefix: str) -> 'DiffOptions':
         """
@@ -137,18 +111,7 @@ class DiffOptions:
         :return: new immutable DiffOptions instance
         :rtype: DiffOptions
         """
-        return DiffOptions(
-            diff_column=self.diff_column,
-            left_column_prefix=self.left_column_prefix,
-            right_column_prefix= right_column_prefix,
-            insert_diff_value=self.insert_diff_value,
-            change_diff_value=self.change_diff_value,
-            delete_diff_value=self.delete_diff_value,
-            nochange_diff_value=self.nochange_diff_value,
-            change_column=self.change_column,
-            diff_mode=self.diff_mode,
-            sparse_mode=self.sparse_mode
-        )
+        return dataclasses.replace(self, right_column_prefix=right_column_prefix)
 
     def with_insert_diff_value(self, insert_diff_value: str) -> 'DiffOptions':
         """
@@ -160,18 +123,7 @@ class DiffOptions:
         :return: new immutable DiffOptions instance
         :rtype: DiffOptions
         """
-        return DiffOptions(
-            diff_column=self.diff_column,
-            left_column_prefix=self.left_column_prefix,
-            right_column_prefix=self.right_column_prefix,
-            insert_diff_value=insert_diff_value,
-            change_diff_value=self.change_diff_value,
-            delete_diff_value=self.delete_diff_value,
-            nochange_diff_value=self.nochange_diff_value,
-            change_column=self.change_column,
-            diff_mode=self.diff_mode,
-            sparse_mode=self.sparse_mode
-        )
+        return dataclasses.replace(self, insert_diff_value=insert_diff_value)
 
     def with_change_diff_value(self, change_diff_value: str) -> 'DiffOptions':
         """
@@ -183,18 +135,7 @@ class DiffOptions:
         :return: new immutable DiffOptions instance
         :rtype: DiffOptions
         """
-        return DiffOptions(
-            diff_column=self.diff_column,
-            left_column_prefix=self.left_column_prefix,
-            right_column_prefix=self.right_column_prefix,
-            insert_diff_value=self.insert_diff_value,
-            change_diff_value=change_diff_value,
-            delete_diff_value=self.delete_diff_value,
-            nochange_diff_value=self.nochange_diff_value,
-            change_column=self.change_column,
-            diff_mode=self.diff_mode,
-            sparse_mode=self.sparse_mode
-        )
+        return dataclasses.replace(self, change_diff_value=change_diff_value)
 
     def with_delete_diff_value(self, delete_diff_value: str) -> 'DiffOptions':
         """
@@ -206,18 +147,7 @@ class DiffOptions:
         :return: new immutable DiffOptions instance
         :rtype: DiffOptions
         """
-        return DiffOptions(
-            diff_column=self.diff_column,
-            left_column_prefix=self.left_column_prefix,
-            right_column_prefix=self.right_column_prefix,
-            insert_diff_value=self.insert_diff_value,
-            change_diff_value=self.change_diff_value,
-            delete_diff_value=delete_diff_value,
-            nochange_diff_value=self.nochange_diff_value,
-            change_column=self.change_column,
-            diff_mode=self.diff_mode,
-            sparse_mode=self.sparse_mode
-        )
+        return dataclasses.replace(self, delete_diff_value=delete_diff_value)
 
     def with_nochange_diff_value(self, nochange_diff_value: str) -> 'DiffOptions':
         """
@@ -229,18 +159,7 @@ class DiffOptions:
         :return: new immutable DiffOptions instance
         :rtype: DiffOptions
         """
-        return DiffOptions(
-            diff_column=self.diff_column,
-            left_column_prefix=self.left_column_prefix,
-            right_column_prefix=self.right_column_prefix,
-            insert_diff_value=self.insert_diff_value,
-            change_diff_value=self.change_diff_value,
-            delete_diff_value=self.delete_diff_value,
-            nochange_diff_value=nochange_diff_value,
-            change_column=self.change_column,
-            diff_mode=self.diff_mode,
-            sparse_mode=self.sparse_mode
-        )
+        return dataclasses.replace(self, nochange_diff_value=nochange_diff_value)
 
     def with_change_column(self, change_column: str) -> 'DiffOptions':
         """
@@ -252,18 +171,7 @@ class DiffOptions:
         :return: new immutable DiffOptions instance
         :rtype: DiffOptions
         """
-        return DiffOptions(
-            diff_column=self.diff_column,
-            left_column_prefix=self.left_column_prefix,
-            right_column_prefix=self.right_column_prefix,
-            insert_diff_value=self.insert_diff_value,
-            change_diff_value=self.change_diff_value,
-            delete_diff_value=self.delete_diff_value,
-            nochange_diff_value=self.nochange_diff_value,
-            change_column=change_column,
-            diff_mode=self.diff_mode,
-            sparse_mode=self.sparse_mode
-        )
+        return dataclasses.replace(self, change_column=change_column)
 
     def without_change_column(self) -> 'DiffOptions':
         """
@@ -273,18 +181,7 @@ class DiffOptions:
         :return: new immutable DiffOptions instance
         :rtype: DiffOptions
         """
-        return DiffOptions(
-            diff_column=self.diff_column,
-            left_column_prefix=self.left_column_prefix,
-            right_column_prefix=self.right_column_prefix,
-            insert_diff_value=self.insert_diff_value,
-            change_diff_value=self.change_diff_value,
-            delete_diff_value=self.delete_diff_value,
-            nochange_diff_value=self.nochange_diff_value,
-            change_column=None,
-            diff_mode=self.diff_mode,
-            sparse_mode=self.sparse_mode
-        )
+        return dataclasses.replace(self, change_column=None)
 
     def with_diff_mode(self, diff_mode: DiffMode) -> 'DiffOptions':
         """
@@ -296,18 +193,7 @@ class DiffOptions:
         :return: new immutable DiffOptions instance
         :rtype: DiffOptions
         """
-        return DiffOptions(
-            diff_column=self.diff_column,
-            left_column_prefix=self.left_column_prefix,
-            right_column_prefix=self.right_column_prefix,
-            insert_diff_value=self.insert_diff_value,
-            change_diff_value=self.change_diff_value,
-            delete_diff_value=self.delete_diff_value,
-            nochange_diff_value=self.nochange_diff_value,
-            change_column=self.change_column,
-            diff_mode=diff_mode,
-            sparse_mode=self.sparse_mode
-        )
+        return dataclasses.replace(self, diff_mode=diff_mode)
 
     def with_sparse_mode(self, sparse_mode: bool) -> 'DiffOptions':
         """
@@ -319,18 +205,32 @@ class DiffOptions:
         :return: new immutable DiffOptions instance
         :rtype: DiffOptions
         """
-        return DiffOptions(
-            diff_column=self.diff_column,
-            left_column_prefix=self.left_column_prefix,
-            right_column_prefix=self.right_column_prefix,
-            insert_diff_value=self.insert_diff_value,
-            change_diff_value=self.change_diff_value,
-            delete_diff_value=self.delete_diff_value,
-            nochange_diff_value=self.nochange_diff_value,
-            change_column=self.change_column,
-            diff_mode=self.diff_mode,
-            sparse_mode=sparse_mode
-        )
+        return dataclasses.replace(self, sparse_mode=sparse_mode)
+
+    def with_default_comparator(self, comparator: DiffComparator) -> 'DiffOptions':
+        return dataclasses.replace(self, default_comparator=comparator)
+
+    def with_data_type_comparator(self, comparator: DiffComparator, *data_type: DataType) -> 'DiffOptions':
+        existing_data_types = {dt.simpleString() for dt in data_type if dt in self.data_type_comparators.keys()}
+        if existing_data_types:
+            existing_data_types = sorted(list(existing_data_types))
+            raise ValueError(f'A comparator for data type{"s" if len(existing_data_types) > 1 else ""} '
+                             f'{", ".join(existing_data_types)} exists already.')
+
+        data_type_comparators = self.data_type_comparators.copy()
+        data_type_comparators.update({dt: comparator for dt in data_type})
+        return dataclasses.replace(self, data_type_comparators=data_type_comparators)
+
+    def with_column_name_comparator(self, comparator: DiffComparator, *column_name: str) -> 'DiffOptions':
+        existing_column_names = {cn for cn in column_name if cn in self.column_name_comparators.keys()}
+        if existing_column_names:
+            existing_column_names = sorted(list(existing_column_names))
+            raise ValueError(f'A comparator for column name{"s" if len(existing_column_names) > 1 else ""} '
+                             f'{", ".join(existing_column_names)} exists already.')
+
+        column_name_comparators = self.column_name_comparators.copy()
+        column_name_comparators.update({dt: comparator for dt in column_name})
+        return dataclasses.replace(self, column_name_comparators=column_name_comparators)
 
     def _to_java(self, jvm: JVMView) -> JavaObject:
         return jvm.uk.co.gresearch.spark.diff.DiffOptions(
@@ -343,8 +243,18 @@ class DiffOptions:
             self.nochange_diff_value,
             jvm.scala.Option.apply(self.change_column),
             self.diff_mode._to_java(jvm),
-            self.sparse_mode
+            self.sparse_mode,
+            self.default_comparator._to_java(jvm),
+            self._to_java_map(jvm, self.data_type_comparators, key_to_java=self._to_java_data_type),
+            self._to_java_map(jvm, self.column_name_comparators)
         )
+
+    def _to_java_map(self, jvm: JVMView, map: Mapping[Any, DiffComparator], key_to_java: Callable[[JVMView, Any], Any] = lambda j, x: x) -> JavaObject:
+        return _to_map(jvm, {key_to_java(jvm, key): cmp._to_java(jvm) for key, cmp in map.items()})
+
+    def _to_java_data_type(self, jvm: JVMView, dt: DataType) -> JavaObject:
+        jdt = _get_scala_object(jvm, "org.apache.spark.sql.types.DataType").fromJson(dt.json())
+        return jdt
 
 
 class Differ:

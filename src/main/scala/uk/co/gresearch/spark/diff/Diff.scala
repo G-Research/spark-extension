@@ -203,12 +203,16 @@ class Differ(options: DiffOptions) {
     val columns = left.columns.diffCaseSensitivity(ignoreColumns).toList
     val pkColumns = if (idColumns.isEmpty) columns else idColumns
     val valueColumns = columns.diffCaseSensitivity(pkColumns)
+    val valueStructFields = left.schema.fields.map(f => f.name -> f).toMap
+    val valueVolumnsWithComparator = valueColumns.map(c => c -> options.comparatorFor(valueStructFields(c)))
 
     val existsColumnName = distinctPrefixFor(left.columns) + "exists"
     val leftWithExists = left.withColumn(existsColumnName, lit(1))
     val rightWithExists = right.withColumn(existsColumnName, lit(1))
     val joinCondition = pkColumns.map(c => leftWithExists(backticks(c)) <=> rightWithExists(backticks(c))).reduce(_ && _)
-    val unChanged = valueColumns.map(c => leftWithExists(backticks(c)) <=> rightWithExists(backticks(c))).reduceOption(_ && _)
+    val unChanged = valueVolumnsWithComparator.map { case (c, cmp) =>
+      cmp.equiv(leftWithExists(backticks(c)), rightWithExists(backticks(c)))
+    }.reduceOption(_ && _)
     val changeCondition = not(unChanged.getOrElse(lit(true)))
 
     val diffActionColumn =

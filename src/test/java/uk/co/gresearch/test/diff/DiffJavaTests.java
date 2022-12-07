@@ -18,15 +18,19 @@ package uk.co.gresearch.spark.diff;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.sql.*;
+import org.apache.spark.sql.types.DataTypes;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import scala.Tuple3;
+import scala.math.Equiv;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+
+import static java.lang.Math.abs;
 
 public class DiffJavaTests {
     private static SparkSession spark;
@@ -141,14 +145,7 @@ public class DiffJavaTests {
 
     @Test
     public void testDiffer() {
-        DiffOptions options = new DiffOptions(
-                "diff",
-                "left", "right",
-                "I", "C", "D", "N",
-                scala.Option.apply(null),
-                DiffMode.ColumnByColumn(),
-                false
-        );
+        DiffOptions options = new DiffOptions();
 
         Differ differ = new Differ(options);
         Dataset<Row> diff = differ.diff(left, right, "id");
@@ -163,14 +160,7 @@ public class DiffJavaTests {
 
     @Test
     public void testDifferWithIgnored() {
-        DiffOptions options = new DiffOptions(
-                "diff",
-                "left", "right",
-                "I", "C", "D", "N",
-                scala.Option.apply(null),
-                DiffMode.ColumnByColumn(),
-                false
-        );
+        DiffOptions options = new DiffOptions();
 
         Differ differ = new Differ(options);
         Dataset<Row> diff = differ.diff(left, right, Collections.singletonList("id"), Collections.singletonList("score"));
@@ -207,6 +197,37 @@ public class DiffJavaTests {
         Assert.assertEquals(expected, diff.sort("id").collectAsList());
         List<String> names = Arrays.asList(diff.schema().fieldNames());
         Assert.assertEquals(Arrays.asList("action", "id", "before_label", "after_label", "before_score", "after_score"), names);
+    }
+
+    @Test
+    public void testDiffWithComparators() {
+        DiffComparator comparator = DiffComparator.epsilon(0.100000001).asInclusive().asAbsolute();
+        testDiffWithComparator(new DiffOptions().withComparator(comparator, DataTypes.DoubleType));
+        testDiffWithComparator(new DiffOptions().withComparator(comparator, "score"));
+
+        Equiv<Double> equivDouble = (Double x, Double y) -> x == null && y == null || x != null && y != null &&
+                abs(x - y) <= 0.1000000001;
+        testDiffWithComparator(new DiffOptions().withComparator(equivDouble, Encoders.DOUBLE()));
+        testDiffWithComparator(new DiffOptions().withComparator(equivDouble, Encoders.DOUBLE(), "score"));
+
+        Equiv<Object> equivAny = (x, y) -> x == null && y == null || x instanceof Double && y instanceof Double &&
+                abs((Double) x - (Double) y) <= 0.1000000001;
+        testDiffWithComparator(new DiffOptions().withComparator(equivAny, DataTypes.DoubleType));
+        testDiffWithComparator(new DiffOptions().withComparator(equivAny, "score"));
+    }
+
+    private void testDiffWithComparator(DiffOptions options) {
+        Differ differ = new Differ(options);
+
+        Dataset<Row> diff = differ.diff(left, right, "id");
+        List<Row> expected = Arrays.asList(
+                RowFactory.create("D", 1, "one", null, 1.0, null),
+                RowFactory.create("N", 2, "two", "two", 2.0, 2.0),
+                // this is only considered un-changed because of the epsilon diff comparator for column 'score'
+                RowFactory.create("N", 3, "three", "three", 3.0, 3.1),
+                RowFactory.create("I", 4, null, "four", null, 4.0)
+        );
+        Assert.assertEquals(expected, diff.sort("id").collectAsList());
     }
 
     @AfterClass
