@@ -16,10 +16,15 @@ import contextlib
 import logging
 import os
 import subprocess
+import sys
 import unittest
 
 from pyspark import SparkConf
 from pyspark.sql import SparkSession
+
+logger = logging.getLogger()
+logger.level = logging.INFO
+
 
 
 @contextlib.contextmanager
@@ -38,6 +43,22 @@ def spark_session():
 
 
 class SparkTest(unittest.TestCase):
+
+    @staticmethod
+    def main():
+        if len(sys.argv) == 2:
+            # location to store test results provided, this requires package unittest-xml-reporting
+            import xmlrunner
+
+            unittest.main(
+                testRunner=xmlrunner.XMLTestRunner(output=sys.argv[1]),
+                argv=sys.argv[:1],
+                # these make sure that some options that are not applicable
+                # remain hidden from the help menu.
+                failfast=False, buffer=False, catchbreak=False
+            )
+        else:
+            unittest.main()
 
     @staticmethod
     def get_pom_path() -> str:
@@ -73,24 +94,32 @@ class SparkTest(unittest.TestCase):
             ]))),
         ])
 
-    path = get_pom_path.__func__()
-    dependencies = get_dependencies_from_mvn.__func__(path)
-    logging.info('found {} JVM dependencies'.format(len(dependencies.split(':'))))
-    conf = get_spark_config.__func__(path, dependencies)
+    @classmethod
+    def get_spark_session(cls) -> SparkSession:
+        builder = SparkSession.builder
+
+        if 'PYSPARK_GATEWAY_PORT' in os.environ:
+            logging.info('Running inside existing Spark environment')
+        else:
+            logging.info('Setting up Spark environment')
+            path = cls.get_pom_path()
+            dependencies = cls.get_dependencies_from_mvn(path)
+            logging.info('found {} JVM dependencies'.format(len(dependencies.split(':'))))
+            conf = cls.get_spark_config(path, dependencies)
+            builder.config(conf=conf)
+
+        return builder.getOrCreate()
+
     spark: SparkSession = None
 
     @classmethod
     def setUpClass(cls):
         super(SparkTest, cls).setUpClass()
-        logging.info('launching Spark')
-
-        cls.spark = SparkSession \
-            .builder \
-            .config(conf=cls.conf) \
-            .getOrCreate()
+        logging.info('launching Spark session')
+        cls.spark = cls.get_spark_session()
 
     @classmethod
     def tearDownClass(cls):
-        logging.info('stopping Spark')
+        logging.info('stopping Spark session')
         cls.spark.stop()
         super(SparkTest, cls).tearDownClass()

@@ -12,12 +12,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import logging
-
-logger = logging.getLogger()
-logger.level = logging.INFO
-
-import unittest
 import re
 
 from pyspark.sql import Row
@@ -369,6 +363,14 @@ class DiffTest(SparkTest):
         with self.assertRaisesRegex(ValueError, "A comparator for column names col1, col2 exists already."):
             options.with_column_name_comparator(DiffComparator.default(), 'col1', 'col2')
 
+    def test_diff_comparators(self):
+        jvm = self.spark.sparkContext._jvm
+        self.assertIsNotNone(DiffComparator.default()._to_java(jvm))
+        self.assertIsNotNone(DiffComparator.nullSafeEqual()._to_java(jvm))
+        self.assertIsNotNone(DiffComparator.epsilon(0.01)._to_java(jvm))
+        if jvm.uk.co.gresearch.spark.diff.comparator.DurationDiffComparator.isSupportedBySpark():
+            self.assertIsNotNone(DiffComparator.duration('PT24H')._to_java(jvm))
+
 
 if __name__ == '__main__':
-    unittest.main()
+    SparkTest.main()

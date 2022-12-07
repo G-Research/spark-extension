@@ -57,7 +57,7 @@ runs:
     if: always()
     uses: actions/upload-artifact@v3
     with:
-      name: Unit Test Results (Spark ${{ inputs.spark-version }} Scala ${{ inputs.scala-version }})
+      name: JVM Test Results (Spark ${{ inputs.spark-version }} Scala ${{ inputs.scala-version }})
       path: |
         target/surefire-reports/*.xml
         !target/surefire-reports/TEST-org.scalatest*.xml

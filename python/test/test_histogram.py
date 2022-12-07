@@ -12,19 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import logging
-
-logger = logging.getLogger()
-logger.level = logging.INFO
-
-import unittest
-import re
-
-from pyspark.sql import Row
-from py4j.java_gateway import JavaObject
-
 from spark_common import SparkTest
-import gresearch.spark
 
 
 class HistogramTest(SparkTest):
@@ -60,4 +48,4 @@ class HistogramTest(SparkTest):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    SparkTest.main()
