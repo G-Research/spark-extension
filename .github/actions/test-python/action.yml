@@ -89,8 +89,8 @@ runs:
 
   - name: Python Integration Tests
     run: |
-      find python/test -name 'test*.py' | while read test
       unset state
+      find python/test -name 'test*.py' | while read test
       do
         if ! $SPARK_HOME/bin/spark-submit --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION "$test" test-results
         then
