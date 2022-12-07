@@ -48,12 +48,12 @@ class WritePartitionedSuite extends AnyFunSuite with SparkTestSession {
   test("write partitionedBy requires caching with AQE enabled") {
     withSQLConf(SQLConf.ADAPTIVE_EXECUTION_ENABLED.key -> "true") {
       Some(getSparkVersion)
-        .map(version => Set("3.0.", "3.1.", "3.2.", "3.3.").contains(version.substring(0, 4)))
+        .map(version => Set("3.0.", "3.1.", "3.2.0", "3.2.1", "3.2.2", "3.3.0", "3.3.1").exists(version.startsWith))
         .foreach(expected => assert(writePartitionedByRequiresCaching(values) === expected))
     }
   }
 
-  test("write partitionedBy requires caching with AQE disabled") {
+  test("write partitionedBy requires no caching with AQE disabled") {
     withSQLConf(SQLConf.ADAPTIVE_EXECUTION_ENABLED.key -> "false") {
       assert(writePartitionedByRequiresCaching(values) === false)
     }

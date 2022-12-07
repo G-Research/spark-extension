@@ -73,12 +73,15 @@ package object spark extends Logging with SparkVersion {
     }.getOrElse(s"$SparkCompatVersionString.x")
   }
 
+  // https://issues.apache.org/jira/browse/SPARK-40588
   private[spark] def writePartitionedByRequiresCaching[T](ds: Dataset[T]): Boolean = {
     ds.sparkSession.conf.get(
       SQLConf.ADAPTIVE_EXECUTION_ENABLED.key,
       SQLConf.ADAPTIVE_EXECUTION_ENABLED.defaultValue.getOrElse(true).toString
     ).equalsIgnoreCase("true") && Some(getSparkVersion).exists(ver =>
-      ver.startsWith("3.0.") || ver.startsWith("3.1.") || ver.startsWith("3.2.") || ver.startsWith("3.3.")
+      ver.startsWith("3.0.") || ver.startsWith("3.1.") ||
+        ver.equals("3.2.x") || ver.startsWith("3.2.0") || ver.startsWith("3.2.1") || ver.startsWith("3.2.2") ||
+        ver.equals("3.3.x") || ver.startsWith("3.3.0") || ver.startsWith("3.3.1")
     )
   }
 
@@ -139,7 +142,7 @@ package object spark extends Logging with SparkVersion {
      * file per `partitionBy` partition only. Rows within the partition files are also sorted,
      * if partitionOrder is defined.
      *
-     * Note: With Spark 3.0, 3.1, 3.2 and 3.3 and AQE enabled, an intermediate DataFrame is being
+     * Note: With Spark 3.0, 3.1, 3.2 before 3.2.3, 3.3 before 3.3.2, and AQE enabled, an intermediate DataFrame is being
      *       cached in order to guarantee sorted output files. See https://issues.apache.org/jira/browse/SPARK-40588.
      *       That cached DataFrame can be unpersisted via an optional [[UnpersistHandle]] provided to this method.
      *
@@ -192,12 +195,15 @@ package object spark extends Logging with SparkVersion {
       val requiresCaching = writePartitionedByRequiresCaching(ds)
       (requiresCaching, unpersistHandle.isDefined) match {
         case (true, false) =>
-          warning("Partitioned-writing with AQE enabled and Spark 3.0 to 3.3 requires caching " +
-            "an intermediate DataFrame, which calling code has to unpersist once writing is done. " +
-            "Please provide an UnpersistHandle to DataFrame.writePartitionedBy, or UnpersistHandle.Noop.")
+          warning("Partitioned-writing with AQE enabled and Spark 3.0, 3.1, 3.2 below 3.2.3, " +
+            "and 3.3 below 3.3.2 requires caching an intermediate DataFrame, " +
+            "which calling code has to unpersist once writing is done. " +
+            "Please provide an UnpersistHandle to DataFrame.writePartitionedBy, or UnpersistHandle.Noop. " +
+            "See https://issues.apache.org/jira/browse/SPARK-40588")
         case (false, true) if !unpersistHandle.get.isInstanceOf[NoopUnpersistHandle] =>
           info("UnpersistHandle provided to DataFrame.writePartitionedBy is not needed as " +
-            "partitioned-writing with AQE disabled or Spark 3.4 and above does not require caching intermediate DataFrame.")
+            "partitioned-writing with AQE disabled or Spark 3.2.3, 3.3.2 or 3.4 and above " +
+            "does not require caching intermediate DataFrame.")
           unpersistHandle.get.setDataFrame(ds.sparkSession.emptyDataFrame)
         case _ =>
       }
