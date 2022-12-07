@@ -26,16 +26,9 @@ logger = logging.getLogger()
 logger.level = logging.INFO
 
 
-
 @contextlib.contextmanager
 def spark_session():
-    from pyspark.sql import SparkSession
-
-    session = SparkSession \
-        .builder \
-        .config(conf=SparkTest.conf) \
-        .getOrCreate()
-
+    session = SparkTest.get_spark_session()
     try:
         yield session
     finally:
