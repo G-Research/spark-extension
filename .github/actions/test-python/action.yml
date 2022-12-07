@@ -89,11 +89,20 @@ runs:
 
   - name: Python Integration Tests
     run: |
-      SPARK_HOME=python -c "import pyspark; import os; print(os.path.join(os.path.dirname(pyspark.__file__), 'bin'))"
       find python/test -name 'test*.py' | while read test
       do
-        $SPARK_HOME/bin/spark-submit --verbose --packages uk.co.gresearch.spark:spark-extension_${{ scala-compat-version }}:$SPARK_EXTENSION_VERSION "$test" test-results
+        $SPARK_HOME/bin/spark-submit --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION "$test" test-results
       done
+    shell: bash
+
+  - name: Python Release Test
+    run: |
+      $SPARK_HOME/bin/spark-submit --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION test-release.py
+    shell: bash
+
+  - name: Scala Release Test
+    run: |
+      $SPARK_HOME/bin/spark-shell --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION < test-release.scala
     shell: bash
 
   - name: Upload Test Results
