@@ -57,8 +57,8 @@ runs:
     uses: actions/cache@v3
     with:
       path: ~/.cache/pip
-      key: ${{ runner.os }}-pip-test-${{ inputs.spark-compat-version }}-${{ inputs.python-version }}-${{ hashFiles('requirements.txt') }}
-      restore-keys: ${{ runner.os }}-pip-test-${{ inputs.spark-compat-version }}-${{ inputs.python-version }}-
+      key: ${{ runner.os }}-pip-test-${{ inputs.python-version }}-${{ hashFiles(format('python/requirements-{0}_{1}.txt', inputs.spark-compat-version, inputs.scala-compat-version)) }}
+      restore-keys: ${{ runner.os }}-pip-test-${{ inputs.python-version }}-
 
   - name: Setup Python
     uses: actions/setup-python@v4
