@@ -29,6 +29,9 @@ runs:
     run: |
       ./set-version.sh ${{ inputs.spark-version }} ${{ inputs.scala-version }}
       git diff
+
+      SPARK_EXTENSION_VERSION=$(grep --max-count=1 "<version>.*</version>" pom.xml | sed -E -e "s/\s*<[^>]+>//g")
+      echo "SPARK_EXTENSION_VERSION=$SPARK_EXTENSION_VERSION" | tee -a "$GITHUB_ENV"
     shell: bash
 
   - name: Fetch Binaries Artifact
@@ -54,7 +57,7 @@ runs:
     uses: actions/cache@v3
     with:
       path: ~/.cache/pip
-      key: ${{ runner.os }}-pip-test-${{ inputs.python-version }}-${{ hashFiles('requirements.txt') }}
+      key: ${{ runner.os }}-pip-test-${{ inputs.python-version }}-${{ hashFiles(format('python/requirements-{0}_{1}.txt', inputs.spark-compat-version, inputs.scala-compat-version)) }}
       restore-keys: ${{ runner.os }}-pip-test-${{ inputs.python-version }}-
 
   - name: Setup Python
@@ -67,22 +70,51 @@ runs:
       python -m pip install --upgrade pip
       pip install pypandoc
       pip install -r python/requirements-${{ inputs.spark-compat-version }}_${{ inputs.scala-compat-version }}.txt
-      pip install pytest
+      pip install pytest unittest-xml-reporting
+
+      SPARK_HOME=$(python -c "import pyspark; import os; print(os.path.dirname(pyspark.__file__))")
+      echo "SPARK_HOME=$SPARK_HOME" | tee -a "$GITHUB_ENV"
     shell: bash
 
-  - name: Python Tests
+  - name: Python Unit Tests
     env:
       PYTHONPATH: python:python/test
     run: |
-      python -m pytest python/test --junit-xml pytest.xml
+      python -m pytest python/test --junit-xml test-results/pytest.xml
     shell: bash
 
-  - name: Upload Unit Test Results
+  - name: Install Spark Extension
+    run: mvn --batch-mode install -DskipTests -Dmaven.test.skip=true -Dgpg.skip
+    shell: bash
+
+  - name: Python Integration Tests
+    run: |
+      find python/test -name 'test*.py' | while read test
+      do
+        if ! $SPARK_HOME/bin/spark-submit --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION "$test" test-results
+        then
+          state="fail"
+        fi
+      done
+      if [[ "$state" == "fail" ]]; then exit 1; fi
+    shell: bash
+
+  - name: Python Release Test
+    run: |
+      $SPARK_HOME/bin/spark-submit --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION test-release.py
+    shell: bash
+
+  - name: Scala Release Test
+    run: |
+      $SPARK_HOME/bin/spark-shell --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION < test-release.scala
+    shell: bash
+
+  - name: Upload Test Results
     if: always()
     uses: actions/upload-artifact@v3
     with:
-      name: Unit Test Results (Spark ${{ inputs.spark-version }} Scala ${{ inputs.scala-version }} Python ${{ inputs.python-version }})
-      path: pytest.xml
+      name: Python Test Results (Spark ${{ inputs.spark-version }} Scala ${{ inputs.scala-version }} Python ${{ inputs.python-version }})
+      path: test-results/*.xml
 
 branding:
   icon: 'check-circle'

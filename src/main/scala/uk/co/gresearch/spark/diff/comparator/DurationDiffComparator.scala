@@ -2,7 +2,6 @@ package uk.co.gresearch.spark.diff.comparator
 
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.functions.abs
-import uk.co.gresearch.spark.diff.DiffComparator
 import uk.co.gresearch.spark.diff.comparator.DurationDiffComparator.isNotSupportedBySpark
 import uk.co.gresearch.spark.{SparkCompatMajorVersion, SparkCompatMinorVersion}
 

@@ -39,6 +39,7 @@ runs:
     run: |
       mvn --batch-mode --update-snapshots clean compile test-compile
       mvn --batch-mode package -DskipTests -Dmaven.test.skip=true
+      mvn --batch-mode install -DskipTests -Dmaven.test.skip=true -Dgpg.skip
     shell: bash
 
   - name: Upload Binaries

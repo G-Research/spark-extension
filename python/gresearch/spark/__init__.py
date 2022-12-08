@@ -28,13 +28,7 @@ def _to_seq(jvm: JVMView, list: List[Any]) -> JavaObject:
 
 
 def _to_map(jvm: JVMView, map: Mapping[Any, Any]) -> JavaObject:
-    return _get_scala_object(jvm, "scala.collection.JavaConverters").mapAsScalaMap(map)
-
-
-def _get_scala_object(jvm: JVMView, name: str) -> JavaObject:
-    clazz = jvm.java.lang.Class.forName('{}$'.format(name))
-    ff = clazz.getDeclaredField("MODULE$")
-    return ff.get(None)
+    return jvm.scala.collection.JavaConverters.mapAsScalaMap(map)
 
 
 def histogram(self: DataFrame,
@@ -58,7 +52,7 @@ def histogram(self: DataFrame,
     value_column = col(value_column)
     aggregate_columns = [col(column) for column in aggregate_columns]
 
-    hist = _get_scala_object(jvm, 'uk.co.gresearch.spark.Histogram')
+    hist = jvm.uk.co.gresearch.spark.Histogram
     jdf = hist.of(self._jdf, _to_seq(jvm, thresholds), value_column, _to_seq(jvm, aggregate_columns))
     return DataFrame(jdf, self.session_or_ctx())
 
@@ -95,12 +89,12 @@ def with_row_numbers(self: DataFrame,
                      ascending: Union[bool, List[bool]] = True) -> DataFrame:
     jvm = self._sc._jvm
     jsl = self._sc._getJavaStorageLevel(storage_level)
-    juho = _get_scala_object(jvm, 'uk.co.gresearch.spark.UnpersistHandle')
+    juho = jvm.uk.co.gresearch.spark.UnpersistHandle
     juh = unpersist_handle._handle if unpersist_handle else juho.Noop()
     jcols = self._sort_cols([order], {'ascending': ascending}) if not isinstance(order, list) or order else jvm.PythonUtils.toSeq([])
 
-    row_numners = _get_scala_object(jvm, 'uk.co.gresearch.spark.RowNumbers')
-    jdf = row_numners \
+    row_numbers = jvm.uk.co.gresearch.spark.RowNumbers
+    jdf = row_numbers \
         .withRowNumberColumnName(row_number_column_name) \
         .withStorageLevel(jsl) \
         .withUnpersistHandle(juh) \

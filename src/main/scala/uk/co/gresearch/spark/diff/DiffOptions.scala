@@ -20,7 +20,7 @@ import org.apache.spark.sql.Encoder
 import org.apache.spark.sql.types.{DataType, StructField}
 import uk.co.gresearch.spark.diff
 import uk.co.gresearch.spark.diff.DiffMode.{Default, DiffMode}
-import uk.co.gresearch.spark.diff.comparator.{DefaultDiffComparator, EquivDiffComparator}
+import uk.co.gresearch.spark.diff.comparator.{DefaultDiffComparator, DiffComparator, EquivDiffComparator, TypedDiffComparator}
 
 import scala.annotation.varargs
 import scala.collection.Map

@@ -25,6 +25,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import scala.Tuple3;
 import scala.math.Equiv;
+import uk.co.gresearch.spark.diff.comparator.DiffComparator;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -201,7 +202,7 @@ public class DiffJavaTests {
 
     @Test
     public void testDiffWithComparators() {
-        DiffComparator comparator = DiffComparator.epsilon(0.100000001).asInclusive().asAbsolute();
+        DiffComparator comparator = DiffComparators.epsilon(0.100000001).asInclusive().asAbsolute();
         testDiffWithComparator(new DiffOptions().withComparator(comparator, DataTypes.DoubleType));
         testDiffWithComparator(new DiffOptions().withComparator(comparator, "score"));
 

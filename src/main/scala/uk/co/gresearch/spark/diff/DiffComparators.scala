@@ -6,15 +6,7 @@ import uk.co.gresearch.spark.diff.comparator._
 
 import java.time.Duration
 
-trait DiffComparator {
-  def equiv(left: Column, right: Column): Column
-}
-
-trait TypedDiffComparator extends DiffComparator {
-  def inputType: DataType
-}
-
-object DiffComparator {
+object DiffComparators {
   /**
    * The default comparator used in [[DiffOptions.default.defaultComparator]].
    */

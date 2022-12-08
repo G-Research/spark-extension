@@ -20,8 +20,8 @@ from py4j.java_gateway import JavaObject, JVMView
 from pyspark.sql import DataFrame
 from pyspark.sql.types import DataType
 
-from gresearch.spark import _to_seq, _to_map, _get_scala_object
-from gresearch.spark.diff.comparator import DiffComparator, DefaultDiffComparator
+from gresearch.spark import _to_seq, _to_map
+from gresearch.spark.diff.comparator import DiffComparator, DiffComparators, DefaultDiffComparator
 
 
 class DiffMode(Enum):
@@ -253,8 +253,7 @@ class DiffOptions:
         return _to_map(jvm, {key_to_java(jvm, key): cmp._to_java(jvm) for key, cmp in map.items()})
 
     def _to_java_data_type(self, jvm: JVMView, dt: DataType) -> JavaObject:
-        jdt = _get_scala_object(jvm, "org.apache.spark.sql.types.DataType").fromJson(dt.json())
-        return jdt
+        return jvm.org.apache.spark.sql.types.DataType.fromJson(dt.json())
 
 
 class Differ:

@@ -4,14 +4,14 @@ from dataclasses import dataclass
 
 from py4j.java_gateway import JVMView, JavaObject
 
-from gresearch.spark import _get_scala_object
-
 
 class DiffComparator(abc.ABC):
     @abc.abstractmethod
     def _to_java(self, jvm: JVMView) -> JavaObject:
         pass
 
+
+class DiffComparators:
     @staticmethod
     def default() -> 'DefaultDiffComparator':
         return DefaultDiffComparator()
@@ -31,12 +31,12 @@ class DiffComparator(abc.ABC):
 
 class DefaultDiffComparator(DiffComparator):
     def _to_java(self, jvm: JVMView) -> JavaObject:
-        return _get_scala_object(jvm, "uk.co.gresearch.spark.diff.comparator.DefaultDiffComparator")
+        return jvm.uk.co.gresearch.spark.diff.DiffComparators.default()
 
 
 class NullSafeEqualDiffComparator(DiffComparator):
     def _to_java(self, jvm: JVMView) -> JavaObject:
-        return _get_scala_object(jvm, "uk.co.gresearch.spark.diff.comparator.NullSafeEqualDiffComparator")
+        return jvm.uk.co.gresearch.spark.diff.DiffComparators.nullSafeEqual()
 
 
 @dataclass(frozen=True)
