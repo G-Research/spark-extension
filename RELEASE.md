@@ -5,6 +5,8 @@ for a number of Spark and Scala environments, but all from the same git tag. Rel
 that is set in the `pom.xml` and create a tag. On success, release from that tag for all other environments
 as described below.
 
+Use the `release.sh` script to test and release all versions. Or execute the following steps manually.
+
 ## Testing master for all  environments
 
 The following steps release a snapshot and test it. Test all versions listed [further down](#releasing-master-for-other-environments).

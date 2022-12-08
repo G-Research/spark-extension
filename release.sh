@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-# check for clean git status (except for CHANGELOG.md)
+# check for clean git status (except for CHANGELOG.md and release.sh)
 readarray -t git_status < <(git status -s --untracked-files=no 2>/dev/null | grep -v -e " CHANGELOG.md$" -e " release.sh$")
 if [ ${#git_status[@]} -gt 0 ]
 then
@@ -36,19 +36,30 @@ then
   exit 1
 fi
 
-# testing all versions
+# check this is a SNAPSHOT versions
 if ! grep -q "<version>.*-SNAPSHOT</version>" pom.xml
 then
   echo "Version in pom is not a SNAPSHOT version, cannot test all versions"
   exit 1
 fi
 
+# check for existing cached SNAPSHOT jars
+version=$(grep --max-count=1 "<version>.*</version>" pom.xml | sed -E -e "s/\s*<[^>]+>//g" -e "s/-SNAPSHOT//" -e "s/-[0-9.]+//g")
+jars=$(find $HOME/.m2 $HOME/.ivy2 -name "spark-extension_*-$version-*-SNAPSHOT.jar")
+if [[ -n "$jars" ]]
+then
+  echo "There are installed SNAPSHOT jars, these may interfer with release tests. These must be deleted first:"
+  echo "$jars"
+  exit 1
+fi
+
+# testing all versions
 ./set-version.sh 3.0.3 2.12.10 && mvn clean deploy && ./test-release.sh || exit 1
 ./set-version.sh 3.1.3 2.12.10 && mvn clean deploy && ./test-release.sh || exit 1
-./set-version.sh 3.2.2 2.12.15 && mvn clean deploy && ./test-release.sh || exit 1
+./set-version.sh 3.2.3 2.12.15 && mvn clean deploy && ./test-release.sh || exit 1
 ./set-version.sh 3.3.1 2.12.16 && mvn clean deploy && ./test-release.sh || exit 1
 
-./set-version.sh 3.2.2 2.13.5 && mvn clean deploy && ./test-release.sh || exit 1
+./set-version.sh 3.2.3 2.13.5 && mvn clean deploy && ./test-release.sh || exit 1
 ./set-version.sh 3.3.1 2.13.8 && mvn clean deploy && ./test-release.sh || exit 1
 
 # all SNAPSHOT versions build, test and complete the example, releasing
@@ -87,10 +98,10 @@ echo
 echo "Creating release packages"
 ./set-version.sh 3.0.3 2.12.10 && mvn clean deploy -Dsign && mvn nexus-staging:release
 ./set-version.sh 3.1.3 2.12.10 && mvn clean deploy -Dsign && mvn nexus-staging:release
-./set-version.sh 3.2.2 2.12.15 && mvn clean deploy -Dsign && mvn nexus-staging:release
+./set-version.sh 3.2.3 2.12.15 && mvn clean deploy -Dsign && mvn nexus-staging:release
 ./set-version.sh 3.3.1 2.12.16 && mvn clean deploy -Dsign && mvn nexus-staging:release
 
-./set-version.sh 3.2.2 2.13.5 && mvn clean deploy -Dsign && mvn nexus-staging:release
+./set-version.sh 3.2.3 2.13.5 && mvn clean deploy -Dsign && mvn nexus-staging:release
 ./set-version.sh 3.3.1 2.13.8 && mvn clean deploy -Dsign && mvn nexus-staging:release
 
 echo
