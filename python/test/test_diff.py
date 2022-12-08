@@ -14,16 +14,18 @@
 
 import re
 
+from py4j.java_gateway import JavaObject
 from pyspark.sql import Row
 from pyspark.sql.functions import col, when
 from pyspark.sql.types import IntegerType, DateType
-from py4j.java_gateway import JavaObject
 
+from gresearch.spark.diff import Differ, DiffOptions, DiffMode, DiffComparators
 from spark_common import SparkTest
-from gresearch.spark.diff import Differ, DiffOptions, DiffMode, DiffComparator
 
 
 class DiffTest(SparkTest):
+
+    expected_diff = None
 
     @classmethod
     def setUpClass(cls):
@@ -272,9 +274,9 @@ class DiffTest(SparkTest):
         self.assertIsNotNone(DiffMode.Default.name, jmodes.Default().toString())
 
     def test_diff_fluent_setters(self):
-        cmp1 = DiffComparator.default()
-        cmp2 = DiffComparator.epsilon(0.01)
-        cmp3 = DiffComparator.duration('PT24H')
+        cmp1 = DiffComparators.default()
+        cmp2 = DiffComparators.epsilon(0.01)
+        cmp3 = DiffComparators.duration('PT24H')
 
         default = DiffOptions()
         options = default \
@@ -331,7 +333,7 @@ class DiffTest(SparkTest):
 
     def test_diff_with_comparators(self):
         options = DiffOptions() \
-            .with_column_name_comparator(DiffComparator.epsilon(0.1).as_relative(), 'val')
+            .with_column_name_comparator(DiffComparators.epsilon(0.1).as_relative(), 'val')
 
         diff = self.left_df.diff_with_options(self.right_df, options, 'id').orderBy('id').collect()
         expected = self.spark.createDataFrame(self.expected_diff) \
@@ -342,34 +344,34 @@ class DiffTest(SparkTest):
 
     def test_diff_options_with_duplicate_comparators(self):
         options = DiffOptions() \
-            .with_data_type_comparator(DiffComparator.default(), DateType(), IntegerType()) \
-            .with_column_name_comparator(DiffComparator.default(), 'col1', 'col2')
+            .with_data_type_comparator(DiffComparators.default(), DateType(), IntegerType()) \
+            .with_column_name_comparator(DiffComparators.default(), 'col1', 'col2')
 
         with self.assertRaisesRegex(ValueError, "A comparator for data type date exists already."):
-            options.with_data_type_comparator(DiffComparator.default(), DateType())
+            options.with_data_type_comparator(DiffComparators.default(), DateType())
 
         with self.assertRaisesRegex(ValueError, "A comparator for data type int exists already."):
-            options.with_data_type_comparator(DiffComparator.default(), IntegerType())
+            options.with_data_type_comparator(DiffComparators.default(), IntegerType())
 
         with self.assertRaisesRegex(ValueError, "A comparator for data types date, int exists already."):
-            options.with_data_type_comparator(DiffComparator.default(), DateType(), IntegerType())
+            options.with_data_type_comparator(DiffComparators.default(), DateType(), IntegerType())
 
         with self.assertRaisesRegex(ValueError, "A comparator for column name col1 exists already."):
-            options.with_column_name_comparator(DiffComparator.default(), 'col1')
+            options.with_column_name_comparator(DiffComparators.default(), 'col1')
 
         with self.assertRaisesRegex(ValueError, "A comparator for column name col2 exists already."):
-            options.with_column_name_comparator(DiffComparator.default(), 'col2')
+            options.with_column_name_comparator(DiffComparators.default(), 'col2')
 
         with self.assertRaisesRegex(ValueError, "A comparator for column names col1, col2 exists already."):
-            options.with_column_name_comparator(DiffComparator.default(), 'col1', 'col2')
+            options.with_column_name_comparator(DiffComparators.default(), 'col1', 'col2')
 
     def test_diff_comparators(self):
         jvm = self.spark.sparkContext._jvm
-        self.assertIsNotNone(DiffComparator.default()._to_java(jvm))
-        self.assertIsNotNone(DiffComparator.nullSafeEqual()._to_java(jvm))
-        self.assertIsNotNone(DiffComparator.epsilon(0.01)._to_java(jvm))
+        self.assertIsNotNone(DiffComparators.default()._to_java(jvm))
+        self.assertIsNotNone(DiffComparators.nullSafeEqual()._to_java(jvm))
+        self.assertIsNotNone(DiffComparators.epsilon(0.01)._to_java(jvm))
         if jvm.uk.co.gresearch.spark.diff.comparator.DurationDiffComparator.isSupportedBySpark():
-            self.assertIsNotNone(DiffComparator.duration('PT24H')._to_java(jvm))
+            self.assertIsNotNone(DiffComparators.duration('PT24H')._to_java(jvm))
 
 
 if __name__ == '__main__':

@@ -10,6 +10,8 @@ class DiffComparator(abc.ABC):
     def _to_java(self, jvm: JVMView) -> JavaObject:
         pass
 
+
+class DiffComparators:
     @staticmethod
     def default() -> 'DefaultDiffComparator':
         return DefaultDiffComparator()

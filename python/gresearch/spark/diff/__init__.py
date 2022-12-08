@@ -21,7 +21,7 @@ from pyspark.sql import DataFrame
 from pyspark.sql.types import DataType
 
 from gresearch.spark import _to_seq, _to_map
-from gresearch.spark.diff.comparator import DiffComparator, DefaultDiffComparator
+from gresearch.spark.diff.comparator import DiffComparator, DiffComparators, DefaultDiffComparator
 
 
 class DiffMode(Enum):

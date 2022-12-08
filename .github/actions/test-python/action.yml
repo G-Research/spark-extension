@@ -89,7 +89,6 @@ runs:
 
   - name: Python Integration Tests
     run: |
-      unset state
       find python/test -name 'test*.py' | while read test
       do
         if ! $SPARK_HOME/bin/spark-submit --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION "$test" test-results
@@ -115,8 +114,7 @@ runs:
     uses: actions/upload-artifact@v3
     with:
       name: Python Test Results (Spark ${{ inputs.spark-version }} Scala ${{ inputs.scala-version }} Python ${{ inputs.python-version }})
-      path: |
-        test-results/*.xml
+      path: test-results/*.xml
 
 branding:
   icon: 'check-circle'
