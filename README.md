@@ -97,7 +97,7 @@ from pyspark.sql import SparkSession
 
 spark = SparkSession \
     .builder \
-    .config("spark.jars.packages", "uk.co.gresearch.spark:spark-extension_2.12:2.4.0-3.1") \
+    .config("spark.jars.packages", "uk.co.gresearch.spark:spark-extension_2.12:2.4.0-3.3") \
     .getOrCreate()
 ```
 

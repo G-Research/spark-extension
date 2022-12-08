@@ -45,7 +45,7 @@ fi
 
 # check for existing cached SNAPSHOT jars
 version=$(grep --max-count=1 "<version>.*</version>" pom.xml | sed -E -e "s/\s*<[^>]+>//g" -e "s/-SNAPSHOT//" -e "s/-[0-9.]+//g")
-jars=$(find $HOME/.m2 $HOME/.ivy2 -name "spark-extension_*-$version-*-SNAPSHOT.jar")
+jars=$(find $HOME/.m2 $HOME/.ivy2 -name "*spark-extension_*-$version-*-SNAPSHOT.jar")
 if [[ -n "$jars" ]]
 then
   echo "There are installed SNAPSHOT jars, these may interfer with release tests. These must be deleted first:"
