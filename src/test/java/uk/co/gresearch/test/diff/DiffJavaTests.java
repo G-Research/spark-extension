@@ -26,6 +26,7 @@ import org.junit.Test;
 import scala.Tuple3;
 import scala.math.Equiv;
 import uk.co.gresearch.spark.diff.comparator.DiffComparator;
+import uk.co.gresearch.spark.diff.comparator.NullSafeEquiv;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -210,6 +211,9 @@ public class DiffJavaTests {
                 abs(x - y) <= 0.1000000001;
         testDiffWithComparator(new DiffOptions().withComparator(equivDouble, Encoders.DOUBLE()));
         testDiffWithComparator(new DiffOptions().withComparator(equivDouble, Encoders.DOUBLE(), "score"));
+
+        NullSafeEquiv<Double> nullSafeEquivDouble = (Double x, Double y) -> abs(x - y) <= 0.1000000001;
+        testDiffWithComparator(new DiffOptions().withComparator(nullSafeEquivDouble, Encoders.DOUBLE(), "score"));
 
         Equiv<Object> equivAny = (x, y) -> x == null && y == null || x instanceof Double && y instanceof Double &&
                 abs((Double) x - (Double) y) <= 0.1000000001;

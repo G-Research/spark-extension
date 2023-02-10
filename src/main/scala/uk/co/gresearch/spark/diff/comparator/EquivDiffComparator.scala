@@ -9,13 +9,28 @@ import org.apache.spark.sql.types.{BooleanType, DataType}
 import org.apache.spark.sql.{Column, Encoder}
 import uk.co.gresearch.spark.BinaryLikeWithNewChildrenInternal
 
+import scala.language.implicitConversions
+
 trait EquivDiffComparator[T] extends DiffComparator {
   val equiv: math.Equiv[T]
 }
 
 trait TypedEquivDiffComparator[T] extends EquivDiffComparator[T] with TypedDiffComparator
 
+/**
+ * Two values x and y are equivalent iff x and y are both `null`, or
+ * both are not `null` and `nullSafeEquiv(x, y)` is true.
+ * Method `nullSafeEquiv(x, y)` is only called if `x` and `y` are both not null,
+ * so that arguments `x` and `y` do not need to be tested for null.
+ */
+trait NullSafeEquiv[T] extends math.Equiv[T] {
+  def nullSafeEquiv(x : T, y : T) : Boolean
+}
+
 object EquivDiffComparator {
+  implicit def equivFromNullSave[T](nullSafeEquiv: NullSafeEquiv[T]): math.Equiv[T] =
+    (x: T, y: T) => x == null && y == null || x != null && y != null && nullSafeEquiv.nullSafeEquiv(x, y)
+
   def apply[T : Encoder](equiv: math.Equiv[T]): TypedEquivDiffComparator[T] = EncoderEquivDiffComparator(equiv)
   def apply[T](equiv: math.Equiv[T], inputType: DataType): TypedEquivDiffComparator[T] = InputTypedEquivDiffComparator(equiv, inputType)
   def apply(equiv: math.Equiv[Any]): EquivDiffComparator[Any] = EquivAnyDiffComparator(equiv)
