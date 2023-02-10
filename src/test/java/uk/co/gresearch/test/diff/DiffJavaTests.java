@@ -210,6 +210,7 @@ public class DiffJavaTests {
                 abs(x - y) <= 0.1000000001;
         testDiffWithComparator(new DiffOptions().withComparator(equivDouble, Encoders.DOUBLE()));
         testDiffWithComparator(new DiffOptions().withComparator(equivDouble, Encoders.DOUBLE(), "score"));
+        testDiffWithComparator(new DiffOptions().withComparator(equivDouble, DataTypes.DoubleType));
 
         Equiv<Object> equivAny = (x, y) -> x == null && y == null || x instanceof Double && y instanceof Double &&
                 abs((Double) x - (Double) y) <= 0.1000000001;
