@@ -371,9 +371,14 @@ case class DiffOptions(diffColumn: String,
    * Returns a new immutable DiffOptions instance with the new comparator.
    * @return new immutable DiffOptions instance
    */
+  // There is probably no use case of calling this with multiple datatype while T not being Any
+  // But this is the only way to define withComparator[T](equiv: math.Equiv[T], dataType: DataType)
+  // without being ambiguous with withComparator(equiv: math.Equiv[Any], dataType: DataType, dataTypes: DataType*)
   @varargs
-  def withComparator(equiv: math.Equiv[Any], dataType: DataType, dataTypes: DataType*): DiffOptions =
-    withComparator(EquivDiffComparator(equiv), dataType, dataTypes: _*)
+  def withComparator[T](equiv: math.Equiv[T], dataType: DataType, dataTypes: DataType*): DiffOptions =
+    (dataType +: dataTypes).foldLeft(this)( (options, dataType) =>
+      options.withComparator(EquivDiffComparator(equiv, dataType))
+    )
 
   /**
    * Fluent method to add an equivalent operator as a comparator for one or more column names.
