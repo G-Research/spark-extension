@@ -4,7 +4,6 @@ import org.apache.spark.sql.catalyst.encoders.encoderFor
 import org.apache.spark.sql.catalyst.expressions.UnsafeMapData
 import org.apache.spark.sql.types.{DataType, MapType}
 import org.apache.spark.sql.{Column, Encoder}
-import uk.co.gresearch.spark.diff.comparator.EquivDiffComparator.InputTypedEquivDiffComparator
 
 case class MapDiffComparator[K, V](private val comparator: EquivDiffComparator[UnsafeMapData]) extends DiffComparator {
   override def equiv(left: Column, right: Column): Column = comparator.equiv(left, right)

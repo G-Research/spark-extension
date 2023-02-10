@@ -13,27 +13,31 @@ trait EquivDiffComparator[T] extends DiffComparator {
   val equiv: math.Equiv[T]
 }
 
+private trait ExpressionEquivDiffComparator[T] extends EquivDiffComparator[T] {
+  def equiv(left: Expression, right: Expression): EquivExpression[T]
+  def equiv(left: Column, right: Column): Column =
+    new Column(equiv(left.expr, right.expr).asInstanceOf[Expression])
+}
+
 trait TypedEquivDiffComparator[T] extends EquivDiffComparator[T] with TypedDiffComparator
+
+private[comparator] trait TypedEquivDiffComparatorWithInput[T]
+  extends ExpressionEquivDiffComparator[T] with TypedEquivDiffComparator[T] {
+  def equiv(left: Expression, right: Expression): Equiv[T] = Equiv(left, right, equiv, inputType)
+}
+
+private[comparator] case class InputTypedEquivDiffComparator[T](equiv: math.Equiv[T], inputType: DataType)
+  extends TypedEquivDiffComparatorWithInput[T]
+
 
 object EquivDiffComparator {
   def apply[T : Encoder](equiv: math.Equiv[T]): TypedEquivDiffComparator[T] = EncoderEquivDiffComparator(equiv)
   def apply[T](equiv: math.Equiv[T], inputType: DataType): TypedEquivDiffComparator[T] = InputTypedEquivDiffComparator(equiv, inputType)
   def apply(equiv: math.Equiv[Any]): EquivDiffComparator[Any] = EquivAnyDiffComparator(equiv)
 
-  private[comparator] trait ExpressionEquivDiffComparator[T] extends EquivDiffComparator[T] {
-    def equiv(left: Expression, right: Expression): EquivExpression[T]
-    def equiv(left: Column, right: Column): Column =
-      new Column(equiv(left.expr, right.expr).asInstanceOf[Expression])
-  }
-
   private case class EncoderEquivDiffComparator[T : Encoder](equiv: math.Equiv[T])
     extends ExpressionEquivDiffComparator[T] with TypedEquivDiffComparator[T] {
     override def inputType: DataType = encoderFor[T].schema.fields(0).dataType
-    def equiv(left: Expression, right: Expression): Equiv[T] = Equiv(left, right, equiv, inputType)
-  }
-
-  private[comparator] case class InputTypedEquivDiffComparator[T](equiv: math.Equiv[T], inputType: DataType)
-    extends ExpressionEquivDiffComparator[T] with TypedEquivDiffComparator[T] {
     def equiv(left: Expression, right: Expression): Equiv[T] = Equiv(left, right, equiv, inputType)
   }
 

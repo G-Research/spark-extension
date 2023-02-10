@@ -30,6 +30,7 @@ import java.sql.{Date, Timestamp}
 import java.time.Duration
 
 case class Numbers(id: Int, longValue: Long, floatValue: Float, doubleValue: Double, decimalValue: Decimal, someInt: Option[Int], someLong: Option[Long])
+case class Strings(id: Int, string: String)
 case class Dates(id: Int, date: Date)
 case class Times(id: Int, time: Timestamp)
 case class Maps(id: Int, map: Map[Int, Long])
@@ -110,11 +111,13 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
              right: DataFrame = this.right.toDF()): Unit = {
     // left and right numbers have some differences
     val actualWithoutComparators = left.diff(right, "id").orderBy($"id")
+    actualWithoutComparators.show()
 
     // our tight comparators are just too strict to still see differences
     val actualWithTightComparators = left.diff(right, optionsWithTightComparators, "id").orderBy($"id")
     val expectedWithTightComparators = actualWithoutComparators
     assert(actualWithTightComparators.collect() === expectedWithTightComparators.collect())
+    actualWithTightComparators.show()
 
     // the relaxed comparators are just relaxed enough to not see any differences
     // they still see changes to / from null values
@@ -123,6 +126,7 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
       // the comparators are relaxed so that all changes disappear
       .withColumn("diff", when($"id" === 2, lit("N")).otherwise($"diff"))
     assert(actualWithRelaxedComparators.collect() === expectedWithRelaxedComparators.collect())
+    actualWithRelaxedComparators.show()
   }
 
   Seq("true", "false").foreach { codegen =>
@@ -276,6 +280,14 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
     val optionsWithTightComparator = DiffOptions.default.withDefaultComparator(DiffComparators.epsilon(1/3.0).asRelative().asExclusive())
     val optionsWithRelaxedComparator = DiffOptions.default.withDefaultComparator(DiffComparators.epsilon(1/3.0 + .001).asRelative().asExclusive())
     doTest(optionsWithTightComparator, optionsWithRelaxedComparator)
+  }
+
+  test("whitespace agnostic string comparator") {
+    val left = Seq(Strings(1, "one"), Strings(2, "two spaces "), Strings(3, "three"), Strings(4, "four")).toDF()
+    val right = Seq(Strings(1, "one"), Strings(2, " two \t\nspaces"), Strings(3, "three\nspaces"), Strings(5, "five")).toDF()
+    val optionsWithTightComparator = DiffOptions.default.withComparator(DiffComparators.string(whitespaceAgnostic = false))
+    val optionsWithRelaxedComparator = DiffOptions.default.withComparator(DiffComparators.string(whitespaceAgnostic = true))
+    doTest(optionsWithTightComparator, optionsWithRelaxedComparator, left, right)
   }
 
   if (DurationDiffComparator.isNotSupportedBySpark) {
