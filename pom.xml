@@ -96,6 +96,12 @@
       <name>Apache</name>
       <url>https://repository.apache.org/snapshots/</url>
     </repository>
+    <!-- required to resolve Spark RC candidates -->
+    <repository>
+      <id>apache-spark-rc</id>
+      <name>Apache Spark RC</name>
+      <url>https://repository.apache.org/content/repositories/orgapachespark-1433/</url>
+    </repository>
   </repositories>
 
   <distributionManagement>
