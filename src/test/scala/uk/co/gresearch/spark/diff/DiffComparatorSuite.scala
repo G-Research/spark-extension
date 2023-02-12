@@ -26,6 +26,7 @@ import org.scalatest.funsuite.AnyFunSuite
 import uk.co.gresearch.spark.SparkTestSession
 import uk.co.gresearch.spark.diff.DiffComparatorSuite.{decimalEnc, optionsWithRelaxedComparators, optionsWithTightComparators}
 import uk.co.gresearch.spark.diff.comparator._
+import uk.co.gresearch.spark.diff.comparator.NullSafeEquiv
 
 import java.sql.{Date, Timestamp}
 import java.time.Duration
@@ -138,6 +139,7 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
   }
 
   def alwaysTrueEquiv: math.Equiv[Any] = (_: Any, _: Any) => true
+  def nullSafeIntEquiv: math.Equiv[Int] = NullSafeEquiv((x: Int, y: Int) => x.abs == y.abs)
 
   Seq(
     "default diff comparator" -> DiffOptions.default
@@ -198,6 +200,11 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
     "any equiv for type" -> DiffOptions.default
       .withComparator(alwaysTrueEquiv, IntegerType)
       .withComparator(alwaysTrueEquiv, LongType, FloatType, DoubleType, DecimalType(38, 18)),
+
+    "typed null safe equiv for type" -> DiffOptions.default
+      .withComparator(nullSafeIntEquiv, IntegerType)
+      .withComparator(alwaysTrueEquiv, LongType, FloatType, DoubleType, DecimalType(38, 18)),
+
     "any equiv for column name" -> DiffOptions.default
       .withComparator(alwaysTrueEquiv, "someInt")
       .withComparator(alwaysTrueEquiv, "longValue", "floatValue", "doubleValue", "someLong", "decimalValue")

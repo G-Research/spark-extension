@@ -212,7 +212,7 @@ public class DiffJavaTests {
         testDiffWithComparator(new DiffOptions().withComparator(equivDouble, Encoders.DOUBLE()));
         testDiffWithComparator(new DiffOptions().withComparator(equivDouble, Encoders.DOUBLE(), "score"));
 
-        NullSafeEquiv<Double> nullSafeEquivDouble = (Double x, Double y) -> abs(x - y) <= 0.1000000001;
+        Equiv<Double> nullSafeEquivDouble = new NullSafeEquiv<>((Double x, Double y) -> abs(x - y) <= 0.1000000001);
         testDiffWithComparator(new DiffOptions().withComparator(nullSafeEquivDouble, Encoders.DOUBLE(), "score"));
 
         Equiv<Object> equivAny = (x, y) -> x == null && y == null || x instanceof Double && y instanceof Double &&
