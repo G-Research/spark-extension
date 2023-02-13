@@ -259,6 +259,8 @@ case class DiffOptions(diffColumn: String,
    * Fluent method to add a typed equivalent operator as a default comparator.
    * The encoder defines the input type of the comparator.
    * Returns a new immutable DiffOptions instance with the new default comparator.
+   * @note The `math.Equiv` will not be given any null values. Null-aware comparators
+   *       can only be implemented via the `DiffComparator` interface.
    * @return new immutable DiffOptions instance
    */
   def withDefaultComparator[T : Encoder](equiv: math.Equiv[T]): DiffOptions = {
@@ -268,6 +270,8 @@ case class DiffOptions(diffColumn: String,
   /**
    * Fluent method to add a typed equivalent operator as a default comparator.
    * Returns a new immutable DiffOptions instance with the new default comparator.
+   * @note The `math.Equiv` will not be given any null values. Null-aware comparators
+   *       can only be implemented via the `DiffComparator` interface.
    * @return new immutable DiffOptions instance
    */
   def withDefaultComparator[T](equiv: math.Equiv[T], inputDataType: DataType): DiffOptions = {
@@ -277,6 +281,8 @@ case class DiffOptions(diffColumn: String,
   /**
    * Fluent method to add an equivalent operator as a default comparator.
    * Returns a new immutable DiffOptions instance with the new default comparator.
+   * @note The `math.Equiv` will not be given any null values. Null-aware comparators
+   *       can only be implemented via the `DiffComparator` interface.
    * @return new immutable DiffOptions instance
    */
   def withDefaultComparator(equiv: math.Equiv[Any]): DiffOptions = {
@@ -342,6 +348,8 @@ case class DiffOptions(diffColumn: String,
    * Fluent method to add a typed equivalent operator as a comparator for its input data type.
    * The encoder defines the input type of the comparator.
    * Returns a new immutable DiffOptions instance with the new comparator.
+   * @note The `math.Equiv` will not be given any null values. Null-aware comparators can only
+   *       be implemented via the `DiffComparator` interface.
    * @return new immutable DiffOptions instance
    */
   def withComparator[T : Encoder](equiv: math.Equiv[T]): DiffOptions =
@@ -351,6 +359,8 @@ case class DiffOptions(diffColumn: String,
    * Fluent method to add a typed equivalent operator as a comparator for one or more column names.
    * The encoder defines the input type of the comparator.
    * Returns a new immutable DiffOptions instance with the new comparator.
+   * @note The `math.Equiv` will not be given any null values. Null-aware comparators can only
+   *       be implemented via the `DiffComparator` interface.
    * @return new immutable DiffOptions instance
    */
   def withComparator[T : Encoder](equiv: math.Equiv[T], columnName: String, columnNames: String*): DiffOptions =
@@ -359,6 +369,8 @@ case class DiffOptions(diffColumn: String,
   /**
    * Fluent method to add an equivalent operator as a comparator for one or more column names.
    * Returns a new immutable DiffOptions instance with the new comparator.
+   * @note The `math.Equiv` will not be given any null values. Null-aware comparators
+   *       can only be implemented via the `DiffComparator` interface.
    * @note Java-specific method
    * @return new immutable DiffOptions instance
    */
@@ -369,6 +381,8 @@ case class DiffOptions(diffColumn: String,
   /**
    * Fluent method to add an equivalent operator as a comparator for one or more data types.
    * Returns a new immutable DiffOptions instance with the new comparator.
+   * @note The `math.Equiv` will not be given any null values. Null-aware comparators
+   *       can only be implemented via the `DiffComparator` interface.
    * @return new immutable DiffOptions instance
    */
   @varargs
@@ -378,6 +392,8 @@ case class DiffOptions(diffColumn: String,
   /**
    * Fluent method to add an equivalent operator as a comparator for one or more column names.
    * Returns a new immutable DiffOptions instance with the new comparator.
+   * @note The `math.Equiv` will not be given any null values. Null-aware comparators
+   *       can only be implemented via the `DiffComparator` interface.
    * @return new immutable DiffOptions instance
    */
   @varargs

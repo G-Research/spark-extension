@@ -9,24 +9,11 @@ import org.apache.spark.sql.types.{BooleanType, DataType}
 import org.apache.spark.sql.{Column, Encoder}
 import uk.co.gresearch.spark.BinaryLikeWithNewChildrenInternal
 
-import scala.language.implicitConversions
-
 trait EquivDiffComparator[T] extends DiffComparator {
   val equiv: math.Equiv[T]
 }
 
 trait TypedEquivDiffComparator[T] extends EquivDiffComparator[T] with TypedDiffComparator
-
-/**
- * Two values x and y are equivalent iff x and y are both `null`, or
- * both are not `null` and `nullSafeEquiv(x, y)` is true.
- * Wrapping an `math.Equiv` with this class implements the tests for `null` values
- * and calls into the wrapped `math.Equiv` only for non-null values.
- */
-case class NullSafeEquiv[T](equiv: math.Equiv[T]) extends math.Equiv[T] {
-  override def equiv(x: T, y: T): Boolean =
-    x == null && y == null || x != null && y != null && equiv.equiv(x, y)
-}
 
 object EquivDiffComparator {
   def apply[T : Encoder](equiv: math.Equiv[T]): TypedEquivDiffComparator[T] = EncoderEquivDiffComparator(equiv)
@@ -65,7 +52,13 @@ private trait EquivExpression[T] extends BinaryExpression with BinaryLikeWithNew
   override def eval(input: InternalRow): Any = {
     val input1 = left.eval(input).asInstanceOf[T]
     val input2 = right.eval(input).asInstanceOf[T]
-    equiv.equiv(input1, input2)
+    if (input1 == null && input2 == null) {
+      true
+    } else if (input1 == null || input2 == null) {
+      false
+    } else {
+      equiv.equiv(input1, input2)
+    }
   }
 
   override def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = {
@@ -73,7 +66,8 @@ private trait EquivExpression[T] extends BinaryExpression with BinaryLikeWithNew
     val eval2 = right.genCode(ctx)
     val equivRef = ctx.addReferenceObj("equiv", equiv, math.Equiv.getClass.getName.stripSuffix("$"))
     ev.copy(code = eval1.code + eval2.code + code"""
-        boolean ${ev.value} = $equivRef.equiv(${eval1.value}, ${eval2.value});""", isNull = FalseLiteral)
+        boolean ${ev.value} = (${eval1.isNull} && ${eval2.isNull}) ||
+           (!${eval1.isNull} && !${eval2.isNull} && $equivRef.equiv(${eval1.value}, ${eval2.value}));""", isNull = FalseLiteral)
   }
 }
 

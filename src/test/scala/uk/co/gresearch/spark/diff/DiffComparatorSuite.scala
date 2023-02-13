@@ -26,7 +26,6 @@ import org.scalatest.funsuite.AnyFunSuite
 import uk.co.gresearch.spark.SparkTestSession
 import uk.co.gresearch.spark.diff.DiffComparatorSuite.{decimalEnc, optionsWithRelaxedComparators, optionsWithTightComparators}
 import uk.co.gresearch.spark.diff.comparator._
-import uk.co.gresearch.spark.diff.comparator.NullSafeEquiv
 
 import java.sql.{Date, Timestamp}
 import java.time.Duration
@@ -63,6 +62,19 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
     Numbers(4, 4L, 4.0f, 4.0, Decimal(40, 8, 3), None, Some(4L)),
     Numbers(6, 6L, 6.0f, 6.0, Decimal(60, 8, 3), Some(6), Some(6L)),
   ).toDS()
+
+  lazy val leftStrings: DataFrame = Seq(
+    (1, Some("1")),
+    (2, None),
+    (3, Some("3")),
+    (4, None)
+  ).toDF("id", "string")
+  lazy val rightStrings: DataFrame = Seq(
+    (1, Some("1")),
+    (2, Some("2")),
+    (3, None),
+    (4, None)
+  ).toDF("id", "string")
 
   lazy val leftDates: Dataset[Dates] = Seq(
     Dates(1, Date.valueOf("2000-01-01")),
@@ -139,7 +151,6 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
   }
 
   def alwaysTrueEquiv: math.Equiv[Any] = (_: Any, _: Any) => true
-  def nullSafeIntEquiv: math.Equiv[Int] = NullSafeEquiv((x: Int, y: Int) => x.abs == y.abs)
 
   Seq(
     "default diff comparator" -> DiffOptions.default
@@ -201,10 +212,6 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
       .withComparator(alwaysTrueEquiv, IntegerType)
       .withComparator(alwaysTrueEquiv, LongType, FloatType, DoubleType, DecimalType(38, 18)),
 
-    "typed null safe equiv for type" -> DiffOptions.default
-      .withComparator(nullSafeIntEquiv, IntegerType)
-      .withComparator(alwaysTrueEquiv, LongType, FloatType, DoubleType, DecimalType(38, 18)),
-
     "any equiv for column name" -> DiffOptions.default
       .withComparator(alwaysTrueEquiv, "someInt")
       .withComparator(alwaysTrueEquiv, "longValue", "floatValue", "doubleValue", "someLong", "decimalValue")
@@ -225,12 +232,12 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
     }
   }
 
-  test("null-aware equiv") {
-    val left = Seq((1, Some("1")), (2, None), (3, Some("3")), (4, None)).toDF("id", "value")
-    val right = Seq((1, Some("1")), (2, Some("2")), (3, None), (4, None)).toDF("id", "value")
+  test("null-aware comparator") {
     val options = DiffOptions.default.withComparator(
-      (x: UTF8String, y: UTF8String) => x == null || y == null || x == y, StringType)
-    val diff = left.diff(right, options, "id").collect()
+      // only if this method is called with nulls, the expected result can occur
+      (x: Column, y: Column) => x.isNull || y.isNull || x === y, StringType)
+
+    val diff = leftStrings.diff(rightStrings, options, "id").collect()
     assert(diff === Seq(
       Row("N", 1, "1", "1"),
       Row("N", 2, null, "2"),
