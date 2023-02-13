@@ -8,6 +8,7 @@ on:
       - master
     tags:
       - '*'
+  merge_group:
   pull_request:
   workflow_dispatch:
 
