@@ -1,7 +1,7 @@
 package uk.co.gresearch.spark.diff
 
+import org.apache.spark.sql.Encoder
 import org.apache.spark.sql.types.DataType
-import org.apache.spark.sql.{Column, Encoder}
 import uk.co.gresearch.spark.diff.comparator._
 
 import java.time.Duration
@@ -51,6 +51,19 @@ object DiffComparators {
    * Requires compared column types to implement `-`, `*`, `<`, `==`, and `abs`.
    */
   def epsilon(epsilon: Double): EpsilonDiffComparator = EpsilonDiffComparator(epsilon)
+
+  /**
+   * A comparator for string values.
+   *
+   * With `whitespaceAgnostic` set `true`, differences in white spaces are ignored. This ignores leading and trailing whitespaces as well.
+   * With `whitespaceAgnostic` set `false`, this is equal to the default string comparison (see [[default()]]).
+   */
+  def string(whitespaceAgnostic: Boolean = true): StringDiffComparator =
+    if (whitespaceAgnostic) {
+      WhitespaceDiffComparator
+    } else {
+      StringDiffComparator
+    }
 
   /**
    * This comparator considers two `DateType` or `TimestampType` values equal when they are at most `duration` apart.
