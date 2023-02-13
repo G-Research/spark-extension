@@ -237,7 +237,7 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
       // only if this method is called with nulls, the expected result can occur
       (x: Column, y: Column) => x.isNull || y.isNull || x === y, StringType)
 
-    val diff = leftStrings.diff(rightStrings, options, "id").collect()
+    val diff = leftStrings.diff(rightStrings, options, "id").orderBy($"id").collect()
     assert(diff === Seq(
       Row("N", 1, "1", "1"),
       Row("N", 2, null, "2"),
