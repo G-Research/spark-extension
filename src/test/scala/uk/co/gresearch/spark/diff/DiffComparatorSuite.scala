@@ -21,6 +21,7 @@ import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
 import org.apache.spark.sql.functions.{abs, lit, when}
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
+import org.apache.spark.unsafe.types.UTF8String
 import org.scalatest.funsuite.AnyFunSuite
 import uk.co.gresearch.spark.SparkTestSession
 import uk.co.gresearch.spark.diff.DiffComparatorSuite.{decimalEnc, optionsWithRelaxedComparators, optionsWithTightComparators}
@@ -215,6 +216,20 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
       assert(actual !== diffWithoutComparators.orderBy($"id").collect())
       assert(actual === expected.orderBy($"id").collect())
     }
+  }
+
+  test("null-aware equiv") {
+    val left = Seq((1, Some("1")), (2, None), (3, Some("3")), (4, None)).toDF("id", "value")
+    val right = Seq((1, Some("1")), (2, Some("2")), (3, None), (4, None)).toDF("id", "value")
+    val options = DiffOptions.default.withComparator(
+      (x: UTF8String, y: UTF8String) => x == null || y == null || x == y, StringType)
+    val diff = left.diff(right, options, "id").collect()
+    assert(diff === Seq(
+      Row("N", 1, "1", "1"),
+      Row("N", 2, null, "2"),
+      Row("N", 3, "3", null),
+      Row("N", 4, null, null),
+    ))
   }
 
   Seq(
