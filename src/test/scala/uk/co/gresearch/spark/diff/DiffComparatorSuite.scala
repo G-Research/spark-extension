@@ -111,13 +111,11 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
              right: DataFrame = this.right.toDF()): Unit = {
     // left and right numbers have some differences
     val actualWithoutComparators = left.diff(right, "id").orderBy($"id")
-    actualWithoutComparators.show()
 
     // our tight comparators are just too strict to still see differences
     val actualWithTightComparators = left.diff(right, optionsWithTightComparators, "id").orderBy($"id")
     val expectedWithTightComparators = actualWithoutComparators
     assert(actualWithTightComparators.collect() === expectedWithTightComparators.collect())
-    actualWithTightComparators.show()
 
     // the relaxed comparators are just relaxed enough to not see any differences
     // they still see changes to / from null values
@@ -126,7 +124,6 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
       // the comparators are relaxed so that all changes disappear
       .withColumn("diff", when($"id" === 2, lit("N")).otherwise($"diff"))
     assert(actualWithRelaxedComparators.collect() === expectedWithRelaxedComparators.collect())
-    actualWithRelaxedComparators.show()
   }
 
   Seq("true", "false").foreach { codegen =>

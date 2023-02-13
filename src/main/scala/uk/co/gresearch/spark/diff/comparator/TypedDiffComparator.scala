@@ -12,5 +12,5 @@ trait StringDiffComparator extends TypedDiffComparator {
 }
 
 case object StringDiffComparator extends StringDiffComparator {
-  override def equiv(left: Column, right: Column): Column = NullSafeEqualDiffComparator.equiv(left, right)
+  override def equiv(left: Column, right: Column): Column = DefaultDiffComparator.equiv(left, right)
 }

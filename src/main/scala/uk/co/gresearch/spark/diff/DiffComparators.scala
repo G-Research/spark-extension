@@ -57,7 +57,7 @@ object DiffComparators {
    * A comparator for string values.
    *
    * With `whitespaceAgnostic` set `true`, differences in white spaces are ignored. This ignores leading and trailing whitespaces as well.
-   * With `whitespaceAgnostic` set `true`, this is equal to the default string comparison (see [[nullSafeEqual()]]).
+   * With `whitespaceAgnostic` set `false`, this is equal to the default string comparison (see [[default()]]).
    */
   def string(whitespaceAgnostic: Boolean = true): StringDiffComparator =
     if (whitespaceAgnostic) {
