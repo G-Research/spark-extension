@@ -194,9 +194,10 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
       .withComparator((left: Double, right: Double) => left.abs == right.abs, Encoders.scalaDouble, "doubleValue")
       .withComparator((left: Decimal, right: Decimal) => left.abs == right.abs, ExpressionEncoder[Decimal](), "decimalValue"),
 
-    "any equiv for type" -> DiffOptions.default
-      .withComparator(alwaysTrueEquiv, IntegerType)
+    "typed equiv for type" -> DiffOptions.default
+      .withComparator((left: Int, right: Int) => left.abs == right.abs, IntegerType)
       .withComparator(alwaysTrueEquiv, LongType, FloatType, DoubleType, DecimalType(38, 18)),
+
     "any equiv for column name" -> DiffOptions.default
       .withComparator(alwaysTrueEquiv, "someInt")
       .withComparator(alwaysTrueEquiv, "longValue", "floatValue", "doubleValue", "someLong", "decimalValue")
