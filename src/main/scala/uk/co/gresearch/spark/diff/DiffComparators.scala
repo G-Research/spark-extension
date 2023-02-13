@@ -1,8 +1,7 @@
 package uk.co.gresearch.spark.diff
 
-import org.apache.spark.sql.types.{DataType, StringType}
-import org.apache.spark.sql.{Column, Encoder}
-import org.apache.spark.unsafe.types.UTF8String
+import org.apache.spark.sql.Encoder
+import org.apache.spark.sql.types.DataType
 import uk.co.gresearch.spark.diff.comparator._
 
 import java.time.Duration
