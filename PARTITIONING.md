@@ -122,6 +122,8 @@ is finished. Provide an `UnpersistHandle` for this purpose:
 
     unpersist()
 
+More details about this issue can be found [here](https://www.gresearch.co.uk/blog/article/guaranteeing-in-partition-order-for-partitioned-writing-in-apache-spark/).
+
 <!--
 # Other Approaches
 
