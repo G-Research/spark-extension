@@ -35,7 +35,7 @@ jobs:
           - spark-compat-version: '3.2'
             spark-version: '3.2.3'
           - spark-compat-version: '3.3'
-            spark-version: '3.3.1'
+            spark-version: '3.3.2'
 
           - spark-compat-version: '3.0'
             scala-compat-version: '2.12'
@@ -90,7 +90,7 @@ jobs:
           - spark-compat-version: '3.2'
             spark-version: '3.2.4-SNAPSHOT'
           - spark-compat-version: '3.3'
-            spark-version: '3.3.2-SNAPSHOT'
+            spark-version: '3.3.3-SNAPSHOT'
           - spark-compat-version: '3.4'
             spark-version: '3.4.0-SNAPSHOT'
 
@@ -213,7 +213,7 @@ jobs:
             scala-compat-version: '2.12'
             scala-version: '2.12.15'
           - spark-compat-version: '3.3'
-            spark-version: '3.3.1'
+            spark-version: '3.3.2'
             scala-compat-version: '2.12'
             scala-version: '2.12.15'
 
@@ -265,7 +265,7 @@ jobs:
           - spark-compat-version: '3.2'
             spark-version: '3.2.4-SNAPSHOT'
           - spark-compat-version: '3.3'
-            spark-version: '3.3.2-SNAPSHOT'
+            spark-version: '3.3.3-SNAPSHOT'
           - spark-compat-version: '3.4'
             spark-version: '3.4.0-SNAPSHOT'
 
