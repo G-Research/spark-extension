@@ -110,15 +110,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        spark-compat-version: ['3.3', '3.4']
+        spark-compat-version: ['3.4']
         python-version: ['3.8', '3.9', '3.10']
 
         include:
-          - spark-compat-version: '3.3'
-            spark-version: '3.3.2'
-            scala-compat-version: '2.12'
-            scala-version: '2.12.15'
-
           - spark-compat-version: '3.4'
             spark-version: '3.4.0'
             scala-compat-version: '2.12'
