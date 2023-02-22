@@ -123,6 +123,7 @@ jobs:
             spark-version: '3.4.0'
             scala-compat-version: '2.12'
             scala-version: '2.12.17'
+            url: 'https://dist.apache.org/repos/dist/dev/spark/v3.4.0-rc1-bin/pyspark-3.4.0.tar.gz'
 
     steps:
       - name: Checkout
@@ -136,6 +137,7 @@ jobs:
           spark-compat-version: ${{ matrix.spark-compat-version }}
           scala-compat-version: ${{ matrix.scala-compat-version }}
           python-version: ${{ matrix.python-version }}
+          pyspark-url: ${{ matrix.url }}
 
   event_file:
     name: "Event File"

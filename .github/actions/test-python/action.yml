@@ -21,6 +21,9 @@ inputs:
   python-version:
     description: Python version, e.g. 3.8
     required: true
+  pyspark-url:
+    description: URL to install PySpark from
+    required: false
 
 runs:
   using: 'composite'
@@ -64,6 +67,11 @@ runs:
     uses: actions/setup-python@v4
     with:
       python-version: ${{ inputs.python-version }}
+
+  - name: Install PySpark from url
+    if: inputs.pyspark-url != ''
+    run: |
+      pip install ${{ inputs.pyspark-url }}
 
   - name: Install Python dependencies
     run: |
