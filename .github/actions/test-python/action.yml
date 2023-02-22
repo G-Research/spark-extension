@@ -72,6 +72,7 @@ runs:
     if: inputs.pyspark-url != ''
     run: |
       pip install ${{ inputs.pyspark-url }}
+    shell: bash
 
   - name: Install Python dependencies
     run: |
