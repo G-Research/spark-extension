@@ -20,17 +20,28 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        spark-compat-version: ['3.3']
+        spark-compat-version: ['3.3', '3.4']
         scala-compat-version: ['2.12', '2.13']
         include:
           - spark-compat-version: '3.3'
             spark-version: '3.3.2'
+
+          - spark-compat-version: '3.4'
+            spark-version: '3.4.0'
 
           - spark-compat-version: '3.3'
             scala-compat-version: '2.12'
             scala-version: '2.12.15'
 
           - spark-compat-version: '3.3'
+            scala-compat-version: '2.13'
+            scala-version: '2.13.8'
+
+          - spark-compat-version: '3.4'
+            scala-compat-version: '2.12'
+            scala-version: '2.12.17'
+
+          - spark-compat-version: '3.4'
             scala-compat-version: '2.13'
             scala-version: '2.13.8'
 
@@ -54,7 +65,7 @@ jobs:
       fail-fast: false
       matrix:
         scala-compat-version: ['2.12', '2.13']
-        spark-compat-version: ['3.3']
+        spark-compat-version: ['3.3', '3.4']
 
         include:
           - spark-compat-version: '3.3'
@@ -64,6 +75,16 @@ jobs:
 
           - spark-compat-version: '3.3'
             spark-patch-version: '2'
+            scala-compat-version: '2.13'
+            scala-version: '2.13.8'
+
+          - spark-compat-version: '3.4'
+            spark-patch-version: '0'
+            scala-compat-version: '2.12'
+            scala-version: '2.12.17'
+
+          - spark-compat-version: '3.4'
+            spark-patch-version: '0'
             scala-compat-version: '2.13'
             scala-version: '2.13.8'
 
@@ -89,7 +110,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        spark-compat-version: ['3.3']
+        spark-compat-version: ['3.3', '3.4']
         python-version: ['3.8', '3.9', '3.10']
 
         include:
@@ -97,6 +118,11 @@ jobs:
             spark-version: '3.3.2'
             scala-compat-version: '2.12'
             scala-version: '2.12.15'
+
+          - spark-compat-version: '3.4'
+            spark-version: '3.4.0'
+            scala-compat-version: '2.12'
+            scala-version: '2.12.17'
 
     steps:
       - name: Checkout
