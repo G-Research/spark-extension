@@ -103,9 +103,9 @@
       <url>https://repository.apache.org/content/repositories/orgapachespark-1433/</url>
     </repository>
     <repository>
-      <id>apache-spark-3.4.0-rc1</id>
-      <name>Apache Spark 3.4.0 RC1</name>
-      <url>https://repository.apache.org/content/repositories/orgapachespark-1435/</url>
+      <id>apache-spark-3.4.0-rc3</id>
+      <name>Apache Spark 3.4.0 RC3</name>
+      <url>https://repository.apache.org/content/repositories/orgapachespark-1437/</url>
     </repository>
   </repositories>
 
