@@ -14,6 +14,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+from pathlib import Path
 from setuptools import setup
 
 jar_version = '2.5.0-3.3-SNAPSHOT'
@@ -22,11 +23,14 @@ scala_compat_version = '.'.join(scala_version.split('.')[:2])
 spark_compat_version = jar_version.split('-')[1]
 version = jar_version.split('-')[0] + ('.dev0' if jar_version.endswith('-SNAPSHOT') else '')
 
+# read the contents of the README.md file
+long_description = (Path(__file__).parent / "PYTHON.md").read_text()
+
 setup(
     name="pyspark-extension-" + spark_compat_version,
     version=version,
     description="PySpark Extension",
-    long_description="A library that provides useful extensions to Apache Spark.",
+    long_description=long_description,
     long_description_content_type="text/markdown",
     author="Enrico Minack",
     author_email="github@enrico.minack.dev",
@@ -44,6 +48,7 @@ setup(
         "": "python",
     },
     package_data={
+        "": ['PYTHON.md'],
         "pyspark.jars": [f"*_{scala_compat_version}-{jar_version}.jar"],
     },
     license="http://www.apache.org/licenses/LICENSE-2.0.html",
