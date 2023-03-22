@@ -14,16 +14,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import importlib.util
-import glob
-import os
-import pathlib
-import sys
-import ctypes
 from setuptools import setup
-from setuptools.command.install import install
-from shutil import copyfile, copytree, rmtree, copy
-
 
 jar_version = '2.5.0-3.3-SNAPSHOT'
 scala_version = '2.13.8'
@@ -40,6 +31,7 @@ setup(
     author="Enrico Minack",
     author_email="github@enrico.minack.dev",
     url="https://github.com/G-Research/spark-extension",
+    install_requires=[f"pyspark>={spark_compat_version},<4", "py4j"],
     packages=[
         "gresearch",
         "gresearch.spark",
@@ -48,6 +40,9 @@ setup(
         "pyspark.jars",
     ],
     include_package_data=False,
+    package_dir={
+        "": "python",
+    },
     package_data={
         "pyspark.jars": [f"*_{scala_compat_version}-{jar_version}.jar"],
     },
