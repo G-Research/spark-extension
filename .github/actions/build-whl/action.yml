@@ -61,11 +61,11 @@ runs:
 
   - name: Test whl
     run: |
-      python -m venv venv || (sudo apt install python3-virtualenv && python -m venv venv)
+      python -m venv venv
       source venv/bin/activate
-      python test-release.sh || true
+      python test-release.py || true
       pip install dist/*.whl
-      python test-release.sh
+      python test-release.py
     shell: bash
 
   - name: Upload whl
