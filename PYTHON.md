@@ -13,8 +13,6 @@ For details, see the [README.md](https://github.com/G-Research/spark-extension#s
 
 ## Using Spark Extension
 
-### Python
-
 #### PySpark API
 
 Start a PySpark session with the Spark Extension dependency (version ≥1.1.0) as follows:

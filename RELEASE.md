@@ -22,7 +22,7 @@ Follow this procedure to release a new version:
 - Add a new entry to `CHANGELOG.md` listing all notable changes of this release.
   Use the heading `## [VERSION] - YYYY-MM-dd`, e.g. `## [1.0.0] - 2020-03-12`.
 - Remove the `-SNAPSHOT` suffix from the version, e.g. `./set-version 1.1.0`.
-- Update the versions in the `README.md` file to the version of your `pom.xml` to reflect the latest version,
+- Update the versions in the `README.md` and `PYTHON.md` file to the version of your `pom.xml` to reflect the latest version,
   e.g. replace all `1.0.0-3.1` with `1.1.0-3.1`.
 - Commit the change to your local git repository, use a commit message like `Releasing 1.1.0`. Do not push to github yet.
 - Tag that commit with a version tag like `v1.1.0` and message like `Release v1.1.0`. Do not push to github yet.
@@ -80,7 +80,7 @@ but the version increment occurs on [patch level](https://semver.org/):
 - Add a new entry to `CHANGELOG.md` listing all notable changes of this release.
   Use the heading `## [VERSION] - YYYY-MM-dd`, e.g. `## [1.0.0] - 2020-03-12`.
 - Remove the `-SNAPSHOT` suffix from the version, e.g. `./set-version 1.1.1`.
-- Update the versions in the `README.md` file to the version of your `pom.xml` to reflect the latest version,
+- Update the versions in the `README.md` and `PYTHON.md` file to the version of your `pom.xml` to reflect the latest version,
   e.g. replace all `1.0.0-3.1` with `1.1.0-3.1`.
 - Commit the change to your local git repository, use a commit message like `Releasing 1.1.1`. Do not push to github yet.
 - Tag that commit with a version tag like `v1.1.0` and message like `Release v1.1.1`. Do not push to github yet.
