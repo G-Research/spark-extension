@@ -50,6 +50,7 @@ runs:
   - name: Install Python dependencies
     run: |
       python -m pip install --upgrade pip build twine
+      pip freeze | sort
     shell: bash
 
   - name: Build whl
