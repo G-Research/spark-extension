@@ -61,8 +61,7 @@ runs:
 
   - name: Test whl
     run: |
-      sudo apt install python3-virtualenv
-      python -m virtualenv venv
+      python -m venv venv || (sudo apt install python3-virtualenv && python -m venv venv)
       source venv/bin/activate
       python test-release.sh || true
       pip install dist/*.whl
