@@ -49,7 +49,7 @@ runs:
 
   - name: Install Python dependencies
     run: |
-      python -m pip install --upgrade pip build
+      python -m pip install --upgrade pip build twine
     shell: bash
 
   - name: Build whl
@@ -61,9 +61,7 @@ runs:
 
   - name: Test whl
     run: |
-      python -m venv venv
-      source venv/bin/activate
-      python test-release.py || true
+      twine check dist/*
       pip install dist/*.whl
       python test-release.py
     shell: bash
