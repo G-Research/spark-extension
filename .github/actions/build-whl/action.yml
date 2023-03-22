@@ -61,6 +61,7 @@ runs:
 
   - name: Test whl
     run: |
+      sudo apt install python3-virtualenv
       python -m virtualenv venv
       source venv/bin/activate
       python test-release.sh || true
