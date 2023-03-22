@@ -15,6 +15,9 @@ inputs:
   scala-compat-version:
     description: Scala compatibility version, e.g. 2.12
     required: true
+  python-version:
+    description: Python version, e.g. 3.8
+    required: true
 
 runs:
   using: 'composite'
