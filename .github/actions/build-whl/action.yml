@@ -61,8 +61,8 @@ runs:
 
   - name: Test whl
     run: |
-      twine check dist/*
-      pip install dist/*.whl
+      twine check python/dist/*
+      pip install python/dist/*.whl
       python test-release.py
     shell: bash
 
@@ -71,7 +71,7 @@ runs:
     with:
       name: Whl (Spark ${{ inputs.spark-version }} Scala ${{ inputs.scala-version }})
       path: |
-        dist/*.whl
+        python/dist/*.whl
 
 branding:
   icon: 'check-circle'
