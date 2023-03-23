@@ -20,10 +20,10 @@ The following steps release a snapshot and test it. Test all versions listed [fu
 Follow this procedure to release a new version:
 
 - Add a new entry to `CHANGELOG.md` listing all notable changes of this release.
-  Use the heading `## [VERSION] - YYYY-MM-dd`, e.g. `## [1.0.0] - 2020-03-12`.
+  Use the heading `## [VERSION] - YYYY-MM-dd`, e.g. `## [1.1.0] - 2020-03-12`.
 - Remove the `-SNAPSHOT` suffix from the version, e.g. `./set-version 1.1.0`.
-- Update the versions in the `README.md` and `PYTHON.md` file to the version of your `pom.xml` to reflect the latest version,
-  e.g. replace all `1.0.0-3.1` with `1.1.0-3.1`.
+- Update the versions in the `README.md` and `python/README.md` file to the version of your `pom.xml` to reflect the latest version,
+  e.g. replace all `1.0.0-3.1` with `1.1.0-3.1` and `1.0.0.3.1` with `1.1.0.3.1`, respectively.
 - Commit the change to your local git repository, use a commit message like `Releasing 1.1.0`. Do not push to github yet.
 - Tag that commit with a version tag like `v1.1.0` and message like `Release v1.1.0`. Do not push to github yet.
 - Release the version with `mvn clean deploy`. This will be put into a staging repository and not automatically released (due to `<autoReleaseAfterClose>false</autoReleaseAfterClose>` in your [`pom.xml`](pom.xml) file).
@@ -78,12 +78,12 @@ This is very similar to [releasing from master](#releasing-from-master),
 but the version increment occurs on [patch level](https://semver.org/):
 
 - Add a new entry to `CHANGELOG.md` listing all notable changes of this release.
-  Use the heading `## [VERSION] - YYYY-MM-dd`, e.g. `## [1.0.0] - 2020-03-12`.
+  Use the heading `## [VERSION] - YYYY-MM-dd`, e.g. `## [1.1.1] - 2020-03-12`.
 - Remove the `-SNAPSHOT` suffix from the version, e.g. `./set-version 1.1.1`.
-- Update the versions in the `README.md` and `PYTHON.md` file to the version of your `pom.xml` to reflect the latest version,
-  e.g. replace all `1.0.0-3.1` with `1.1.0-3.1`.
+- Update the versions in the `README.md` and `python/README.md` file to the version of your `pom.xml` to reflect the latest version,
+  e.g. replace all `1.1.0-3.1` with `1.1.1-3.1` and `1.1.0.3.1` with `1.1.1.3.1`, respectively.
 - Commit the change to your local git repository, use a commit message like `Releasing 1.1.1`. Do not push to github yet.
-- Tag that commit with a version tag like `v1.1.0` and message like `Release v1.1.1`. Do not push to github yet.
+- Tag that commit with a version tag like `v1.1.1` and message like `Release v1.1.1`. Do not push to github yet.
 - Release the version with `mvn clean deploy`. This will be put into a staging repository and not automatically released (due to `<autoReleaseAfterClose>false</autoReleaseAfterClose>` in your [`pom.xml`](pom.xml) file).
 - Inspect and test the staged version. Use `spark-examples` for that. If you are happy with everything:
   - Push the commit and tag to origin.
