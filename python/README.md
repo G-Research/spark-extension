@@ -7,7 +7,7 @@ two datasets, i.e. which rows to _add_, _delete_ or _change_ to get from one dat
 
 **Global Row Number:** A `withRowNumbers` transformation that provides the global row number w.r.t.
 the current order of the Dataset, or any given order. In contrast to the existing SQL function `row_number`, which
-works requires a window spec, this transformation provides the row number across the entire Dataset without scaling problems.
+requires a window spec, this transformation provides the row number across the entire Dataset without scaling problems.
 
 For details, see the [README.md](https://github.com/G-Research/spark-extension#spark-extension) at the project homepage.
 
