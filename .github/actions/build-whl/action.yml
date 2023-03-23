@@ -12,6 +12,9 @@ inputs:
   spark-compat-version:
     description: Spark compatibility version, e.g. 3.4
     required: true
+  python-version:
+    description: Python version, e.g. 3.8
+    required: true
 
 runs:
   using: 'composite'
