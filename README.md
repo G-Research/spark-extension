@@ -135,6 +135,20 @@ on a filesystem where it is accessible by the notebook, and reference that jar f
 
 Check the documentation of your favorite notebook to learn how to add jars to your Spark environment.
 
+### PyPi package (local Spark cluster only)
+
+You may want to install the `pyspark-extension` python package from PyPi into your development environment.
+This provides you code completion, typing and test capabilities during your development phase.
+
+Running your Python application on a Spark cluster will still require one of the above ways
+to add the Scala package to the Spark environment.
+
+```shell script
+pip install pyspark-extension==2.4.0.3.3
+```
+
+Note: Pick the right Spark version (here 3.3) depending on your PySpark version.
+
 ## Build
 
 You can build this project against different versions of Spark and Scala.
@@ -171,3 +185,17 @@ pip install pytest
 ### Run Python tests
 
 Run the Python tests via `env PYTHONPATH=python:python/test python -m pytest python/test`.
+
+Note: you first have to [build the Scala sources](#build-the-scala-project).
+
+### Build Python package
+
+Run the following sequence of commands in the project root directory:
+
+```shell script
+mkdir -p python/pyspark/jars/
+cp -v target/spark-extension_*-*.jar python/pyspark/jars/
+pip install build
+```
+
+Then execute `python -m build python/` to create a whl from the sources. It can be found in `python/dist/`.

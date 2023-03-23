@@ -1,0 +1,78 @@
+name: 'Build Whl'
+author: 'EnricoMi'
+description: 'A GitHub Action that builds pyspark-extension package'
+
+inputs:
+  spark-version:
+    description: Spark version, e.g. 3.4.0 or 3.4.0-SNAPSHOT
+    required: true
+  scala-version:
+    description: Scala version, e.g. 2.12.15
+    required: true
+  spark-compat-version:
+    description: Spark compatibility version, e.g. 3.4
+    required: true
+  python-version:
+    description: Python version, e.g. 3.8
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+  - name: Set versions in pom.xml
+    run: |
+      ./set-version.sh ${{ inputs.spark-version }} ${{ inputs.scala-version }}
+      git diff
+    shell: bash
+
+  - name: Fetch Binaries Artifact
+    uses: actions/download-artifact@v3
+    with:
+      name: Binaries-${{ inputs.spark-compat-version }}-${{ inputs.scala-version }}
+      path: .
+
+  - name: Cache Maven packages
+    uses: actions/cache@v3
+    with:
+      path: ~/.m2/repository
+      key: ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-${{ hashFiles('pom.xml') }}
+      restore-keys: ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-
+
+  - name: Cache Pip packages
+    uses: actions/cache@v3
+    with:
+      path: ~/.cache/pip
+      key: ${{ runner.os }}-pip-whl-${{ inputs.python-version }}-${{ inputs.spark-version }}
+
+  - name: Setup Python
+    uses: actions/setup-python@v4
+    with:
+      python-version: ${{ inputs.python-version }}
+
+  - name: Install Python dependencies
+    run: |
+      python -m pip install --upgrade pip build twine
+    shell: bash
+
+  - name: Build whl
+    run: |
+      ./build-whl.sh
+    shell: bash
+
+  - name: Test whl
+    run: |
+      twine check python/dist/*
+      pip install python/dist/*.whl
+      python test-release.py
+    shell: bash
+
+  - name: Upload whl
+    uses: actions/upload-artifact@v3
+    with:
+      name: Whl (Spark ${{ inputs.spark-version }} Scala ${{ inputs.scala-version }})
+      path: |
+        python/dist/*.whl
+
+branding:
+  icon: 'check-circle'
+  color: 'green'
