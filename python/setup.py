@@ -29,7 +29,7 @@ long_description = (Path(__file__).parent / "README.md").read_text()
 setup(
     name="pyspark-extension",
     version=version,
-    description="PySpark Extension",
+    description="A library that provides useful extensions to Apache Spark.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     author="Enrico Minack",
