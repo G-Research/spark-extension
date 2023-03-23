@@ -17,7 +17,7 @@ import re
 from py4j.java_gateway import JavaObject
 from pyspark.sql import Row
 from pyspark.sql.functions import col, when
-from pyspark.sql.types import IntegerType, DateType
+from pyspark.sql.types import IntegerType, StringType, DateType
 
 from gresearch.spark.diff import Differ, DiffOptions, DiffMode, DiffComparators
 from spark_common import SparkTest
@@ -276,7 +276,8 @@ class DiffTest(SparkTest):
     def test_diff_fluent_setters(self):
         cmp1 = DiffComparators.default()
         cmp2 = DiffComparators.epsilon(0.01)
-        cmp3 = DiffComparators.duration('PT24H')
+        cmp3 = DiffComparators.string()
+        cmp4 = DiffComparators.duration('PT24H')
 
         default = DiffOptions()
         options = default \
@@ -292,7 +293,8 @@ class DiffTest(SparkTest):
             .with_sparse_mode(True) \
             .with_default_comparator(cmp1) \
             .with_data_type_comparator(cmp2, IntegerType()) \
-            .with_column_name_comparator(cmp3, 'value')
+            .with_data_type_comparator(cmp3, StringType()) \
+            .with_column_name_comparator(cmp4, 'value')
 
         self.assertEqual(options.diff_column, 'd')
         self.assertEqual(options.left_column_prefix, 'l')
@@ -305,8 +307,8 @@ class DiffTest(SparkTest):
         self.assertEqual(options.diff_mode, DiffMode.SideBySide)
         self.assertEqual(options.sparse_mode, True)
         self.assertEqual(options.default_comparator, cmp1)
-        self.assertEqual(options.data_type_comparators, {IntegerType(): cmp2})
-        self.assertEqual(options.column_name_comparators, {'value': cmp3})
+        self.assertEqual(options.data_type_comparators, {IntegerType(): cmp2, StringType(): cmp3})
+        self.assertEqual(options.column_name_comparators, {'value': cmp4})
 
         self.assertNotEqual(options.diff_column, default.diff_column)
         self.assertNotEqual(options.left_column_prefix, default.left_column_prefix)
@@ -370,6 +372,7 @@ class DiffTest(SparkTest):
         self.assertIsNotNone(DiffComparators.default()._to_java(jvm))
         self.assertIsNotNone(DiffComparators.nullSafeEqual()._to_java(jvm))
         self.assertIsNotNone(DiffComparators.epsilon(0.01)._to_java(jvm))
+        self.assertIsNotNone(DiffComparators.string()._to_java(jvm))
         if jvm.uk.co.gresearch.spark.diff.comparator.DurationDiffComparator.isSupportedBySpark():
             self.assertIsNotNone(DiffComparators.duration('PT24H')._to_java(jvm))
 
