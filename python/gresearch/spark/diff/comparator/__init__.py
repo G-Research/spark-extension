@@ -25,6 +25,10 @@ class DiffComparators:
         return EpsilonDiffComparator(epsilon)
 
     @staticmethod
+    def string(whitespace_agnostic: bool = True) -> 'StringDiffComparator':
+        return StringDiffComparator(whitespace_agnostic)
+
+    @staticmethod
     def duration(duration: str) -> 'DurationDiffComparator':
         return DurationDiffComparator(duration)
 
@@ -59,6 +63,14 @@ class EpsilonDiffComparator(DiffComparator):
 
     def _to_java(self, jvm: JVMView) -> JavaObject:
         return jvm.uk.co.gresearch.spark.diff.comparator.EpsilonDiffComparator(self.epsilon, self.relative, self.inclusive)
+
+
+@dataclass(frozen=True)
+class StringDiffComparator(DiffComparator):
+    whitespace_agnostic: bool
+
+    def _to_java(self, jvm: JVMView) -> JavaObject:
+        return jvm.uk.co.gresearch.spark.diff.DiffComparators.string(self.whitespace_agnostic)
 
 
 @dataclass(frozen=True)
