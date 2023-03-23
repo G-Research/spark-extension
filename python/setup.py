@@ -21,10 +21,10 @@ jar_version = '2.5.0-3.3-SNAPSHOT'
 scala_version = '2.13.8'
 scala_compat_version = '.'.join(scala_version.split('.')[:2])
 spark_compat_version = jar_version.split('-')[1]
-version = jar_version.split('-')[0] + ('.dev0' if jar_version.endswith('-SNAPSHOT') else '')
+version = jar_version.split('-')[0] + ('.dev2' if jar_version.endswith('-SNAPSHOT') else '')
 
 # read the contents of the README.md file
-long_description = (Path(__file__).parent / "PYTHON.md").read_text()
+long_description = (Path(__file__).parent / "README.md").read_text()
 
 setup(
     name="pyspark-extension-" + spark_compat_version,
@@ -44,11 +44,7 @@ setup(
         "pyspark.jars",
     ],
     include_package_data=False,
-    package_dir={
-        "": "python",
-    },
     package_data={
-        "": ['PYTHON.md'],
         "pyspark.jars": [f"*_{scala_compat_version}-{jar_version}.jar"],
     },
     license="http://www.apache.org/licenses/LICENSE-2.0.html",

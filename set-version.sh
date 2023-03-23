@@ -15,7 +15,7 @@ then
 
     sed -i -E \
         -e "s/(jar_version *= *).*/\1'$version'/" \
-        setup.py
+        python/setup.py
 elif [ $# -eq 2 ]
 then
     spark=$1
@@ -42,7 +42,7 @@ then
     sed -i -E \
         -e "s/(jar_version *= *).*/\1'$version'/" \
         -e "s/(scala_version *= *).*/\1'$scala'/" \
-        setup.py
+        python/setup.py
 else
     echo "Provide the Spark-Extension version (e.g. 2.5.0 or 2.5.0-SNAPSHOT), or the Spark and Scala version"
     exit 1

@@ -198,4 +198,4 @@ cp -v target/spark-extension_*-*.jar python/pyspark/jars/
 pip install build
 ```
 
-Then execute `python -m build` to create a whl from the sources. It can be found in `dist/`.
+Then execute `python -m build python/` to create a whl from the sources. It can be found in `dist/`.
