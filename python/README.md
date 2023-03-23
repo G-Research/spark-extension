@@ -15,6 +15,20 @@ For details, see the [README.md](https://github.com/G-Research/spark-extension#s
 
 ### Python
 
+### PyPi package (local Spark cluster only)
+
+You may want to install the `pyspark-extension` python package from PyPi into your development environment.
+This provides you code completion, typing and test capabilities during your development phase.
+
+Running your Python application on a Spark cluster will still require one of the ways below
+to add the Scala package to the Spark environment.
+
+```shell script
+pip install pyspark-extension==2.4.0.3.3
+```
+
+Note: Pick the right Spark version (here 3.3) depending on your PySpark version.
+
 #### PySpark API
 
 Start a PySpark session with the Spark Extension dependency (version ≥1.1.0) as follows:
@@ -61,18 +75,4 @@ Or [download the jar](https://mvnrepository.com/artifact/uk.co.gresearch.spark/s
 on a filesystem where it is accessible by the notebook, and reference that jar file directly.
 
 Check the documentation of your favorite notebook to learn how to add jars to your Spark environment.
-
-### PyPi package (local Spark cluster only)
-
-You may want to install the `pyspark-extension` python package from PyPi into your development environment.
-This provides you code completion, typing and test capabilities during your development phase.
-
-Running your Python application on a Spark cluster will still require one of the above ways
-to add the Scala package to the Spark environment.
-
-```shell script
-pip install pyspark-extension==2.4.0.3.3
-```
-
-Note: Pick the right Spark version (here 3.3) depending on your PySpark version.
 
