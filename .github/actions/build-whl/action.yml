@@ -39,8 +39,7 @@ runs:
     uses: actions/cache@v3
     with:
       path: ~/.cache/pip
-      key: ${{ runner.os }}-pip-whl-${{ inputs.python-version }}-${{ hashFiles(format('python/requirements-{0}_{1}.txt', inputs.spark-compat-version, inputs.scala-compat-version)) }}
-      restore-keys: ${{ runner.os }}-pip-whl-${{ inputs.python-version }}-
+      key: ${{ runner.os }}-pip-whl-${{ inputs.python-version }}-${{ inputs.spark-version }}
 
   - name: Setup Python
     uses: actions/setup-python@v4
