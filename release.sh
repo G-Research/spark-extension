@@ -82,7 +82,7 @@ sed -i -e "s/$latest-/$version-/g" -e "s/$latest\./$version./g" README.md python
 # commit changes to local repo
 echo
 echo "Committing release to local git"
-git add CHANGELOG.md README.md pom.xml
+git add pom.xml python/setup.py CHANGELOG.md README.md python/README.md
 git commit -m "Releasing $version"
 git tag -a "v${version}" -m "Release v${version}"
 
@@ -119,4 +119,5 @@ python3 -m twine upload python/dist/*
 
 echo
 
+git checkout pom.xml python/setup.py
 ./bump-version.sh

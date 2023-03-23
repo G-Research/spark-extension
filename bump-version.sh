@@ -56,14 +56,13 @@ function next_version {
 
 # get release and next version
 version=$(grep --max-count=1 "<version>.*</version>" pom.xml | sed -E -e "s/\s*<[^>]+>//g")
-spark_version="${version/*-/}"
 pkg_version="${version/-*/}"
 branch=$(git rev-parse --abbrev-ref HEAD)
 next_pkg_version="$(next_version "$pkg_version" "$branch")"
 
 # bump the version
 echo "Bump version to $next_pkg_version"
-sed -i "1,10s/$version/$next_pkg_version-$spark_version-SNAPSHOT/" pom.xml
+./set-version $next_pkg_version-SNAPSHOT
 
 # commit changes to local repo
 echo
