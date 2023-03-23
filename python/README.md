@@ -13,8 +13,6 @@ For details, see the [README.md](https://github.com/G-Research/spark-extension#s
 
 ## Using Spark Extension
 
-### Python
-
 ### PyPi package (local Spark cluster only)
 
 You may want to install the `pyspark-extension` python package from PyPi into your development environment.
