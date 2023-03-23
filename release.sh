@@ -58,6 +58,7 @@ fi
 ./set-version.sh 3.1.3 2.12.10 && mvn clean deploy && ./build-whl.sh && ./test-release.sh || exit 1
 ./set-version.sh 3.2.3 2.12.15 && mvn clean deploy && ./build-whl.sh && ./test-release.sh || exit 1
 ./set-version.sh 3.3.2 2.12.16 && mvn clean deploy && ./build-whl.sh && ./test-release.sh || exit 1
+rm -rf python/dist
 
 ./set-version.sh 3.2.3 2.13.5 && mvn clean deploy && ./test-release.sh || exit 1
 ./set-version.sh 3.3.2 2.13.8 && mvn clean deploy && ./test-release.sh || exit 1
