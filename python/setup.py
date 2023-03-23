@@ -21,13 +21,13 @@ jar_version = '2.5.0-3.3-SNAPSHOT'
 scala_version = '2.13.8'
 scala_compat_version = '.'.join(scala_version.split('.')[:2])
 spark_compat_version = jar_version.split('-')[1]
-version = jar_version.split('-')[0] + ('.dev2' if jar_version.endswith('-SNAPSHOT') else '')
+version = jar_version.replace('SNAPSHOT', 'dev0').replace('-', '.')
 
 # read the contents of the README.md file
 long_description = (Path(__file__).parent / "README.md").read_text()
 
 setup(
-    name="pyspark-extension-" + spark_compat_version,
+    name="pyspark-extension",
     version=version,
     description="PySpark Extension",
     long_description=long_description,

@@ -64,14 +64,14 @@ Check the documentation of your favorite notebook to learn how to add jars to yo
 
 ### PyPi package (local Spark cluster only)
 
-You may want to install the `pyspark-extension-3.3` python package from PyPi into your development environment.
+You may want to install the `pyspark-extension` python package from PyPi into your development environment.
 This provides you code completion, typing and test capabilities during your development phase.
 
 Running your Python application on a Spark cluster will still require one of the above ways
 to add the Scala package to the Spark environment.
 
 ```shell script
-pip install pyspark-extension-3.3==2.4.0
+pip install pyspark-extension==2.4.0.3.3
 ```
 
 Note: Pick the right Spark version (here 3.3) depending on your PySpark version.
