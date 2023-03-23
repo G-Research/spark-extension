@@ -24,7 +24,7 @@ Running your Python application on a Spark cluster will still require one of the
 to add the Scala package to the Spark environment.
 
 ```shell script
-pip install pyspark-extension==2.4.0.3.3
+pip install pyspark-extension==2.5.0.3.3
 ```
 
 Note: Pick the right Spark version (here 3.3) depending on your PySpark version.
@@ -38,7 +38,7 @@ from pyspark.sql import SparkSession
 
 spark = SparkSession \
     .builder \
-    .config("spark.jars.packages", "uk.co.gresearch.spark:spark-extension_2.12:2.4.0-3.3") \
+    .config("spark.jars.packages", "uk.co.gresearch.spark:spark-extension_2.12:2.5.0-3.3") \
     .getOrCreate()
 ```
 
@@ -49,7 +49,7 @@ Note: Pick the right Scala version (here 2.12) and Spark version (here 3.3) depe
 Launch the Python Spark REPL with the Spark Extension dependency (version ≥1.1.0) as follows:
 
 ```shell script
-pyspark --packages uk.co.gresearch.spark:spark-extension_2.12:2.4.0-3.3
+pyspark --packages uk.co.gresearch.spark:spark-extension_2.12:2.5.0-3.3
 ```
 
 Note: Pick the right Scala version (here 2.12) and Spark version (here 3.3) depending on your PySpark version.
@@ -59,7 +59,7 @@ Note: Pick the right Scala version (here 2.12) and Spark version (here 3.3) depe
 Run your Python scripts that use PySpark via `spark-submit`:
 
 ```shell script
-spark-submit --packages uk.co.gresearch.spark:spark-extension_2.12:2.4.0-3.3 [script.py]
+spark-submit --packages uk.co.gresearch.spark:spark-extension_2.12:2.5.0-3.3 [script.py]
 ```
 
 Note: Pick the right Scala version (here 2.12) and Spark version (here 3.3) depending on your Spark version.
@@ -69,7 +69,7 @@ Note: Pick the right Scala version (here 2.12) and Spark version (here 3.3) depe
 There are plenty of [Data Science notebooks](https://datasciencenotebook.org/) around. To use this library,
 add **a jar dependency** to your notebook using these **Maven coordinates**:
 
-    uk.co.gresearch.spark:spark-extension_2.12:2.4.0-3.3
+    uk.co.gresearch.spark:spark-extension_2.12:2.5.0-3.3
 
 Or [download the jar](https://mvnrepository.com/artifact/uk.co.gresearch.spark/spark-extension) and place it
 on a filesystem where it is accessible by the notebook, and reference that jar file directly.
