@@ -15,7 +15,7 @@ if [ ! -e "spark-$spark-$scala_compat" ]
 then
     if [ "$scala_compat" == "2.12" ]
     then
-        if [ "$spark_compat" == "3.3" || "$spark_compat" > "3.3"]
+        if [[ "$spark_compat" == "3.3" || "$spark_compat" > "3.3" ]]
         then
             hadoop="hadoop2"
         else
@@ -23,7 +23,7 @@ then
         fi
     elif [ "$scala_compat" == "2.13" ]
     then
-        if [ "$spark_compat" == "3.3" || "$spark_compat" > "3.3"]
+        if [[ "$spark_compat" == "3.3" || "$spark_compat" > "3.3" ]]
         then
             hadoop="hadoop3-scala2.13"
         else
@@ -39,22 +39,16 @@ fi
 echo "Testing Scala"
 spark-$spark-$scala_compat/bin/spark-shell --packages uk.co.gresearch.spark:spark-extension_$scala_compat:$version --repositories https://oss.sonatype.org/content/groups/staging/ < test-release.scala
 
-if [ -e "venv" ]
-then
-    rm -rf venv
-fi
-
-virtualenv -p python3 venv
-source venv/bin/activate
-pip install python/requirements-${spark_compat}_${scala_compat}.txt
-
 echo "Testing Python with Scala package"
 spark-$spark-$scala_compat/bin/spark-submit --packages uk.co.gresearch.spark:spark-extension_$scala_compat:$version test-release.py
 
 if [ "$scala_compat" == "2.12" ]
 then
     echo "Testing Python with whl package"
-    pip install python/dist/pyspark_extension-$version.$spark_compat-py3-none-any.whl
+    if [ -e "venv" ]; then rm -rf venv; fi
+    virtualenv -p python3 venv
+    source venv/bin/activate
+    pip install python/dist/pyspark_extension-${version/-*/}.$spark_compat${version/*-SNAPSHOT/.dev0}-py3-none-any.whl
     python3 test-release.py
 fi
 
