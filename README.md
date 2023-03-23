@@ -13,7 +13,7 @@ for the iterator.
 
 **[Global Row Number](ROW_NUMBER.md):** A `withRowNumbers` transformation that provides the global row number w.r.t.
 the current order of the Dataset, or any given order. In contrast to the existing SQL function `row_number`, which
-works requires a window spec, this transformation provides the row number across the entire Dataset without scaling problems.
+requires a window spec, this transformation provides the row number across the entire Dataset without scaling problems.
 
 **[Partitioned Writing](PARTITIONING.md):** The `writePartitionedBy` action writes your `Dataset` partitioned and
 efficiently laid out with a single operation.
