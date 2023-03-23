@@ -57,10 +57,10 @@ fi
 ./set-version.sh 3.0.3 2.12.10 && mvn clean deploy && ./build-whl.sh && ./test-release.sh || exit 1
 ./set-version.sh 3.1.3 2.12.10 && mvn clean deploy && ./build-whl.sh && ./test-release.sh || exit 1
 ./set-version.sh 3.2.3 2.12.15 && mvn clean deploy && ./build-whl.sh && ./test-release.sh || exit 1
-./set-version.sh 3.3.1 2.12.16 && mvn clean deploy && ./build-whl.sh && ./test-release.sh || exit 1
+./set-version.sh 3.3.2 2.12.16 && mvn clean deploy && ./build-whl.sh && ./test-release.sh || exit 1
 
 ./set-version.sh 3.2.3 2.13.5 && mvn clean deploy && ./test-release.sh || exit 1
-./set-version.sh 3.3.1 2.13.8 && mvn clean deploy && ./test-release.sh || exit 1
+./set-version.sh 3.3.2 2.13.8 && mvn clean deploy && ./test-release.sh || exit 1
 
 # all SNAPSHOT versions build, test and complete the example, releasing
 
@@ -101,10 +101,10 @@ mkdir -p python/pyspark/jars/
 ./set-version.sh 3.0.3 2.12.10 && mvn clean deploy -Dsign && mvn nexus-staging:release && ./build-whl.sh
 ./set-version.sh 3.1.3 2.12.10 && mvn clean deploy -Dsign && mvn nexus-staging:release && ./build-whl.sh
 ./set-version.sh 3.2.3 2.12.15 && mvn clean deploy -Dsign && mvn nexus-staging:release && ./build-whl.sh
-./set-version.sh 3.3.1 2.12.16 && mvn clean deploy -Dsign && mvn nexus-staging:release && ./build-whl.sh
+./set-version.sh 3.3.2 2.12.16 && mvn clean deploy -Dsign && mvn nexus-staging:release && ./build-whl.sh
 
 ./set-version.sh 3.2.3 2.13.5 && mvn clean deploy -Dsign && mvn nexus-staging:release
-./set-version.sh 3.3.1 2.13.8 && mvn clean deploy -Dsign && mvn nexus-staging:release
+./set-version.sh 3.3.2 2.13.8 && mvn clean deploy -Dsign && mvn nexus-staging:release
 
 # upload to test PyPi
 twine check python/dist/*
