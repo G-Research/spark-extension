@@ -18,7 +18,8 @@ from py4j.java_gateway import JVMView, JavaObject
 from pyspark.sql import DataFrame
 from pyspark.sql.column import Column, _to_java_column
 from pyspark.sql.context import SQLContext
-from pyspark.sql.session import SparkSession, SparkContext
+from pyspark.context import SparkContext
+from pyspark.sql.session import SparkSession
 from pyspark.storagelevel import StorageLevel
 
 
