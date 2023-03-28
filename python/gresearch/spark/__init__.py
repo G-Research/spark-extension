@@ -16,9 +16,9 @@ from typing import Any, Union, List, Optional, Mapping
 
 from py4j.java_gateway import JVMView, JavaObject
 from pyspark.sql import DataFrame
-from pyspark.sql.column import Column
+from pyspark.sql.column import Column, _to_java_column
 from pyspark.sql.context import SQLContext
-from pyspark.sql.session import SparkSession
+from pyspark.sql.session import SparkSession, SparkContext
 from pyspark.storagelevel import StorageLevel
 
 
@@ -29,6 +29,87 @@ def _to_seq(jvm: JVMView, list: List[Any]) -> JavaObject:
 
 def _to_map(jvm: JVMView, map: Mapping[Any, Any]) -> JavaObject:
     return jvm.scala.collection.JavaConverters.mapAsScalaMap(map)
+
+
+def dotnet_ticks_to_timestamp(tick_column: Union[str, Column]) -> Column:
+    """
+    Convert a .Net `DateTime.Ticks` timestamp to a Spark timestamp. The input column must be
+    convertible to a number (e.g. string, int, long). The Spark timestamp type does not support
+    nanoseconds, so the the last digit of the timestamp (1/10 of a microsecond) is lost.
+    {{{
+      df.select(col("ticks"), dotNetTicksToTimestamp("ticks").as("timestamp")).show(false)
+    }}}
+    +------------------+--------------------------+
+    |ticks             |timestamp                 |
+    +------------------+--------------------------+
+    |638155413748959318|2023-03-27 21:16:14.895931|
+    +------------------+--------------------------+
+
+    Note: the example timestamp lacks the 8/10 of a microsecond. Use `dotNetTicksToUnixEpoch` to
+    preserve the full precision of the tick timestamp.
+
+    https://learn.microsoft.com/de-de/dotnet/api/system.datetime.ticks
+
+    :param tick_column: column with a tick value (str or Column)
+    :return: timestamp column
+    """
+    if not isinstance(tick_column, (str, Column)):
+        raise ValueError(f"Given column must be a column name (str) or column instance (Column): {type(tick_column)}")
+
+    sc = SparkContext._active_spark_context
+    if sc is None or sc._jvm is None:
+        raise RuntimeError("This method must be called inside an active Spark session")
+
+    o = sc._jvm.uk.co.gresearch
+    o = o.spark
+    o = o.__getattr__("package$")
+    o = o.__getattr__("MODULE$")
+    f = o.dotNetTicksToTimestamp
+    func = sc._jvm.uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$").dotNetTicksToTimestamp
+    return Column(func(_to_java_column(tick_column)))
+
+
+def dotnet_ticks_to_unix_epoch(tick_column: Union[str, Column]) -> Column:
+    """
+    Convert a .Net `DateTime.Ticks` timestamp to a Unix epoch decimal. The input column must be
+    convertible to a number (e.g. string, int, long). The full precision of the tick timestamp
+    is preserved (1/10 of a microsecond).
+
+    Example:
+    {{{
+      df.select(col("ticks"), dotNetTicksToUnixEpoch("ticks").as("timestamp")).show(false)
+    }}}
+
+    +------------------+--------------------+
+    |ticks             |timestamp           |
+    +------------------+--------------------+
+    |638155413748959318|1679944574.895931800|
+    +------------------+--------------------+
+
+    https://learn.microsoft.com/de-de/dotnet/api/system.datetime.ticks
+
+    :param tick_column: column with a tick value (str or Column)
+    :return: Unix epoch column
+    """
+    if not isinstance(tick_column, (str, Column)):
+        raise ValueError(f"Given column must be a column name (str) or column instance (Column): {type(tick_column)}")
+
+    sc = SparkContext._active_spark_context
+    if sc is None or sc._jvm is None:
+        raise RuntimeError("This method must be called inside an active Spark session")
+
+    func = sc._jvm.uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$").dotNetTicksToUnixEpoch
+    return Column(func(_to_java_column(tick_column)))
+
+
+def package_object_func():
+    sc = SparkContext._active_spark_context
+    if sc is None or sc._jvm is None:
+        raise RuntimeError("This method must be called inside an active Spark session")
+
+    clazz = sc._jvm.java.lang.Class.forName("uk.co.gresearch.spark.package$")
+    ff = clazz.getDeclaredField("MODULE$")
+    return ff.dotNetTicksToUnixEpoch
 
 
 def histogram(self: DataFrame,

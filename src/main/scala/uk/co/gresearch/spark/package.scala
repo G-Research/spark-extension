@@ -22,11 +22,9 @@ import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.catalyst.expressions.NamedExpression
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.internal.SQLConf
+import org.apache.spark.sql.types.{DecimalType, TimestampType}
 import org.apache.spark.storage.StorageLevel
 import uk.co.gresearch.spark.group.SortedGroupByDataset
-
-import java.io.IOException
-import scala.util.Properties
 
 package object spark extends Logging with SparkVersion {
 
@@ -79,6 +77,105 @@ package object spark extends Logging with SparkVersion {
   @scala.annotation.varargs
   def backticks(string: String, strings: String*): String =
     Backticks.column_name(string, strings: _*)
+
+  /**
+   * Convert a .Net `DateTime.Ticks` timestamp to a Spark timestamp. The input column must be
+   * convertible to a number (e.g. string, int, long). The Spark timestamp type does not support
+   * nanoseconds, so the the last digit of the timestamp (1/10 of a microsecond) is lost.
+   *
+   * Example:
+   * {{{
+   *   df.select($"ticks", dotNetTicksToTimestamp($"ticks").as("timestamp")).show(false)
+   * }}}
+   *
+   * +------------------+--------------------------+
+   * |ticks             |timestamp                 |
+   * +------------------+--------------------------+
+   * |638155413748959318|2023-03-27 21:16:14.895931|
+   * +------------------+--------------------------+
+   *
+   * Note: the example timestamp lacks the 8/10 of a microsecond. Use `dotNetTicksToUnixEpoch` to
+   * preserve the full precision of the tick timestamp.
+   *
+   * https://learn.microsoft.com/de-de/dotnet/api/system.datetime.ticks
+   *
+   * @param tickColumn column with a tick value
+   * @return result timestamp column
+   */
+  def dotNetTicksToTimestamp(tickColumn: Column): Column =
+    dotNetTicksToUnixEpoch(tickColumn).cast(TimestampType)
+
+  /**
+   * Convert a .Net `DateTime.Ticks` timestamp to a Spark timestamp. The input column must be
+   * convertible to a number (e.g. string, int, long). The Spark timestamp type does not support
+   * nanoseconds, so the the last digit of the timestamp (1/10 of a microsecond) is lost.
+   *
+   * {{{
+   *   df.select($"ticks", dotNetTicksToTimestamp("ticks").as("timestamp")).show(false)
+   * }}}
+   *
+   * +------------------+--------------------------+
+   * |ticks             |timestamp                 |
+   * +------------------+--------------------------+
+   * |638155413748959318|2023-03-27 21:16:14.895931|
+   * +------------------+--------------------------+
+   *
+   * Note: the example timestamp lacks the 8/10 of a microsecond. Use `dotNetTicksToUnixEpoch` to
+   * preserve the full precision of the tick timestamp.
+   *
+   * https://learn.microsoft.com/de-de/dotnet/api/system.datetime.ticks
+   *
+   * @param tickColumnName name of a column with a tick value
+   * @return result timestamp column
+   */
+  def dotNetTicksToTimestamp(tickColumnName: String): Column = dotNetTicksToTimestamp(col(tickColumnName))
+
+  /**
+   * Convert a .Net `DateTime.Ticks` timestamp to a Unix epoch decimal. The input column must be
+   * convertible to a number (e.g. string, int, long). The full precision of the tick timestamp
+   * is preserved (1/10 of a microsecond).
+   *
+   * Example:
+   * {{{
+   *   df.select($"ticks", dotNetTicksToUnixEpoch($"ticks").as("timestamp")).show(false)
+   * }}}
+   *
+   * +------------------+--------------------+
+   * |ticks             |timestamp           |
+   * +------------------+--------------------+
+   * |638155413748959318|1679944574.895931800|
+   * +------------------+--------------------+
+   *
+   * https://learn.microsoft.com/de-de/dotnet/api/system.datetime.ticks
+   *
+   * @param tickColumn column with a tick value
+   * @return result unix timestamp column
+   */
+  def dotNetTicksToUnixEpoch(tickColumn: Column): Column =
+    tickColumn.cast(DecimalType(19, 0)) / 10000000 - 62135596800L
+
+  /**
+   * Convert a .Net `DateTime.Ticks` timestamp to a Unix epoch decimal. The input column must be
+   * convertible to a number (e.g. string, int, long). The full precision of the tick timestamp
+   * is preserved (1/10 of a microsecond).
+   *
+   * Example:
+   * {{{
+   *   df.select($"ticks", dotNetTicksToUnixEpoch("ticks").as("timestamp")).show(false)
+   * }}}
+   *
+   * +------------------+--------------------+
+   * |ticks             |timestamp           |
+   * +------------------+--------------------+
+   * |638155413748959318|1679944574.895931800|
+   * +------------------+--------------------+
+   *
+   * https://learn.microsoft.com/de-de/dotnet/api/system.datetime.ticks
+   *
+   * @param tickColumnName name of column with a tick value
+   * @return result unix timestamp column
+   */
+  def dotNetTicksToUnixEpoch(tickColumnName: String): Column = dotNetTicksToUnixEpoch(col(tickColumnName))
 
   /**
    * Implicit class to extend a Spark Dataset.

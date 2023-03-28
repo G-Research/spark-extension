@@ -25,6 +25,9 @@ import org.scalatest.funsuite.AnyFunSuite
 import uk.co.gresearch.ExtendedAny
 import uk.co.gresearch.spark.SparkSuite.Value
 
+import java.sql.Timestamp
+import java.time.Instant
+
 class SparkSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
 
   import spark.implicits._
@@ -413,6 +416,44 @@ class SparkSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
     assert(incorrectRowNumbers === 0)
   }
 
+  test(".Net ticks to Spark timestamp / unix epoch") {
+    val df = Seq(
+      (1, 599266080000000000L),
+      (2, 621355968000000000L),
+      (3, 638155413748959308L),
+      (4, 638155413748959309L),
+      (5, 638155413748959310L),
+      (6, 3155378975999999999L)
+    ).toDF("id", "ts")
+
+    val actual = df.select(
+      $"id",
+      dotNetTicksToTimestamp($"ts"),
+      dotNetTicksToTimestamp("ts"),
+      dotNetTicksToUnixEpoch($"ts"),
+      dotNetTicksToUnixEpoch("ts")
+    ).orderBy($"id").collect()
+
+    assert(actual.map(_.getTimestamp(1)) === Seq(
+      Timestamp.from(Instant.parse("1900-01-01T00:00:00Z")),
+      Timestamp.from(Instant.parse("1970-01-01T00:00:00Z")),
+      Timestamp.from(Instant.parse("2023-03-27T19:16:14.89593Z")),
+      Timestamp.from(Instant.parse("2023-03-27T19:16:14.89593Z")),
+      Timestamp.from(Instant.parse("2023-03-27T19:16:14.895931Z")),
+      Timestamp.from(Instant.parse("9999-12-31T23:59:59.999999Z")),
+    ))
+    assert(actual.map(_.getTimestamp(2)) === actual.map(_.getTimestamp(1)))
+
+    assert(actual.map(_.getDecimal(3)).map(BigDecimal(_)) === Array(
+      BigDecimal(-2208988800000000000L, 9),
+      BigDecimal(0, 9),
+      BigDecimal(1679944574895930800L, 9),
+      BigDecimal(1679944574895930900L, 9),
+      BigDecimal(1679944574895931000L, 9),
+      BigDecimal(2534023007999999999L, 7).setScale(9),
+    ))
+    assert(actual.map(_.getDecimal(4)) === actual.map(_.getDecimal(3)))
+  }
 }
 
 object SparkSuite {

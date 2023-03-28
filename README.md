@@ -50,6 +50,9 @@ i.doThis()
 **Backticks:** `backticks(string: String, strings: String*): String)`: Encloses the given column name with backticks (`` ` ``) when needed.
 This is a handy way to ensure column names with special characters like dots (`.`) work with `col()` or `select()`.
 
+**.Net DateTime.Ticks:** Convert .Net (C#, F#, Visual Basic) `DateTime.Ticks` into Spark timestamps with `dotNetTicksToTimestamp(Column): Column`,
+and Unix epoch seconds with `dotNetTicksToUnixEpoch(Column): Column`.
+
 ## Using Spark Extension
 
 The `spark-extension` package is available for all Spark 3.0, 3.1, 3.2 and 3.3 versions. The package version
