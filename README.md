@@ -123,19 +123,7 @@ spark-submit --packages uk.co.gresearch.spark:spark-extension_2.12:2.5.0-3.3 [sc
 
 Note: Pick the right Scala version (here 2.12) and Spark version (here 3.3) depending on your Spark version.
 
-### Your favorite Data Science notebook
-
-There are plenty of [Data Science notebooks](https://datasciencenotebook.org/) around. To use this library,
-add **a jar dependency** to your notebook using these **Maven coordinates**:
-
-    uk.co.gresearch.spark:spark-extension_2.12:2.5.0-3.3
-
-Or [download the jar](https://mvnrepository.com/artifact/uk.co.gresearch.spark/spark-extension) and place it
-on a filesystem where it is accessible by the notebook, and reference that jar file directly.
-
-Check the documentation of your favorite notebook to learn how to add jars to your Spark environment.
-
-### PyPi package (local Spark cluster only)
+#### PyPi package (local Spark cluster only)
 
 You may want to install the `pyspark-extension` python package from PyPi into your development environment.
 This provides you code completion, typing and test capabilities during your development phase.
@@ -148,6 +136,18 @@ pip install pyspark-extension==2.5.0.3.3
 ```
 
 Note: Pick the right Spark version (here 3.3) depending on your PySpark version.
+
+### Your favorite Data Science notebook
+
+There are plenty of [Data Science notebooks](https://datasciencenotebook.org/) around. To use this library,
+add **a jar dependency** to your notebook using these **Maven coordinates**:
+
+    uk.co.gresearch.spark:spark-extension_2.12:2.5.0-3.3
+
+Or [download the jar](https://mvnrepository.com/artifact/uk.co.gresearch.spark/spark-extension) and place it
+on a filesystem where it is accessible by the notebook, and reference that jar file directly.
+
+Check the documentation of your favorite notebook to learn how to add jars to your Spark environment.
 
 ## Build
 

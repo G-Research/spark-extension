@@ -13,7 +13,7 @@ For details, see the [README.md](https://github.com/G-Research/spark-extension#s
 
 ## Using Spark Extension
 
-### PyPi package (local Spark cluster only)
+#### PyPi package (local Spark cluster only)
 
 You may want to install the `pyspark-extension` python package from PyPi into your development environment.
 This provides you code completion, typing and test capabilities during your development phase.
