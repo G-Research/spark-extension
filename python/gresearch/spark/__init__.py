@@ -103,16 +103,6 @@ def dotnet_ticks_to_unix_epoch(tick_column: Union[str, Column]) -> Column:
     return Column(func(_to_java_column(tick_column)))
 
 
-def package_object_func():
-    sc = SparkContext._active_spark_context
-    if sc is None or sc._jvm is None:
-        raise RuntimeError("This method must be called inside an active Spark session")
-
-    clazz = sc._jvm.java.lang.Class.forName("uk.co.gresearch.spark.package$")
-    ff = clazz.getDeclaredField("MODULE$")
-    return ff.dotNetTicksToUnixEpoch
-
-
 def histogram(self: DataFrame,
               thresholds: List[Union[int, float]],
               value_column: str,
