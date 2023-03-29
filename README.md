@@ -51,8 +51,13 @@ i.doThis()
 This is a handy way to ensure column names with special characters like dots (`.`) work with `col()` or `select()`.
 
 **.Net DateTime.Ticks:** Convert .Net (C#, F#, Visual Basic) `DateTime.Ticks` into Spark timestamps with `dotNetTicksToTimestamp(Column): Column`,
-and Unix epoch seconds with `dotNetTicksToUnixEpoch(Column): Column`. These methods are also available in Python:
-`dotnet_ticks_to_timestamp(column_or_name)` and `dotnet_ticks_to_unix_epoch(column_or_name)`.
+into Unix epoch seconds with `dotNetTicksToUnixEpoch(Column): Column`, and
+into Unix epoch nanoseconds with `dotNetTicksToUnixEpochNanos(Column): Column`.
+
+The reverse is provided by `timestampToDotNetTicks(Column): Column`, `unixEpochToDotNetTicks(Column): Column`, and `unixEpochNanosToDotNetTicks(Column): Column`.
+
+These methods are also available in Python: `dotnet_ticks_to_timestamp(column_or_name)`, `dotnet_ticks_to_unix_epoch(column_or_name)`, `dotnet_ticks_to_unix_epoch_nanos(column_or_name)`
+and `timestamp_to_dotnet_ticks(column_or_name)`, `unix_epoch_to_dotnet_ticks(column_or_name)`, `unix_epoch_nanos_to_dotnet_ticks(column_or_name)`.
 
 ## Using Spark Extension
 

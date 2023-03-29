@@ -7,7 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
-- Add SQL function that converts .Net (C#, F#, Visual Basic) DateTime.Ticks to Spark timestamp and Unix epoch seconds. (#153)
+- Add column function that converts between .Net (C#, F#, Visual Basic) `DateTime.Ticks` and Spark timestamp and Unix epoch timestamps. (#153)
 
 ## [2.6.0] - 2023-04-11
 

@@ -324,7 +324,7 @@ package object spark extends Logging with SparkVersion {
 
   /**
    * Convert a Unix epoch nanosecond timestamp to a .Net `DateTime.Ticks` timestamp.
-   * The .Net ticks timestamp does not support the two lowest nanosecond digist,
+   * The .Net ticks timestamp does not support the two lowest nanosecond digits,
    * so only a 1/10 of a microsecond is the smallest resolution.
    * The input column must represent a numerical unix epoch nanoseconds timestamp,
    * e.g. long, double, string or decimal.
@@ -351,7 +351,7 @@ package object spark extends Logging with SparkVersion {
 
   /**
    * Convert a Unix epoch nanosecond timestamp to a .Net `DateTime.Ticks` timestamp.
-   * The .Net ticks timestamp does not support the two lowest nanosecond digist,
+   * The .Net ticks timestamp does not support the two lowest nanosecond digits,
    * so only a 1/10 of a microsecond is the smallest resolution.
    * The input column must represent a numerical unix epoch nanoseconds timestamp,
    * e.g. long, double, string or decimal.
