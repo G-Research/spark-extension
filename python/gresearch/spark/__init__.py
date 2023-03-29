@@ -61,11 +61,6 @@ def dotnet_ticks_to_timestamp(tick_column: Union[str, Column]) -> Column:
     if sc is None or sc._jvm is None:
         raise RuntimeError("This method must be called inside an active Spark session")
 
-    o = sc._jvm.uk.co.gresearch
-    o = o.spark
-    o = o.__getattr__("package$")
-    o = o.__getattr__("MODULE$")
-    f = o.dotNetTicksToTimestamp
     func = sc._jvm.uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$").dotNetTicksToTimestamp
     return Column(func(_to_java_column(tick_column)))
 

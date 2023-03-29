@@ -16,9 +16,11 @@
 
 package uk.co.gresearch.spark
 
+import scala.reflect.runtime.universe.TypeTag
 import org.apache.spark.sql._
-import org.apache.spark.sql.catalyst.expressions.{Descending, SortOrder}
+import org.apache.spark.sql.catalyst.expressions.{Descending, SortOrder, UnixMicros}
 import org.apache.spark.sql.functions._
+import org.apache.spark.sql.types.{DataType, DecimalType, DoubleType, IntegerType, LongType, StructField, StructType, TimestampType}
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.storage.StorageLevel.{DISK_ONLY, MEMORY_AND_DISK, MEMORY_ONLY, NONE}
 import org.scalatest.funsuite.AnyFunSuite
@@ -416,23 +418,32 @@ class SparkSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
     assert(incorrectRowNumbers === 0)
   }
 
-  test(".Net ticks to Spark timestamp / unix epoch") {
+  test(".Net ticks to Spark timestamp / unix epoch seconds / nanoseconds") {
     val df = Seq(
       (1, 599266080000000000L),
       (2, 621355968000000000L),
       (3, 638155413748959308L),
       (4, 638155413748959309L),
       (5, 638155413748959310L),
-      (6, 3155378975999999999L)
+      // results in largest possible unix epoch nanos
+      (6, 713589688368547758L),
+      (7, 3155378975999999999L)
     ).toDF("id", "ts")
 
-    val actual = df.select(
+    val plan = df.select(
       $"id",
       dotNetTicksToTimestamp($"ts"),
       dotNetTicksToTimestamp("ts"),
       dotNetTicksToUnixEpoch($"ts"),
-      dotNetTicksToUnixEpoch("ts")
-    ).orderBy($"id").collect()
+      dotNetTicksToUnixEpoch("ts"),
+      dotNetTicksToUnixEpochNanos($"ts"),
+      dotNetTicksToUnixEpochNanos("ts")
+    ).orderBy($"id")
+    assert(plan.schema.fields.map(_.dataType) === Seq(
+      IntegerType, TimestampType, TimestampType, DecimalType(29, 9), DecimalType(29, 9), LongType, LongType
+    ))
+
+    val actual = plan.collect()
 
     assert(actual.map(_.getTimestamp(1)) === Seq(
       Timestamp.from(Instant.parse("1900-01-01T00:00:00Z")),
@@ -440,6 +451,8 @@ class SparkSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
       Timestamp.from(Instant.parse("2023-03-27T19:16:14.89593Z")),
       Timestamp.from(Instant.parse("2023-03-27T19:16:14.89593Z")),
       Timestamp.from(Instant.parse("2023-03-27T19:16:14.895931Z")),
+      // largest possible unix epoch nanos
+      Timestamp.from(Instant.parse("2262-04-11T23:47:16.854775Z")),
       Timestamp.from(Instant.parse("9999-12-31T23:59:59.999999Z")),
     ))
     assert(actual.map(_.getTimestamp(2)) === actual.map(_.getTimestamp(1)))
@@ -450,9 +463,120 @@ class SparkSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
       BigDecimal(1679944574895930800L, 9),
       BigDecimal(1679944574895930900L, 9),
       BigDecimal(1679944574895931000L, 9),
+      // largest possible unix epoch nanos
+      BigDecimal(9223372036854775800L, 9),
       BigDecimal(2534023007999999999L, 7).setScale(9),
     ))
     assert(actual.map(_.getDecimal(4)) === actual.map(_.getDecimal(3)))
+
+    assert(actual.map(row =>
+      if (BigDecimal(row.getDecimal(3)) <= BigDecimal(9223372036854775800L, 9)) row.getLong(5) else null
+    ) === actual.map(row =>
+      if (BigDecimal(row.getDecimal(3)) <= BigDecimal(9223372036854775800L, 9)) row.getDecimal(3).multiply(new java.math.BigDecimal(1000000000)).longValue() else null
+    ))
+    assert(actual.map(_.get(6)) === actual.map(_.get(5)))
+  }
+
+  test("Spark timestamp to .Net ticks") {
+    val df = Seq(
+      (1, Timestamp.from(Instant.parse("1900-01-01T00:00:00Z"))),
+      (2, Timestamp.from(Instant.parse("1970-01-01T00:00:00Z"))),
+      (3, Timestamp.from(Instant.parse("2023-03-27T19:16:14.895931Z"))),
+      (4, Timestamp.from(Instant.parse("9999-12-31T23:59:59.999999Z"))),
+    ).toDF("id", "ts")
+
+    val plan = df.select(
+      $"id",
+      timestampToDotNetTicks($"ts"),
+      timestampToDotNetTicks("ts"),
+    ).orderBy($"id")
+
+    assert(plan.schema.fields.map(_.dataType) === Seq(
+      IntegerType, LongType, LongType
+    ))
+
+    val actual = plan.collect()
+
+    assert(actual.map(_.getLong(1)) === Seq(
+      599266080000000000L,
+      621355968000000000L,
+      638155413748959310L,
+      3155378975999999990L
+    ))
+    assert(actual.map(_.getLong(2)) === actual.map(_.getLong(1)))
+
+    assert(intercept[AnalysisException] {
+      Seq(1L).toDF("ts").select(timestampToDotNetTicks($"ts")).collect()
+    }.getMessage.startsWith("cannot resolve 'unix_micros(ts)' due to data type mismatch: argument 1 requires timestamp type, however, 'ts' is of bigint type.;"))
+  }
+
+  test("Unix epoch to .Net ticks") {
+    def df[T : Encoder](v: T): DataFrame =
+      spark.createDataset(Seq(v)).withColumnRenamed("value", "ts")
+
+    Seq(
+      df(BigDecimal(1679944574895931234L, 9)),
+      df("1679944574.895931234"),
+      df(1679944574.895931234),
+      df(1679944574L),
+      df(1679944574),
+    ).foreach { df =>
+      this.withClue(df.schema.fields.head.dataType) {
+        val plan = df.select(
+          unixEpochToDotNetTicks($"ts"),
+          unixEpochToDotNetTicks("ts")
+        )
+        assert(plan.schema.fields.map(_.dataType) === Seq(LongType, LongType))
+
+        val actual = plan.collect()
+
+        assert(actual.length === 1)
+        assert(actual.head.isNullAt(0) === false)
+        assert(actual.head.isNullAt(1) === false)
+
+        if (Set(IntegerType, LongType).map(_.asInstanceOf[DataType]).contains(df.schema.head.dataType)) {
+          // long and integer also works, but without sub-second precision
+          assert(actual.head.getLong(0) === 638155413740000000L)
+        } else {
+          // lowest two nanosecond digits get lost
+          assert(actual.head.getLong(0) === 638155413748959312L)
+        }
+        assert(actual.head.getLong(1) === actual.head.getLong(0))
+      }
+    }
+  }
+
+  test("Unix epoch nanos to .Net ticks") {
+    def df[T : Encoder](v: T): DataFrame =
+      spark.createDataset(Seq(v)).withColumnRenamed("value", "ts")
+
+    Seq(
+      df(BigDecimal(1679944574895931234L)),
+      df("1679944574895931234"),
+      df(1679944574895931234L),
+      df(1679944574895931234.5),
+    ).foreach { df =>
+      this.withClue(df.schema.fields.head.dataType) {
+        val plan = df.select(
+          unixEpochNanosToDotNetTicks($"ts"),
+          unixEpochNanosToDotNetTicks("ts")
+        )
+        assert(plan.schema.fields.map(_.dataType) === Seq(LongType, LongType))
+
+        val actual = plan.collect()
+
+        assert(actual.length === 1)
+        assert(actual.head.isNullAt(0) === false)
+        assert(actual.head.isNullAt(1) === false)
+        if (df.schema.fields.head.dataType == DoubleType) {
+          // The initial double value can represent the epoch nanos only as 1.67994457489593114E18
+          assert(actual.head.getLong(0) === 638155413748959311L)
+        } else {
+          assert(actual.head.getLong(0) === 638155413748959312L)
+        }
+        assert(actual.head.getLong(1) === actual.head.getLong(0))
+      }
+    }
   }
 }
 
