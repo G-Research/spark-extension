@@ -14,8 +14,13 @@ or [parquet-cli](https://pypi.org/project/parquet-cli/) by reading from a simple
 This simplifies identifying why some Parquet files cannot be split by Spark into scalable partitions.
 
 **.Net DateTime.Ticks:** Convert .Net (C#, F#, Visual Basic) `DateTime.Ticks` into Spark timestamps with `dotNetTicksToTimestamp(Column): Column`,
-and Unix epoch seconds with `dotNetTicksToUnixEpoch(Column): Column`. These methods are also available in Python:
-`dotnet_ticks_to_timestamp(column_or_name)` and `dotnet_ticks_to_unix_epoch(column_or_name)`.
+into Unix epoch seconds with `dotNetTicksToUnixEpoch(Column): Column`, and
+into Unix epoch nanoseconds with `dotNetTicksToUnixEpochNanos(Column): Column`.
+
+The reverse is provided by `timestampToDotNetTicks(Column): Column`, `unixEpochToDotNetTicks(Column): Column`, and `unixEpochNanosToDotNetTicks(Column): Column`.
+
+These methods are also available in Python: `dotnet_ticks_to_timestamp(column_or_name)`, `dotnet_ticks_to_unix_epoch(column_or_name)`, `dotnet_ticks_to_unix_epoch_nanos(column_or_name)`
+and `timestamp_to_dotnet_ticks(column_or_name)`, `unix_epoch_to_dotnet_ticks(column_or_name)`, `unix_epoch_nanos_to_dotnet_ticks(column_or_name)`.
 
 For details, see the [README.md](https://github.com/G-Research/spark-extension#spark-extension) at the project homepage.
 

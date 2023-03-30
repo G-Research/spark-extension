@@ -16,11 +16,10 @@
 
 package uk.co.gresearch.spark
 
-import scala.reflect.runtime.universe.TypeTag
 import org.apache.spark.sql._
-import org.apache.spark.sql.catalyst.expressions.{Descending, SortOrder, UnixMicros}
+import org.apache.spark.sql.catalyst.expressions.{Descending, SortOrder}
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.types.{DataType, DecimalType, DoubleType, IntegerType, LongType, StructField, StructType, TimestampType}
+import org.apache.spark.sql.types._
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.storage.StorageLevel.{DISK_ONLY, MEMORY_AND_DISK, MEMORY_ONLY, NONE}
 import org.scalatest.funsuite.AnyFunSuite
@@ -485,29 +484,35 @@ class SparkSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
       (4, Timestamp.from(Instant.parse("9999-12-31T23:59:59.999999Z"))),
     ).toDF("id", "ts")
 
-    val plan = df.select(
-      $"id",
-      timestampToDotNetTicks($"ts"),
-      timestampToDotNetTicks("ts"),
-    ).orderBy($"id")
+    if (Some(spark.sparkContext.version).exists(_.startsWith("3.0."))) {
+      assertThrows[NotImplementedError] {
+        df.select(timestampToDotNetTicks($"ts"))
+      }
+    } else {
+      val plan = df.select(
+        $"id",
+        timestampToDotNetTicks($"ts"),
+        timestampToDotNetTicks("ts"),
+      ).orderBy($"id")
 
-    assert(plan.schema.fields.map(_.dataType) === Seq(
-      IntegerType, LongType, LongType
-    ))
+      assert(plan.schema.fields.map(_.dataType) === Seq(
+        IntegerType, LongType, LongType
+      ))
 
-    val actual = plan.collect()
+      val actual = plan.collect()
 
-    assert(actual.map(_.getLong(1)) === Seq(
-      599266080000000000L,
-      621355968000000000L,
-      638155413748959310L,
-      3155378975999999990L
-    ))
-    assert(actual.map(_.getLong(2)) === actual.map(_.getLong(1)))
+      assert(actual.map(_.getLong(1)) === Seq(
+        599266080000000000L,
+        621355968000000000L,
+        638155413748959310L,
+        3155378975999999990L
+      ))
+      assert(actual.map(_.getLong(2)) === actual.map(_.getLong(1)))
 
-    assert(intercept[AnalysisException] {
-      Seq(1L).toDF("ts").select(timestampToDotNetTicks($"ts")).collect()
-    }.getMessage.startsWith("cannot resolve 'unix_micros(ts)' due to data type mismatch: argument 1 requires timestamp type, however, 'ts' is of bigint type.;"))
+      assert(intercept[AnalysisException] {
+        Seq(1L).toDF("ts").select(timestampToDotNetTicks($"ts")).collect()
+      }.getMessage.startsWith("cannot resolve 'unix_micros(ts)' due to data type mismatch: argument 1 requires timestamp type, however, 'ts' is of bigint type.;"))
+    }
   }
 
   test("Unix epoch to .Net ticks") {

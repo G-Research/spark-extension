@@ -19,12 +19,13 @@ package uk.co.gresearch
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.encoders.RowEncoder
-import org.apache.spark.sql.catalyst.expressions.{NamedExpression, UnixMicros}
+import org.apache.spark.sql.catalyst.expressions.NamedExpression
 import org.apache.spark.sql.functions.{col, when}
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.{DecimalType, LongType, TimestampType}
 import org.apache.spark.storage.StorageLevel
 import uk.co.gresearch.spark.group.SortedGroupByDataset
+import uk.co.gresearch.spark._
 
 package object spark extends Logging with SparkVersion {
 
@@ -250,7 +251,7 @@ package object spark extends Logging with SparkVersion {
    * @return result tick value column
    */
   def timestampToDotNetTicks(timestampColumn: Column): Column =
-    unixEpochTenthMicrosToDotNetTicks(new Column(UnixMicros(timestampColumn.expr)) * 10)
+    unixEpochTenthMicrosToDotNetTicks(new Column(UnixMicros.unixMicros(timestampColumn.expr)) * 10)
 
   /**
    * Convert a Spark timestamp to a .Net `DateTime.Ticks` timestamp.
