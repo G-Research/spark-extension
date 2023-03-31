@@ -30,7 +30,7 @@ package object parquet {
 
       spark.createDataset(files).flatMap { file =>
         val conf = new Configuration()
-        val inputPath = new Path(file)
+        val inputPath = new Path(file.toString())
         val inputFileStatus = inputPath.getFileSystem(conf).getFileStatus(inputPath)
         val footers = ParquetFileReader.readFooters(conf, inputFileStatus, false)
         footers.asScala.map { footer =>
@@ -57,7 +57,7 @@ package object parquet {
 
       spark.createDataset(files).flatMap { file =>
         val conf = new Configuration()
-        val inputPath = new Path(file)
+        val inputPath = new Path(file.toString())
         val inputFileStatus = inputPath.getFileSystem(conf).getFileStatus(inputPath)
         val footers = ParquetFileReader.readFooters(conf, inputFileStatus, false)
         footers.asScala.flatMap { footer =>
@@ -85,7 +85,7 @@ package object parquet {
 
       spark.createDataset(files).flatMap { file =>
         val conf = new Configuration()
-        val inputPath = new Path(file)
+        val inputPath = new Path(file.toString())
         val inputFileStatus = inputPath.getFileSystem(conf).getFileStatus(inputPath)
         val footers = ParquetFileReader.readFooters(conf, inputFileStatus, false)
         footers.asScala.flatMap { footer =>
