@@ -2,11 +2,11 @@ package uk.co.gresearch.spark.parquet
 
 import org.apache.spark.sql.{DataFrame, Row}
 import org.scalatest.funsuite.AnyFunSuite
-import uk.co.gresearch.spark.SparkTestSession
+import uk.co.gresearch.spark.{SparkTestSession, SparkVersion}
 import org.apache.spark.sql.functions.regexp_replace
 import uk.co.gresearch._
 
-class ParquetSuite extends AnyFunSuite with SparkTestSession {
+class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
 
   import spark.implicits._
 
@@ -76,10 +76,18 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession {
       spark.read
         .parquetPartitions(testFile)
         .orderBy($"partition", $"filename"),
-      Seq(
-        Row(0, "file1.parquet", 0, 1930, 1930, 1930),
-        Row(0, "file2.parquet", 0, 3493, 3493, 3493),
-      )
+      if (SparkCompatMajorVersion > 3 || SparkCompatMinorVersion >= 3) {
+        Seq(
+          Row(0, "file1.parquet", 0, 1930, 1930, 1930),
+          Row(0, "file2.parquet", 0, 3493, 3493, 3493),
+        )
+      } else {
+        Seq(
+          Row(0, "file1.parquet", 0, 1930, 1930, null),
+          Row(0, "file2.parquet", 0, 3493, 3493, null),
+        )
+      }
+
     )
   }
 
@@ -88,10 +96,17 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession {
       spark.read
         .parquetPartitionRows(testFile)
         .orderBy($"partition", $"filename"),
+      if (SparkCompatMajorVersion > 3 || SparkCompatMinorVersion >= 3) {
       Seq(
         Row(0, "file1.parquet", 0, 1930, 1930, 1930, 300),
         Row(0, "file2.parquet", 0, 3493, 3493, 3493, 300),
       )
+      } else {
+        Seq(
+          Row(0, "file1.parquet", 0, 1930, 1930, null, 300),
+          Row(0, "file2.parquet", 0, 3493, 3493, null, 300),
+        )
+      }
     )
   }
 }
