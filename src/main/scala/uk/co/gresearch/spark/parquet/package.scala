@@ -114,23 +114,23 @@ package object parquet {
     @scala.annotation.varargs
     def parquetPartitions(paths: String*): DataFrame = {
       val df = reader.parquet(paths: _*)
-      val files = df.rdd.partitions.flatMap(part => part.asInstanceOf[FilePartition].files.map(file => (part.index, file.filePath, file.start, file.length, file.fileSize))).toSeq
+      val files = df.rdd.partitions.flatMap(part => part.asInstanceOf[FilePartition].files.map(file => (part.index, SplitFile(file)))).toSeq
 
       val spark = df.sparkSession
       import spark.implicits._
 
-      spark.createDataset(files).flatMap { case (part, filePath, start, length, fileSize) =>
+      spark.createDataset(files).flatMap { case (part, file) =>
         val conf = new Configuration()
-        val inputPath = new Path(filePath)
+        val inputPath = new Path(file.filePath)
         val inputFileStatus = inputPath.getFileSystem(conf).getFileStatus(inputPath)
         val footers = ParquetFileReader.readFooters(conf, inputFileStatus, false)
         footers.asScala.map { footer => (
           part,
           footer.getFile.toString,
-          start,
-          start + length,
-          length,
-          fileSize,
+          file.start,
+          file.start + file.length,
+          file.length,
+          file.fileSize,
         )}
       }.toDF("partition", "filename", "start", "end", "partitionLength", "fileLength")
     }

@@ -14,14 +14,14 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession {
     df.show(false)
   }
 
-  test("read parquet row groups") {
+  test("read parquet blocks") {
     val df = spark.read
       .parquetBlocks("../spark-dgraph-connector/dgraph.dbpedia.rdf-label.parquet")
       .orderBy($"filename", $"block")
     df.show(false)
   }
 
-  test("read parquet row group columns") {
+  test("read parquet block columns") {
     val df = spark.read
       .parquetBlockColumns("../spark-dgraph-connector/dgraph.dbpedia.rdf-label.parquet")
       .orderBy($"filename", $"block", $"column")
