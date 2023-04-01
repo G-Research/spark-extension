@@ -23,14 +23,14 @@ package object parquet {
     @scala.annotation.varargs
     def parquetMetadata(paths: String*): DataFrame = {
       val df = reader.parquet(paths: _*)
-      val files = df.rdd.partitions.flatMap(_.asInstanceOf[FilePartition].files.map(file => file.filePath)).toSeq.distinct
+      val files = df.rdd.partitions.flatMap(_.asInstanceOf[FilePartition].files.map(file => SplitFile(file).filePath)).toSeq.distinct
 
       val spark = df.sparkSession
       import spark.implicits._
 
       spark.createDataset(files).flatMap { file =>
         val conf = new Configuration()
-        val inputPath = new Path(file.toString())
+        val inputPath = new Path(file)
         val inputFileStatus = inputPath.getFileSystem(conf).getFileStatus(inputPath)
         val footers = ParquetFileReader.readFooters(conf, inputFileStatus, false)
         footers.asScala.map { footer =>
@@ -50,14 +50,14 @@ package object parquet {
     @scala.annotation.varargs
     def parquetBlocks(paths: String*): DataFrame = {
       val df = reader.parquet(paths: _*)
-      val files = df.rdd.partitions.flatMap(_.asInstanceOf[FilePartition].files.map(file => file.filePath)).toSeq.distinct
+      val files = df.rdd.partitions.flatMap(_.asInstanceOf[FilePartition].files.map(file => SplitFile(file).filePath)).toSeq.distinct
 
       val spark = df.sparkSession
       import spark.implicits._
 
       spark.createDataset(files).flatMap { file =>
         val conf = new Configuration()
-        val inputPath = new Path(file.toString())
+        val inputPath = new Path(file)
         val inputFileStatus = inputPath.getFileSystem(conf).getFileStatus(inputPath)
         val footers = ParquetFileReader.readFooters(conf, inputFileStatus, false)
         footers.asScala.flatMap { footer =>
@@ -78,14 +78,14 @@ package object parquet {
     @scala.annotation.varargs
     def parquetBlockColumns(paths: String*): DataFrame = {
       val df = reader.parquet(paths: _*)
-      val files = df.rdd.partitions.flatMap(_.asInstanceOf[FilePartition].files.map(file => file.filePath)).toSeq.distinct
+      val files = df.rdd.partitions.flatMap(_.asInstanceOf[FilePartition].files.map(file => SplitFile(file).filePath)).toSeq.distinct
 
       val spark = df.sparkSession
       import spark.implicits._
 
       spark.createDataset(files).flatMap { file =>
         val conf = new Configuration()
-        val inputPath = new Path(file.toString())
+        val inputPath = new Path(file)
         val inputFileStatus = inputPath.getFileSystem(conf).getFileStatus(inputPath)
         val footers = ParquetFileReader.readFooters(conf, inputFileStatus, false)
         footers.asScala.flatMap { footer =>
