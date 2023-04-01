@@ -65,13 +65,6 @@
       <scope>provided</scope>
     </dependency>
 
-    <dependency>
-      <groupId>org.apache.parquet</groupId>
-      <artifactId>parquet-tools</artifactId>
-      <version>1.11.2</version>
-      <scope>provided</scope>
-    </dependency>
-
     <!-- Test -->
     <dependency>
       <groupId>org.apache.spark</groupId>
