@@ -1,5 +1,6 @@
 package uk.co.gresearch.spark
 
+// hadoop and parquet dependencies provided by Spark
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.apache.parquet.hadoop.ParquetFileReader
