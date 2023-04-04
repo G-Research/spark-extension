@@ -154,7 +154,7 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
           if (SparkCompatMajorVersion > 3 || SparkCompatMinorVersion >= 3) {
             expectedRows
           } else {
-            expectedRows.map(row => Row(row.getInt(0), row.getString(1), row.getInt(2), row.getInt(3), row.getInt(4), null, row.getInt(6)))
+            expectedRows.map(row => Row(row.getString(0), row.getInt(1), row.getInt(2), row.getInt(3), null, row.getInt(5)))
           }
 
         val actual = spark.read
