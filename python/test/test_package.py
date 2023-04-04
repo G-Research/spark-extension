@@ -12,6 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import datetime
+import unittest
 
 from gresearch.spark import dotnet_ticks_to_timestamp, dotnet_ticks_to_unix_epoch, dotnet_ticks_to_unix_epoch_nanos, \
     timestamp_to_dotnet_ticks, unix_epoch_to_dotnet_ticks, unix_epoch_nanos_to_dotnet_ticks
@@ -118,6 +119,8 @@ class PackageTest(SparkTest):
                 self.compare_dfs(expected, timestamps)
 
     def test_timestamp_to_dotnet_ticks(self):
+        if self.spark.version.startswith('3.0.'):
+            self.skipTest('timestamp_to_dotnet_ticks not supported by Spark 3.0')
         for column in ["timestamp", self.timestamps.timestamp]:
             with self.subTest(column=column):
                 timestamps = self.timestamps.withColumn("tick", timestamp_to_dotnet_ticks(column)).orderBy('id')
