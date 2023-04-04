@@ -19,7 +19,8 @@ package uk.co.gresearch.spark
 // hadoop and parquet dependencies provided by Spark
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
-import org.apache.parquet.hadoop.ParquetFileReader
+import org.apache.parquet.hadoop.metadata.BlockMetaData
+import org.apache.parquet.hadoop.{Footer, ParquetFileReader}
 import org.apache.spark.sql.execution.datasources.FilePartition
 import org.apache.spark.sql.functions.spark_partition_id
 import org.apache.spark.sql.{DataFrame, DataFrameReader, Encoder, Encoders}
@@ -35,8 +36,6 @@ package object parquet {
    * @param reader data frame reader
    */
   implicit class ExtendedDataFrameReader(reader: DataFrameReader) {
-    def parquetMetadata(path: String): DataFrame = parquetMetadata(Seq(path): _*)
-
     @scala.annotation.varargs
     def parquetMetadata(paths: String*): DataFrame = {
       val df = reader.parquet(paths: _*)
@@ -148,24 +147,18 @@ package object parquet {
           file.start + file.length,
           file.length,
           file.fileSize,
+          getBlocks(footer, file.start, file.length).map(_.getRowCount).sum
         )}
-      }.toDF("partition", "filename", "start", "end", "partitionLength", "fileLength")
+      }.toDF("partition", "filename", "start", "end", "partitionLength", "fileLength", "rows")
     }
+  }
 
-    @scala.annotation.varargs
-    def parquetPartitionRows(paths: String*): DataFrame = {
-      val df = reader.parquet(paths: _*)
-
-      val spark = df.sparkSession
-      import spark.implicits._
-
-      val partLengths =
-        df.select()
-          .mapPartitions(it => Iterator(it.length))(intEncoder)
-          .select(spark_partition_id().as("partition"), $"value".as("rows"))
-
-      parquetPartitions(paths: _*).join(partLengths, Seq("partition"), "left")
-    }
+  private def getBlocks(footer: Footer, start: Long, length: Long): Seq[BlockMetaData] = {
+    footer.getParquetMetadata.getBlocks.asScala
+      .map(block => (block, block.getStartingPos + block.getCompressedSize / 2))
+      .filter { case (_, midBlock) => start <= midBlock && midBlock < start + length }
+      .map(_._1)
+      .toSeq
   }
 
 }

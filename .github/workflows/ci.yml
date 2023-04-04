@@ -224,6 +224,8 @@ jobs:
 
     - name: Test
       uses: ./.github/actions/test-jvm
+      env:
+        CI_SLOW_TESTS: 1
       with:
         spark-version: ${{ matrix.spark-compat-version }}.${{ matrix.spark-patch-version }}
         scala-version: ${{ matrix.scala-version }}
@@ -345,6 +347,8 @@ jobs:
 
     - name: Test
       uses: ./.github/actions/test-jvm
+      env:
+        CI_SLOW_TESTS: 1
       with:
         spark-version: ${{ matrix.spark-version }}
         scala-version: ${{ matrix.scala-version }}

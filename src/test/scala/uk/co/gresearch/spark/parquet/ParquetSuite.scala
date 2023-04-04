@@ -19,17 +19,19 @@ package uk.co.gresearch.spark.parquet
 import org.apache.spark.sql.{DataFrame, Row}
 import org.scalatest.funsuite.AnyFunSuite
 import uk.co.gresearch.spark.{SparkTestSession, SparkVersion}
-import org.apache.spark.sql.functions.regexp_replace
+import org.apache.spark.sql.functions.{regexp_replace, spark_partition_id}
+import org.scalatest.tagobjects.Slow
 import uk.co.gresearch._
 
 class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
 
   import spark.implicits._
 
-  // import org.apache.spark.sql.SaveMode
-  // spark.sparkContext.hadoopConfiguration.setInt("parquet.block.size", 1024)
-  // spark.range(100).select($"id", rand().as("val")).repartitionByRange(1, $"id").write.parquet("test.parquet")
-  // spark.range(100, 300, 1).select($"id", rand().as("val")).repartitionByRange(1, $"id").write.mode(SaveMode.Append).parquet("test.parquet")eq((3, "three"), (4, "four"), (5, "five"), (6, "six"), (7, "seven")).toDF("id", "value").repartitionByRange(1, $"id").write.mode(SaveMode.Append).parquet("test.parquet")
+  // These parquet test files have been created as follows:
+  //   import org.apache.spark.sql.SaveMode
+  //   spark.sparkContext.hadoopConfiguration.setInt("parquet.block.size", 1024)
+  //   spark.range(100).select($"id", rand().as("val")).repartitionByRange(1, $"id").write.parquet("test.parquet")
+  //   spark.range(100, 300, 1).select($"id", rand().as("val")).repartitionByRange(1, $"id").write.mode(SaveMode.Append).parquet("test.parquet")eq((3, "three"), (4, "four"), (5, "five"), (6, "six"), (7, "seven")).toDF("id", "value").repartitionByRange(1, $"id").write.mode(SaveMode.Append).parquet("test.parquet")
   val testFile = "src/test/files/test.parquet"
 
 
@@ -39,7 +41,6 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
         .withColumn("filename", regexp_replace($"filename", ".*/test.parquet/", ""))
         .when(actual.columns.contains("schema"))
         .call(_.withColumn("schema", regexp_replace($"schema", "\n", "\\\\n")))
-    val act = replaced.collect()
     assert(replaced.collect() === expected)
   }
 
@@ -87,42 +88,82 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
     )
   }
 
-  test("read parquet partitions") {
-    assertDf(
-      spark.read
-        .parquetPartitions(testFile)
-        .orderBy($"partition", $"filename"),
-      if (SparkCompatMajorVersion > 3 || SparkCompatMinorVersion >= 3) {
-        Seq(
-          Row(0, "file1.parquet", 0, 1930, 1930, 1930),
-          Row(0, "file2.parquet", 0, 3493, 3493, 3493),
-        )
-      } else {
-        Seq(
-          Row(0, "file1.parquet", 0, 1930, 1930, null),
-          Row(0, "file2.parquet", 0, 3493, 3493, null),
-        )
-      }
+  if (sys.env.get("CI_SLOW_TESTS").exists(_.equals("1"))) {
+    Seq(1, 3, 7, 13, 19, 29, 61, 127, 251).foreach { partitionSize =>
+      test(s"read parquet partitions ($partitionSize bytes) ${Slow.name}", Slow) {
+        withSQLConf("spark.sql.files.maxPartitionBytes" -> partitionSize.toString) {
+          val parquet = spark.read.parquet(testFile).cache()
 
-    )
+          val rows = spark.read
+            .parquet(testFile)
+            .mapPartitions(it => Iterator(it.length))
+            .select(spark_partition_id().as("partition"), $"value".as("actual_rows"))
+          val partitions = spark.read
+            .parquetPartitions(testFile)
+            .join(rows, Seq("partition"), "left")
+            .select($"filename", $"partition", $"start", $"end", $"partitionLength", $"rows", $"actual_rows")
+
+          if (partitions.where($"rows" =!= $"actual_rows" || ($"rows" =!= 0 || $"actual_rows" =!= 0) && $"partitionLength" =!= partitionSize).head(1).nonEmpty) {
+            partitions
+              .orderBy($"start")
+              .where($"rows" =!= 0 || $"actual_rows" =!= 0)
+              .show(false)
+            fail()
+          }
+
+          parquet.unpersist()
+        }
+      }
+    }
   }
 
-  test("read parquet partition rows") {
-    assertDf(
-      spark.read
-        .parquetPartitionRows(testFile)
-        .orderBy($"partition", $"filename"),
-      if (SparkCompatMajorVersion > 3 || SparkCompatMinorVersion >= 3) {
-      Seq(
-        Row(0, "file1.parquet", 0, 1930, 1930, 1930, 300),
-        Row(0, "file2.parquet", 0, 3493, 3493, 3493, 300),
-      )
-      } else {
-        Seq(
-          Row(0, "file1.parquet", 0, 1930, 1930, null, 300),
-          Row(0, "file2.parquet", 0, 3493, 3493, null, 300),
+  Map(
+    None -> Seq(
+      Row(0, "file1.parquet", 0, 1930, 1930, 1930, 100),
+      Row(0, "file2.parquet", 0, 3493, 3493, 3493, 200),
+    ),
+    Some(8192) -> Seq(
+      Row(0, "file2.parquet", 0, 3493, 3493, 3493, 200),
+      Row(1, "file1.parquet", 0, 1930, 1930, 1930, 100),
+    ),
+    Some(1024) -> Seq(
+      Row(0, "file2.parquet", 0, 1024, 1024, 3493, 100),
+      Row(1, "file2.parquet", 1024, 2048, 1024, 3493, 100),
+      Row(2, "file2.parquet", 2048, 3072, 1024, 3493, 0),
+      Row(3, "file1.parquet", 0, 1024, 1024, 1930, 100),
+      Row(4, "file1.parquet", 1024, 1930, 906, 1930, 0),
+      Row(5, "file2.parquet", 3072, 3493, 421, 3493, 0),
+    ),
+    Some(512) -> Seq(
+      Row(0, "file2.parquet", 0, 512, 512, 3493, 0),
+      Row(1, "file2.parquet", 512, 1024, 512, 3493, 100),
+      Row(2, "file2.parquet", 1024, 1536, 512, 3493, 0),
+      Row(3, "file2.parquet", 1536, 2048, 512, 3493, 100),
+      Row(4, "file2.parquet", 2048, 2560, 512, 3493, 0),
+      Row(5, "file2.parquet", 2560, 3072, 512, 3493, 0),
+      Row(6, "file1.parquet", 0, 512, 512, 1930, 0),
+      Row(7, "file1.parquet", 512, 1024, 512, 1930, 100),
+      Row(8, "file1.parquet", 1024, 1536, 512, 1930, 0),
+      Row(9, "file2.parquet", 3072, 3493, 421, 3493, 0),
+      Row(10, "file1.parquet", 1536, 1930, 394, 1930, 0),
+    ),
+  ).foreach { case (partitionSize, expectedRows) =>
+    test(s"read parquet partitions (${partitionSize.getOrElse("default")} bytes)") {
+      withSQLConf(partitionSize.map(size => Seq("spark.sql.files.maxPartitionBytes" -> size.toString)).getOrElse(Seq.empty): _*) {
+        val expected =
+          if (SparkCompatMajorVersion > 3 || SparkCompatMinorVersion >= 3) {
+            expectedRows
+          } else {
+            expectedRows.map(row => Row(row.getInt(0), row.getString(1), row.getInt(2), row.getInt(3), row.getInt(4), null, row.getInt(6)))
+          }
+
+        assertDf(
+          spark.read
+            .parquetPartitions(testFile)
+            .orderBy($"partition", $"filename"),
+          expected
         )
       }
-    )
+    }
   }
 }
