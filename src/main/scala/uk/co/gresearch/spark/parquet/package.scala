@@ -36,6 +36,21 @@ package object parquet {
    * @param reader data frame reader
    */
   implicit class ExtendedDataFrameReader(reader: DataFrameReader) {
+    /**
+     * Read the metadata of Parquet files into a Dataframe.
+     *
+     * This provides the following per-file information:
+     * - filename (string): The file name
+     * - blocks (int): Number of blocks / RowGroups in the Parquet file
+     * - totalSizeBytes (long): Number of uncompressed bytes of all blocks
+     * - compressedSizeBytes (long): Number of compressed bytes of all blocks
+     * - totalRowCount (long): Number of rows of all blocks
+     * - createdBy (string): The createdBy string of the Parquet file, e.g. library used to write the file
+     * - schema (string): The schema
+     *
+     * @param paths one or more paths to Parquet files or directories
+     * @return dataframe with Parquet metadata
+     */
     @scala.annotation.varargs
     def parquetMetadata(paths: String*): DataFrame = {
       val df = reader.parquet(paths: _*)
@@ -63,6 +78,20 @@ package object parquet {
       }.toDF("filename", "blocks", "totalSizeBytes", "compressedSizeBytes", "totalRowCount", "createdBy", "schema")
     }
 
+    /**
+     * Read the metadata of Parquet blocks into a Dataframe.
+     *
+     * This provides the following per-block information:
+     * - filename (string): The file name
+     * - block (int): Block number starting at 1
+     * - startPos (long): Start position of block in Parquet file
+     * - totalSizeBytes (long): Number of uncompressed bytes in block
+     * - compressedSizeBytes (long): Number of compressed bytes in block
+     * - totalRowCount (long): Number of rows in block
+     *
+     * @param paths one or more paths to Parquet files or directories
+     * @return dataframe with Parquet block metadata
+     */
     @scala.annotation.varargs
     def parquetBlocks(paths: String*): DataFrame = {
       val df = reader.parquet(paths: _*)
@@ -91,6 +120,26 @@ package object parquet {
       }.toDF("filename", "block", "startPos", "totalSizeBytes", "compressedSizeBytes", "totalRowCount")
     }
 
+    /**
+     * Read the metadata of Parquet block columns into a Dataframe.
+     *
+     * This provides the following per-block-column information:
+     * - filename (string): The file name
+     * - block (int): Block number starting at 1
+     * - column (string): Block column name
+     * - codec (string): The coded used to compress the block column values
+     * - type (string): The data type of the block column
+     * - encodings (string): Encodings of the block column
+     * - minValue (string): Minimum value of this column in this block
+     * - maxValue (string): Maximum value of this column in this block
+     * - startPos (long): Start position of block column in Parquet file
+     * - sizeBytes (long): Number of bytes of this block column
+     * - compressedSizeBytes (long): Number of compressed bytes of this block column
+     * - valueCount (long): Number of values in this block column
+     *
+     * @param paths one or more paths to Parquet files or directories
+     * @return dataframe with Parquet block metadata
+     */
     @scala.annotation.varargs
     def parquetBlockColumns(paths: String*): DataFrame = {
       val df = reader.parquet(paths: _*)
@@ -127,6 +176,21 @@ package object parquet {
       }.toDF("filename", "block", "column", "codec", "type", "encodings", "minValue", "maxValue", "startPos", "sizeBytes", "compressedSizeBytes", "valueCount")
     }
 
+    /**
+     * Read the metadata of how Spark partitions Parquet files into a Dataframe.
+     *
+     * This provides the following per-partition information:
+     * - partition (int): The Spark partition id
+     * - filename (string): The Parquet file name
+     * - start (long): The start position of the partition
+     * - end (long): The end position of the partition
+     * - partitionLength (long): The length of the partition
+     * - fileLength (long): The length of the Parquet file
+     * - rows (long): The number of rows of the Parquet file that belong to this partition
+     *
+     * @param paths one or more paths to Parquet files or directories
+     * @return dataframe with Spark Parquet partition metadata
+     */
     @scala.annotation.varargs
     def parquetPartitions(paths: String*): DataFrame = {
       val df = reader.parquet(paths: _*)

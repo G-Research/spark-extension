@@ -34,9 +34,6 @@ class ParquetTest(SparkTest):
     def test_parquet_partitions(self):
         self.assertEqual(self.spark.read.parquet_partitions(self.test_file).count(), 2)
 
-    def test_parquet_partition_rows(self):
-        self.assertEqual(self.spark.read.parquet_partition_rows(self.test_file).count(), 2)
-
 
 if __name__ == '__main__':
     SparkTest.main()

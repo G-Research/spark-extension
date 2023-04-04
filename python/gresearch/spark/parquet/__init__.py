@@ -23,32 +23,94 @@ def _reader(reader: DataFrameReader) -> DataFrameReader:
 
 
 def parquet_metadata(self: DataFrameReader, *paths: str) -> DataFrame:
+    """
+    Read the metadata of Parquet files into a Dataframe.
+
+    This provides the following per-file information:
+    - filename (string): The file name
+    - blocks (int): Number of blocks / RowGroups in the Parquet file
+    - totalSizeBytes (long): Number of uncompressed bytes of all blocks
+    - compressedSizeBytes (long): Number of compressed bytes of all blocks
+    - totalRowCount (long): Number of rows of all blocks
+    - createdBy (string): The createdBy string of the Parquet file, e.g. library used to write the file
+    - schema (string): The schema
+
+    :param self: a Spark DataFrameReader
+    :param paths: paths one or more paths to Parquet files or directories
+    :return: dataframe with Parquet metadata
+    """
     jvm = self._spark._jvm
     jdf = _reader(self).parquetMetadata(_to_seq(jvm, list(paths)))
     return DataFrame(jdf, self._spark)
 
 
 def parquet_blocks(self: DataFrameReader, *paths: str) -> DataFrame:
+    """
+    Read the metadata of Parquet blocks into a Dataframe.
+
+    This provides the following per-block information:
+    - filename (string): The file name
+    - block (int): Block number starting at 1
+    - startPos (long): Start position of block in Parquet file
+    - totalSizeBytes (long): Number of uncompressed bytes in block
+    - compressedSizeBytes (long): Number of compressed bytes in block
+    - totalRowCount (long): Number of rows in block    
+
+    :param self: a Spark DataFrameReader
+    :param paths: paths one or more paths to Parquet files or directories
+    :return: dataframe with Parquet metadata
+    """
     jvm = self._spark._jvm
     jdf = _reader(self).parquetBlocks(_to_seq(jvm, list(paths)))
     return DataFrame(jdf, self._spark)
 
 
 def parquet_block_columns(self: DataFrameReader, *paths: str) -> DataFrame:
+    """
+    Read the metadata of Parquet block columns into a Dataframe.
+
+    This provides the following per-block-column information:
+    - filename (string): The file name
+    - block (int): Block number starting at 1
+    - column (string): Block column name
+    - codec (string): The coded used to compress the block column values
+    - type (string): The data type of the block column
+    - encodings (string): Encodings of the block column
+    - minValue (string): Minimum value of this column in this block
+    - maxValue (string): Maximum value of this column in this block
+    - startPos (long): Start position of block column in Parquet file
+    - sizeBytes (long): Number of bytes of this block column
+    - compressedSizeBytes (long): Number of compressed bytes of this block column
+    - valueCount (long): Number of values in this block column
+    
+    :param self: a Spark DataFrameReader
+    :param paths: paths one or more paths to Parquet files or directories
+    :return: dataframe with Parquet metadata
+    """
     jvm = self._spark._jvm
     jdf = _reader(self).parquetBlockColumns(_to_seq(jvm, list(paths)))
     return DataFrame(jdf, self._spark)
 
 
 def parquet_partitions(self: DataFrameReader, *paths: str) -> DataFrame:
+    """
+    Read the metadata of how Spark partitions Parquet files into a Dataframe.
+
+    This provides the following per-partition information:
+    - partition (int): The Spark partition id
+    - filename (string): The Parquet file name
+    - start (long): The start position of the partition
+    - end (long): The end position of the partition
+    - partitionLength (long): The length of the partition
+    - fileLength (long): The length of the Parquet file
+    - rows (long): The number of rows of the Parquet file that belong to this partition
+
+    :param self: a Spark DataFrameReader
+    :param paths: paths one or more paths to Parquet files or directories
+    :return: dataframe with Parquet metadata
+    """
     jvm = self._spark._jvm
     jdf = _reader(self).parquetPartitions(_to_seq(jvm, list(paths)))
-    return DataFrame(jdf, self._spark)
-
-
-def parquet_partition_rows(self: DataFrameReader, *paths: str) -> DataFrame:
-    jvm = self._spark._jvm
-    jdf = _reader(self).parquetPartitionRows(_to_seq(jvm, list(paths)))
     return DataFrame(jdf, self._spark)
 
 
@@ -56,4 +118,3 @@ DataFrameReader.parquet_metadata = parquet_metadata
 DataFrameReader.parquet_blocks = parquet_blocks
 DataFrameReader.parquet_block_columns = parquet_block_columns
 DataFrameReader.parquet_partitions = parquet_partitions
-DataFrameReader.parquet_partition_rows = parquet_partition_rows

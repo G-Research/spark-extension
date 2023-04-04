@@ -9,6 +9,9 @@ two datasets, i.e. which rows to _add_, _delete_ or _change_ to get from one dat
 the current order of the Dataset, or any given order. In contrast to the existing SQL function `row_number`, which
 requires a window spec, this transformation provides the row number across the entire Dataset without scaling problems.
 
+**Inspect Parquet files:** The structure of parquet files can be inspected similar to [parquet-tools](https://pypi.org/project/parquet-tools/)
+by reading from a simple data source. This simplifies to identify why some Parquet files cannot be split by Spark into scalable partitions.
+
 For details, see the [README.md](https://github.com/G-Research/spark-extension#spark-extension) at the project homepage.
 
 ## Using Spark Extension
