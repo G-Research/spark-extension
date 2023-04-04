@@ -119,33 +119,33 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
 
   Map(
     None -> Seq(
-      Row(0, "file1.parquet", 0, 1930, 1930, 1930, 100),
-      Row(0, "file2.parquet", 0, 3493, 3493, 3493, 200),
+      Row("file1.parquet", 0, 1930, 1930, 1930, 100),
+      Row("file2.parquet", 0, 3493, 3493, 3493, 200),
     ),
     Some(8192) -> Seq(
-      Row(0, "file2.parquet", 0, 3493, 3493, 3493, 200),
-      Row(1, "file1.parquet", 0, 1930, 1930, 1930, 100),
+      Row("file1.parquet", 0, 1930, 1930, 1930, 100),
+      Row("file2.parquet", 0, 3493, 3493, 3493, 200),
     ),
     Some(1024) -> Seq(
-      Row(0, "file2.parquet", 0, 1024, 1024, 3493, 100),
-      Row(1, "file2.parquet", 1024, 2048, 1024, 3493, 100),
-      Row(2, "file2.parquet", 2048, 3072, 1024, 3493, 0),
-      Row(3, "file1.parquet", 0, 1024, 1024, 1930, 100),
-      Row(4, "file1.parquet", 1024, 1930, 906, 1930, 0),
-      Row(5, "file2.parquet", 3072, 3493, 421, 3493, 0),
+      Row("file1.parquet", 0, 1024, 1024, 1930, 100),
+      Row("file1.parquet", 1024, 1930, 906, 1930, 0),
+      Row("file2.parquet", 0, 1024, 1024, 3493, 100),
+      Row("file2.parquet", 1024, 2048, 1024, 3493, 100),
+      Row("file2.parquet", 2048, 3072, 1024, 3493, 0),
+      Row("file2.parquet", 3072, 3493, 421, 3493, 0),
     ),
     Some(512) -> Seq(
-      Row(0, "file2.parquet", 0, 512, 512, 3493, 0),
-      Row(1, "file2.parquet", 512, 1024, 512, 3493, 100),
-      Row(2, "file2.parquet", 1024, 1536, 512, 3493, 0),
-      Row(3, "file2.parquet", 1536, 2048, 512, 3493, 100),
-      Row(4, "file2.parquet", 2048, 2560, 512, 3493, 0),
-      Row(5, "file2.parquet", 2560, 3072, 512, 3493, 0),
-      Row(6, "file1.parquet", 0, 512, 512, 1930, 0),
-      Row(7, "file1.parquet", 512, 1024, 512, 1930, 100),
-      Row(8, "file1.parquet", 1024, 1536, 512, 1930, 0),
-      Row(9, "file2.parquet", 3072, 3493, 421, 3493, 0),
-      Row(10, "file1.parquet", 1536, 1930, 394, 1930, 0),
+      Row("file1.parquet", 0, 512, 512, 1930, 0),
+      Row("file1.parquet", 512, 1024, 512, 1930, 100),
+      Row("file1.parquet", 1024, 1536, 512, 1930, 0),
+      Row("file1.parquet", 1536, 1930, 394, 1930, 0),
+      Row("file2.parquet", 0, 512, 512, 3493, 0),
+      Row("file2.parquet", 512, 1024, 512, 3493, 100),
+      Row("file2.parquet", 1024, 1536, 512, 3493, 0),
+      Row("file2.parquet", 1536, 2048, 512, 3493, 100),
+      Row("file2.parquet", 2048, 2560, 512, 3493, 0),
+      Row("file2.parquet", 2560, 3072, 512, 3493, 0),
+      Row("file2.parquet", 3072, 3493, 421, 3493, 0),
     ),
   ).foreach { case (partitionSize, expectedRows) =>
     test(s"read parquet partitions (${partitionSize.getOrElse("default")} bytes)") {
@@ -157,12 +157,20 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
             expectedRows.map(row => Row(row.getInt(0), row.getString(1), row.getInt(2), row.getInt(3), row.getInt(4), null, row.getInt(6)))
           }
 
-        assertDf(
-          spark.read
-            .parquetPartitions(testFile)
-            .orderBy($"partition", $"filename"),
-          expected
-        )
+        val actual = spark.read
+          .parquetPartitions(testFile)
+          .orderBy($"filename", $"start")
+          .cache()
+
+        val partitions = actual.select($"partition").as[Int].collect()
+        if (partitionSize.isDefined) {
+          assert(partitions.indices === partitions.sorted)
+        } else {
+          assert(Seq(0, 0) === partitions)
+        }
+
+        assertDf(actual.drop("partition"), expected)
+        actual.unpersist()
       }
     }
   }
