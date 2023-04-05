@@ -99,11 +99,14 @@ def parquet_partitions(self: DataFrameReader, *paths: str) -> DataFrame:
     This provides the following per-partition information:
     - partition (int): The Spark partition id
     - filename (string): The Parquet file name
-    - start (long): The start position of the partition
-    - end (long): The end position of the partition
-    - partitionLength (long): The length of the partition
     - fileLength (long): The length of the Parquet file
-    - rows (long): The number of rows of the Parquet file that belong to this partition
+    - partitionStart (long): The start position of the partition
+    - partitionEnd (long): The end position of the partition
+    - partitionLength (long): The length of the partition
+    - blocks (int): The number of Parquet blocks in this partition
+    - compressedBytes (long): The number of compressed bytes in this partition
+    - uncompressedBytes (long): The number of uncompressed bytes in this partition
+    - rows (long): The number of rows in this partition
 
     :param self: a Spark DataFrameReader
     :param paths: paths one or more paths to Parquet files or directories

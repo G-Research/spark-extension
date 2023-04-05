@@ -150,8 +150,10 @@ spark.read.parquet_partitions("/path/to/parquet").show(truncate=False)
 |:-------------------|:----:|:---------------------------------------------------------------------|
 |partition id        |int   | The Spark partition id                                               |
 |filename            |string| The Parquet file name                                                |
-|start               |long  | The start position of the partition                                  |
-|end                 |long  | The end position of the partition                                    |
-|partitionLength     |long  | The length of the partition                                          |
 |fileLength          |long  | The length of the Parquet file                                       |
-|rows                |long  | The number of rows of the Parquet file that belong to this partition |
+|partitionStart      |long  | The start position of the partition                                  |
+|partitionEnd        |long  | The end position of the partition                                    |
+|partitionLength     |long  | The length of the partition                                          |
+|compressedBytes     |long  | The number of compressed bytes in this partition                     |
+|uncompressedBytes   |long  | The number of uncompressed bytes in this partition                   |
+|rows                |long  | The number of rows in this partition                                 |

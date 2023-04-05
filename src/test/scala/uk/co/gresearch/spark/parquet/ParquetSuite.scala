@@ -101,7 +101,7 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
           val partitions = spark.read
             .parquetPartitions(testFile)
             .join(rows, Seq("partition"), "left")
-            .select($"filename", $"partition", $"start", $"end", $"partitionLength", $"rows", $"actual_rows")
+            .select($"filename", $"partition", $"partitionStart", $"partitionEnd", $"partitionLength", $"rows", $"actual_rows")
 
           if (partitions.where($"rows" =!= $"actual_rows" || ($"rows" =!= 0 || $"actual_rows" =!= 0) && $"partitionLength" =!= partitionSize).head(1).nonEmpty) {
             partitions
@@ -119,33 +119,33 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
 
   Map(
     None -> Seq(
-      Row("file1.parquet", 0, 1930, 1930, 1930, 100),
-      Row("file2.parquet", 0, 3493, 3493, 3493, 200),
+      Row("file1.parquet", 1930, 0, 1930, 1930, 1, 1268, 1652, 100),
+      Row("file2.parquet", 3493, 0, 3493, 3493, 2, 2539, 3302, 200),
     ),
     Some(8192) -> Seq(
-      Row("file1.parquet", 0, 1930, 1930, 1930, 100),
-      Row("file2.parquet", 0, 3493, 3493, 3493, 200),
+      Row("file1.parquet", 1930, 0, 1930, 1930, 1, 1268, 1652, 100),
+      Row("file2.parquet", 3493, 0, 3493, 3493, 2, 2539, 3302, 200),
     ),
     Some(1024) -> Seq(
-      Row("file1.parquet", 0, 1024, 1024, 1930, 100),
-      Row("file1.parquet", 1024, 1930, 906, 1930, 0),
-      Row("file2.parquet", 0, 1024, 1024, 3493, 100),
-      Row("file2.parquet", 1024, 2048, 1024, 3493, 100),
-      Row("file2.parquet", 2048, 3072, 1024, 3493, 0),
-      Row("file2.parquet", 3072, 3493, 421, 3493, 0),
+      Row("file1.parquet", 1930, 0, 1024, 1024, 1, 1268, 1652, 100),
+      Row("file1.parquet", 1930, 1024, 1930, 906, 0, 0, 0, 0),
+      Row("file2.parquet", 3493, 0, 1024, 1024, 1, 1269, 1651, 100),
+      Row("file2.parquet", 3493, 1024, 2048, 1024, 1, 1270, 1651, 100),
+      Row("file2.parquet", 3493, 2048, 3072, 1024, 0, 0, 0, 0),
+      Row("file2.parquet", 3493, 3072, 3493, 421, 0, 0, 0, 0),
     ),
     Some(512) -> Seq(
-      Row("file1.parquet", 0, 512, 512, 1930, 0),
-      Row("file1.parquet", 512, 1024, 512, 1930, 100),
-      Row("file1.parquet", 1024, 1536, 512, 1930, 0),
-      Row("file1.parquet", 1536, 1930, 394, 1930, 0),
-      Row("file2.parquet", 0, 512, 512, 3493, 0),
-      Row("file2.parquet", 512, 1024, 512, 3493, 100),
-      Row("file2.parquet", 1024, 1536, 512, 3493, 0),
-      Row("file2.parquet", 1536, 2048, 512, 3493, 100),
-      Row("file2.parquet", 2048, 2560, 512, 3493, 0),
-      Row("file2.parquet", 2560, 3072, 512, 3493, 0),
-      Row("file2.parquet", 3072, 3493, 421, 3493, 0),
+      Row("file1.parquet", 1930, 0, 512, 512, 0, 0, 0, 0),
+      Row("file1.parquet", 1930, 512, 1024, 512, 1, 1268, 1652, 100),
+      Row("file1.parquet", 1930, 1024, 1536, 512, 0, 0, 0, 0),
+      Row("file1.parquet", 1930, 1536, 1930, 394, 0, 0, 0, 0),
+      Row("file2.parquet", 3493, 0, 512, 512, 0, 0, 0, 0),
+      Row("file2.parquet", 3493, 512, 1024, 512, 1, 1269, 1651, 100),
+      Row("file2.parquet", 3493, 1024, 1536, 512, 0, 0, 0, 0),
+      Row("file2.parquet", 3493, 1536, 2048, 512, 1, 1270, 1651, 100),
+      Row("file2.parquet", 3493, 2048, 2560, 512, 0, 0, 0, 0),
+      Row("file2.parquet", 3493, 2560, 3072, 512, 0, 0, 0, 0),
+      Row("file2.parquet", 3493, 3072, 3493, 421, 0, 0, 0, 0),
     ),
   ).foreach { case (partitionSize, expectedRows) =>
     test(s"read parquet partitions (${partitionSize.getOrElse("default")} bytes)") {
@@ -154,12 +154,12 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
           if (SparkCompatMajorVersion > 3 || SparkCompatMinorVersion >= 3) {
             expectedRows
           } else {
-            expectedRows.map(row => Row(row.getString(0), row.getInt(1), row.getInt(2), row.getInt(3), null, row.getInt(5)))
+            expectedRows.map(row => Row(row.getString(0), null, row.getInt(2), row.getInt(3), row.getInt(4), row.getInt(5), row.getInt(6), row.getInt(7), row.getInt(8)))
           }
 
         val actual = spark.read
           .parquetPartitions(testFile)
-          .orderBy($"filename", $"start")
+          .orderBy($"filename", $"partitionStart")
           .cache()
 
         val partitions = actual.select($"partition").as[Int].collect()

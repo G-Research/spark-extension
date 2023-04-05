@@ -182,11 +182,14 @@ package object parquet {
      * This provides the following per-partition information:
      * - partition (int): The Spark partition id
      * - filename (string): The Parquet file name
-     * - start (long): The start position of the partition
-     * - end (long): The end position of the partition
-     * - partitionLength (long): The length of the partition
      * - fileLength (long): The length of the Parquet file
-     * - rows (long): The number of rows of the Parquet file that belong to this partition
+     * - partitionStart (long): The start position of the partition
+     * - partitionEnd (long): The end position of the partition
+     * - partitionLength (long): The length of the partition
+     * - blocks (int): The number of Parquet blocks in this partition
+     * - uncompressedBytes (long): The number of uncompressed bytes in this partition
+     * - compressedBytes (long): The number of compressed bytes in this partition
+     * - rows (long): The number of rows in this partition
      *
      * @param paths one or more paths to Parquet files or directories
      * @return dataframe with Spark Parquet partition metadata
@@ -204,16 +207,21 @@ package object parquet {
         val inputPath = new Path(file.filePath)
         val inputFileStatus = inputPath.getFileSystem(conf).getFileStatus(inputPath)
         val footers = ParquetFileReader.readFooters(conf, inputFileStatus, false)
-        footers.asScala.map { footer => (
-          part,
-          footer.getFile.toString,
-          file.start,
-          file.start + file.length,
-          file.length,
-          file.fileSize,
-          getBlocks(footer, file.start, file.length).map(_.getRowCount).sum
-        )}
-      }.toDF("partition", "filename", "start", "end", "partitionLength", "fileLength", "rows")
+        footers.asScala
+          .map(footer => (footer, getBlocks(footer, file.start, file.length)))
+          .map { case (footer, blocks) => (
+            part,
+            footer.getFile.toString,
+            file.fileSize,
+            file.start,
+            file.start + file.length,
+            file.length,
+            blocks.size,
+            blocks.map(_.getCompressedSize).sum,
+            blocks.map(_.getTotalByteSize).sum,
+            blocks.map(_.getRowCount).sum,
+          )}
+      }.toDF("partition", "filename", "fileLength", "partitionStart", "partitionEnd", "partitionLength", "blocks", "compressedBytes", "uncompressedBytes", "rows")
     }
   }
 
