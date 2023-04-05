@@ -83,7 +83,7 @@ spark.read.parquet_blocks("/path/to/parquet").show(truncate=False)
 
 ## Parquet block column metadata
 
-Read the metadata of Parquet blocks columns into a Dataframe:
+Read the metadata of Parquet block columns into a Dataframe:
 
 ```scala
 // Scala
