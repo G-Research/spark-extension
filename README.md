@@ -50,14 +50,38 @@ i.doThis()
 **Backticks:** `backticks(string: String, strings: String*): String)`: Encloses the given column name with backticks (`` ` ``) when needed.
 This is a handy way to ensure column names with special characters like dots (`.`) work with `col()` or `select()`.
 
-**.Net DateTime.Ticks:** Convert .Net (C#, F#, Visual Basic) `DateTime.Ticks` into Spark timestamps with `dotNetTicksToTimestamp(Column): Column`,
-into Unix epoch seconds with `dotNetTicksToUnixEpoch(Column): Column`, and
-into Unix epoch nanoseconds with `dotNetTicksToUnixEpochNanos(Column): Column`.
+**.Net DateTime.Ticks:** Convert .Net (C#, F#, Visual Basic) `DateTime.Ticks` into Spark timestamps, seconds and nanoseconds.
 
-The reverse is provided by `timestampToDotNetTicks(Column): Column`, `unixEpochToDotNetTicks(Column): Column`, and `unixEpochNanosToDotNetTicks(Column): Column`.
+<details>
+<summary>Available methods:</summary>
 
-These methods are also available in Python: `dotnet_ticks_to_timestamp(column_or_name)`, `dotnet_ticks_to_unix_epoch(column_or_name)`, `dotnet_ticks_to_unix_epoch_nanos(column_or_name)`
-and `timestamp_to_dotnet_ticks(column_or_name)`, `unix_epoch_to_dotnet_ticks(column_or_name)`, `unix_epoch_nanos_to_dotnet_ticks(column_or_name)`.
+```scala
+// Scala
+dotNetTicksToTimestamp(Column): Column       // returns timestamp as TimestampType
+dotNetTicksToUnixEpoch(Column): Column       // returns Unix epoch seconds as DecimalType
+dotNetTicksToUnixEpochNanos(Column): Column  // returns Unix epoch nanoseconds as LongType
+```
+
+The reverse is provided by (all return `LongType` .Net ticks):
+```scala
+// Scala
+timestampToDotNetTicks(Column): Column
+unixEpochToDotNetTicks(Column): Column
+unixEpochNanosToDotNetTicks(Column): Column
+```
+
+These methods are also available in Python:
+```python
+# Python
+dotnet_ticks_to_timestamp(column_or_name)         # returns timestamp as TimestampType
+dotnet_ticks_to_unix_epoch(column_or_name)        # returns Unix epoch seconds as DecimalType
+dotnet_ticks_to_unix_epoch_nanos(column_or_name)  # returns Unix epoch nanoseconds as LongType
+
+timestamp_to_dotnet_ticks(column_or_name)
+unix_epoch_to_dotnet_ticks(column_or_name)
+unix_epoch_nanos_to_dotnet_ticks(column_or_name)
+```
+</details>
 
 ## Using Spark Extension
 
