@@ -16,6 +16,7 @@
 
 package uk.co.gresearch.spark.parquet
 
+import org.apache.spark.sql.Row.unapplySeq
 import org.apache.spark.sql.{DataFrame, Row}
 import org.scalatest.funsuite.AnyFunSuite
 import uk.co.gresearch.spark.{SparkTestSession, SparkVersion}
@@ -151,8 +152,8 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
     test(s"read parquet partitions (${partitionSize.getOrElse("default")} bytes)") {
       withSQLConf(partitionSize.map(size => Seq("spark.sql.files.maxPartitionBytes" -> size.toString)).getOrElse(Seq.empty): _*) {
         val expected = expectedRows.map {
-          case row: Seq[Any] if SparkCompatMajorVersion > 3 || SparkCompatMinorVersion >= 3 => Row(row.updated(8, null): _*)
-          case row => row
+          case row if SparkCompatMajorVersion > 3 || SparkCompatMinorVersion >= 3 => row
+          case row => Row(unapplySeq(row).get.updated(8, null): _*)
         }
 
         val actual = spark.read
