@@ -29,9 +29,9 @@ def parquet_metadata(self: DataFrameReader, *paths: str) -> DataFrame:
     This provides the following per-file information:
     - filename (string): The file name
     - blocks (int): Number of blocks / RowGroups in the Parquet file
-    - totalSizeBytes (long): Number of uncompressed bytes of all blocks
-    - compressedSizeBytes (long): Number of compressed bytes of all blocks
-    - totalRowCount (long): Number of rows of all blocks
+    - compressedBytes (long): Number of compressed bytes of all blocks
+    - uncompressedBytes (long): Number of uncompressed bytes of all blocks
+    - rows (long): Number of rows of all blocks
     - createdBy (string): The createdBy string of the Parquet file, e.g. library used to write the file
     - schema (string): The schema
 
@@ -51,10 +51,10 @@ def parquet_blocks(self: DataFrameReader, *paths: str) -> DataFrame:
     This provides the following per-block information:
     - filename (string): The file name
     - block (int): Block number starting at 1
-    - startPos (long): Start position of block in Parquet file
-    - totalSizeBytes (long): Number of uncompressed bytes in block
-    - compressedSizeBytes (long): Number of compressed bytes in block
-    - totalRowCount (long): Number of rows in block    
+    - blockStart (long): Start position of block in Parquet file
+    - compressedBytes (long): Number of compressed bytes in block
+    - uncompressedBytes (long): Number of uncompressed bytes in block
+    - rows (long): Number of rows in block
 
     :param self: a Spark DataFrameReader
     :param paths: paths one or more paths to Parquet files or directories
@@ -78,10 +78,10 @@ def parquet_block_columns(self: DataFrameReader, *paths: str) -> DataFrame:
     - encodings (string): Encodings of the block column
     - minValue (string): Minimum value of this column in this block
     - maxValue (string): Maximum value of this column in this block
-    - startPos (long): Start position of block column in Parquet file
-    - sizeBytes (long): Number of bytes of this block column
-    - compressedSizeBytes (long): Number of compressed bytes of this block column
-    - valueCount (long): Number of values in this block column
+    - columnStart (long): Start position of block column in Parquet file
+    - compressedBytes (long): Number of compressed bytes of this block column
+    - uncompressedBytes (long): Number of uncompressed bytes of this block column
+    - values (long): Number of values in this block column
     
     :param self: a Spark DataFrameReader
     :param paths: paths one or more paths to Parquet files or directories

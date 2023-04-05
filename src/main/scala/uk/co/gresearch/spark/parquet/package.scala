@@ -42,9 +42,9 @@ package object parquet {
      * This provides the following per-file information:
      * - filename (string): The file name
      * - blocks (int): Number of blocks / RowGroups in the Parquet file
-     * - totalSizeBytes (long): Number of uncompressed bytes of all blocks
-     * - compressedSizeBytes (long): Number of compressed bytes of all blocks
-     * - totalRowCount (long): Number of rows of all blocks
+     * - compressedBytes (long): Number of compressed bytes of all blocks
+     * - uncompressedBytes (long): Number of uncompressed bytes of all blocks
+     * - rows (long): Number of rows of all blocks
      * - createdBy (string): The createdBy string of the Parquet file, e.g. library used to write the file
      * - schema (string): The schema
      *
@@ -75,7 +75,7 @@ package object parquet {
             footer.getParquetMetadata.getFileMetaData.getSchema.toString,
           )
         }
-      }.toDF("filename", "blocks", "totalSizeBytes", "compressedSizeBytes", "totalRowCount", "createdBy", "schema")
+      }.toDF("filename", "blocks", "compressedBytes", "uncompressedBytes", "rows", "createdBy", "schema")
     }
 
     /**
@@ -84,10 +84,10 @@ package object parquet {
      * This provides the following per-block information:
      * - filename (string): The file name
      * - block (int): Block number starting at 1
-     * - startPos (long): Start position of block in Parquet file
-     * - totalSizeBytes (long): Number of uncompressed bytes in block
-     * - compressedSizeBytes (long): Number of compressed bytes in block
-     * - totalRowCount (long): Number of rows in block
+     * - blockStart (long): Start position of block in Parquet file
+     * - compressedBytes (long): Number of compressed bytes in block
+     * - uncompressedBytes (long): Number of uncompressed bytes in block
+     * - rows (long): Number of rows in block
      *
      * @param paths one or more paths to Parquet files or directories
      * @return dataframe with Parquet block metadata
@@ -111,13 +111,13 @@ package object parquet {
               footer.getFile.toString,
               idx + 1,
               block.getStartingPos,
-              block.getTotalByteSize,
               block.getCompressedSize,
+              block.getTotalByteSize,
               block.getRowCount,
             )
           }
         }
-      }.toDF("filename", "block", "startPos", "totalSizeBytes", "compressedSizeBytes", "totalRowCount")
+      }.toDF("filename", "block", "blockStart", "compressedBytes", "uncompressedBytes", "rows")
     }
 
     /**
@@ -132,10 +132,10 @@ package object parquet {
      * - encodings (string): Encodings of the block column
      * - minValue (string): Minimum value of this column in this block
      * - maxValue (string): Maximum value of this column in this block
-     * - startPos (long): Start position of block column in Parquet file
-     * - sizeBytes (long): Number of bytes of this block column
-     * - compressedSizeBytes (long): Number of compressed bytes of this block column
-     * - valueCount (long): Number of values in this block column
+     * - columnStart (long): Start position of block column in Parquet file
+     * - compressedBytes (long): Number of compressed bytes of this block column
+     * - uncompressedBytes (long): Number of uncompressed bytes of this block column
+     * - values (long): Number of values in this block column
      *
      * @param paths one or more paths to Parquet files or directories
      * @return dataframe with Parquet block metadata
@@ -166,14 +166,14 @@ package object parquet {
                 column.getStatistics.minAsString(),
                 column.getStatistics.maxAsString(),
                 column.getStartingPos,
-                column.getTotalUncompressedSize,
                 column.getTotalSize,
+                column.getTotalUncompressedSize,
                 column.getValueCount,
               )
             }
           }
         }
-      }.toDF("filename", "block", "column", "codec", "type", "encodings", "minValue", "maxValue", "startPos", "sizeBytes", "compressedSizeBytes", "valueCount")
+      }.toDF("filename", "block", "column", "codec", "type", "encodings", "minValue", "maxValue", "columnStart", "compressedBytes", "uncompressedBytes", "values")
     }
 
     /**
@@ -183,12 +183,12 @@ package object parquet {
      * - partition (int): The Spark partition id
      * - filename (string): The Parquet file name
      * - fileLength (long): The length of the Parquet file
-     * - partitionStart (long): The start position of the partition
-     * - partitionEnd (long): The end position of the partition
-     * - partitionLength (long): The length of the partition
+     * - start (long): The start position of the partition
+     * - end (long): The end position of the partition
+     * - length (long): The length of the partition
      * - blocks (int): The number of Parquet blocks in this partition
-     * - uncompressedBytes (long): The number of uncompressed bytes in this partition
      * - compressedBytes (long): The number of compressed bytes in this partition
+     * - uncompressedBytes (long): The number of uncompressed bytes in this partition
      * - rows (long): The number of rows in this partition
      *
      * @param paths one or more paths to Parquet files or directories
@@ -211,8 +211,6 @@ package object parquet {
           .map(footer => (footer, getBlocks(footer, file.start, file.length)))
           .map { case (footer, blocks) => (
             part,
-            footer.getFile.toString,
-            file.fileSize,
             file.start,
             file.start + file.length,
             file.length,
@@ -220,8 +218,10 @@ package object parquet {
             blocks.map(_.getCompressedSize).sum,
             blocks.map(_.getTotalByteSize).sum,
             blocks.map(_.getRowCount).sum,
+            footer.getFile.toString,
+            file.fileSize,
           )}
-      }.toDF("partition", "filename", "fileLength", "partitionStart", "partitionEnd", "partitionLength", "blocks", "compressedBytes", "uncompressedBytes", "rows")
+      }.toDF("partition", "start", "end", "length", "blocks", "compressedBytes", "uncompressedBytes", "rows", "filename", "fileLength")
     }
   }
 
