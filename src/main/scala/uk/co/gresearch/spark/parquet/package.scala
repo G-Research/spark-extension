@@ -68,8 +68,8 @@ package object parquet {
           (
             footer.getFile.toString,
             footer.getParquetMetadata.getBlocks.size(),
-            footer.getParquetMetadata.getBlocks.asScala.map(_.getTotalByteSize).sum,
             footer.getParquetMetadata.getBlocks.asScala.map(_.getCompressedSize).sum,
+            footer.getParquetMetadata.getBlocks.asScala.map(_.getTotalByteSize).sum,
             footer.getParquetMetadata.getBlocks.asScala.map(_.getRowCount).sum,
             footer.getParquetMetadata.getFileMetaData.getCreatedBy,
             footer.getParquetMetadata.getFileMetaData.getSchema.toString,

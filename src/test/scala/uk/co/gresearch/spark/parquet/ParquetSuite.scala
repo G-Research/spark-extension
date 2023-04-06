@@ -54,8 +54,8 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
         .parquetMetadata(testFile)
         .orderBy($"filename"),
       Seq(
-        Row("file1.parquet", 1, 1652, 1268, 100, createdBy, schema),
-        Row("file2.parquet", 2, 3302, 2539, 200, createdBy, schema),
+        Row("file1.parquet", 1, 1268, 1652, 100, createdBy, schema),
+        Row("file2.parquet", 2, 2539, 3302, 200, createdBy, schema),
       )
     )
   }
