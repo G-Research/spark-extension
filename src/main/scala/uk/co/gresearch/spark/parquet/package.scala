@@ -162,7 +162,7 @@ package object parquet {
                 column.getPath.toString,
                 column.getCodec.toString,
                 column.getPrimitiveType.toString,
-                "[" + column.getEncodings.asScala.toSeq.map(_.toString).sorted.mkString(", ") + "]",
+                column.getEncodings.asScala.toSeq.map(_.toString).sorted,
                 column.getStatistics.minAsString(),
                 column.getStatistics.maxAsString(),
                 column.getStartingPos,

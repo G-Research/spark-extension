@@ -17,12 +17,13 @@
 package uk.co.gresearch.spark.parquet
 
 import org.apache.spark.sql.Row.unapplySeq
+import org.apache.spark.sql.functions.{regexp_replace, spark_partition_id}
+import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, Row}
 import org.scalatest.funsuite.AnyFunSuite
-import uk.co.gresearch.spark.{SparkTestSession, SparkVersion}
-import org.apache.spark.sql.functions.{regexp_replace, spark_partition_id}
 import org.scalatest.tagobjects.Slow
 import uk.co.gresearch._
+import uk.co.gresearch.spark.{SparkTestSession, SparkVersion}
 
 class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
 
@@ -36,13 +37,15 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
   val testFile = "src/test/files/test.parquet"
 
 
-  def assertDf(actual: DataFrame, expected: Seq[Row]): Unit = {
+  def assertDf(actual: DataFrame, expectedSchema: StructType, expectedRows: Seq[Row], postProcess: DataFrame => DataFrame = identity): Unit = {
+    assert(actual.schema === expectedSchema)
     val replaced =
       actual
         .withColumn("filename", regexp_replace($"filename", ".*/test.parquet/", ""))
         .when(actual.columns.contains("schema"))
         .call(_.withColumn("schema", regexp_replace($"schema", "\n", "\\\\n")))
-    assert(replaced.collect() === expected)
+        .call(postProcess)
+    assert(replaced.collect() === expectedRows)
   }
 
   test("read parquet metadata") {
@@ -53,6 +56,15 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
       spark.read
         .parquetMetadata(testFile)
         .orderBy($"filename"),
+      StructType(Seq(
+        StructField("filename", StringType, nullable = true),
+        StructField("blocks", IntegerType, nullable = false),
+        StructField("compressedBytes", LongType, nullable = false),
+        StructField("uncompressedBytes", LongType, nullable = false),
+        StructField("rows", LongType, nullable = false),
+        StructField("createdBy", StringType, nullable = true),
+        StructField("schema", StringType, nullable = true),
+      )),
       Seq(
         Row("file1.parquet", 1, 1268, 1652, 100, createdBy, schema),
         Row("file2.parquet", 2, 2539, 3302, 200, createdBy, schema),
@@ -65,6 +77,14 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
       spark.read
         .parquetBlocks(testFile)
         .orderBy($"filename", $"block"),
+      StructType(Seq(
+        StructField("filename", StringType, nullable = true),
+        StructField("block", IntegerType, nullable = false),
+        StructField("blockStart", LongType, nullable = false),
+        StructField("compressedBytes", LongType, nullable = false),
+        StructField("uncompressedBytes", LongType, nullable = false),
+        StructField("rows", LongType, nullable = false),
+      )),
       Seq(
         Row("file1.parquet", 1, 4, 1268, 1652, 100),
         Row("file2.parquet", 1, 4, 1269, 1651, 100),
@@ -78,6 +98,20 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
       spark.read
         .parquetBlockColumns(testFile)
         .orderBy($"filename", $"block", $"column"),
+      StructType(Seq(
+        StructField("filename", StringType, nullable = true),
+        StructField("block", IntegerType, nullable = false),
+        StructField("column", StringType, nullable = true),
+        StructField("codec", StringType, nullable = true),
+        StructField("type", StringType, nullable = true),
+        StructField("encodings", ArrayType(StringType), nullable = true),
+        StructField("minValue", StringType, nullable = true),
+        StructField("maxValue", StringType, nullable = true),
+        StructField("columnStart", LongType, nullable = false),
+        StructField("compressedBytes", LongType, nullable = false),
+        StructField("uncompressedBytes", LongType, nullable = false),
+        StructField("values", LongType, nullable = false),
+      )),
       Seq(
         Row("file1.parquet", 1, "[id]", "SNAPPY", "required int64 id", "[BIT_PACKED, PLAIN]", "0", "99", 4, 437, 826, 100),
         Row("file1.parquet", 1, "[val]", "SNAPPY", "required double val", "[BIT_PACKED, PLAIN]", "0.005067503372006343", "0.9973357672164814", 441, 831, 826, 100),
@@ -85,7 +119,8 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
         Row("file2.parquet", 1, "[val]", "SNAPPY", "required double val", "[BIT_PACKED, PLAIN]", "0.010617521596503865", "0.999189783846449", 442, 831, 826, 100),
         Row("file2.parquet", 2, "[id]", "SNAPPY", "required int64 id", "[BIT_PACKED, PLAIN]", "200", "299", 1273, 440, 826, 100),
         Row("file2.parquet", 2, "[val]", "SNAPPY", "required double val", "[BIT_PACKED, PLAIN]", "0.011277044401634018", "0.970525681750662", 1713, 830, 825, 100),
-      )
+      ),
+      (df: DataFrame) => df.withColumn("encodings", $"encodings".cast(StringType))
     )
   }
 
@@ -168,7 +203,20 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
           assert(Seq(0, 0) === partitions)
         }
 
-        assertDf(actual.drop("partition"), expected)
+        val schema = StructType(Seq(
+          StructField("partition", IntegerType, nullable = false),
+          StructField("start", LongType, nullable = false),
+          StructField("end", LongType, nullable = false),
+          StructField("length", LongType, nullable = false),
+          StructField("blocks", IntegerType, nullable = false),
+          StructField("compressedBytes", LongType, nullable = false),
+          StructField("uncompressedBytes", LongType, nullable = false),
+          StructField("rows", LongType, nullable = false),
+          StructField("filename", StringType, nullable = true),
+          StructField("fileLength", LongType, nullable = true),
+        ))
+
+        assertDf(actual, schema, expected, df => df.drop("partition"))
         actual.unpersist()
       }
     }
