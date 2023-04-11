@@ -46,8 +46,9 @@ i.doThis()
 **Backticks:** `backticks(string: String, strings: String*): String)`: Encloses the given column name with backticks (`` ` ``) when needed.
 This is a handy way to ensure column names with special characters like dots (`.`) work with `col()` or `select()`.
 
-**[Inspect Parquet files](PARQUET.md):** The structure of parquet files can be inspected similar to [parquet-tools](https://pypi.org/project/parquet-tools/)
-by reading from a simple data source. This simplifies to identify why some Parquet files cannot be split by Spark into scalable partitions.
+**[Inspect Parquet files](PARQUET.md):** The structure of Parquet files (the metadata, not the data stored in Parquet) can be inspected similar to [parquet-tools](https://pypi.org/project/parquet-tools/)
+or [parquet-cli](https://pypi.org/project/parquet-cli/) by reading from a simple Spark data source.
+This simplifies identifying why some Parquet files cannot be split by Spark into scalable partitions.
 
 ## Using Spark Extension
 

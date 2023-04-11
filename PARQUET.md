@@ -1,7 +1,8 @@
 # Parquet Metadata
 
 The structure of Parquet files (the metadata, not the data stored in Parquet) can be inspected similar to [parquet-tools](https://pypi.org/project/parquet-tools/)
-by reading from a simple data source.
+or [parquet-cli](https://pypi.org/project/parquet-cli/)
+by reading from a simple Spark data source.
 
 First, import the new Parquet metadata data sources:
 
@@ -33,8 +34,8 @@ spark.read.parquet_metadata("/path/to/parquet").show()
 +-------------+------+---------------+-----------------+----+--------------------+--------------------+
 |     filename|blocks|compressedBytes|uncompressedBytes|rows|           createdBy|              schema|
 +-------------+------+---------------+-----------------+----+--------------------+--------------------+
-|file1.parquet|     1|           1652|             1268| 100|parquet-mr versio...|message spark_sch...|
-|file2.parquet|     2|           3302|             2539| 200|parquet-mr versio...|message spark_sch...|
+|file1.parquet|     1|           1268|             1652| 100|parquet-mr versio...|message spark_sch...|
+|file2.parquet|     2|           2539|             3302| 200|parquet-mr versio...|message spark_sch...|
 +-------------+------+---------------+-----------------+----+--------------------+--------------------+
 ```
 
@@ -73,14 +74,14 @@ spark.read.parquet_blocks("/path/to/parquet").show()
 
 ```
 
-|column            |type  |description                            |
-|:-----------------|:----:|:--------------------------------------|
-|filename          |string|The Parquet file name                  |
-|block             |int   |Block number starting at 1             |
-|blockStart        |long  |Start position of block in Parquet file|
-|compressedBytes   |long  |Number of compressed bytes in block    |
-|uncompressedBytes |long  |Number of uncompressed bytes in block  |
-|rows              |long  |Number of rows in block                |
+|column            |type  |description                                    |
+|:-----------------|:----:|:----------------------------------------------|
+|filename          |string|The Parquet file name                          |
+|block             |int   |Block / RowGroup number starting at 1          |
+|blockStart        |long  |Start position of the block in the Parquet file|
+|compressedBytes   |long  |Number of compressed bytes in block            |
+|uncompressedBytes |long  |Number of uncompressed bytes in block          |
+|rows              |long  |Number of rows in block                        |
 
 ## Parquet block column metadata
 
@@ -107,20 +108,20 @@ spark.read.parquet_block_columns("/path/to/parquet").show()
 +-------------+-----+------+------+-------------------+-------------------+--------------------+------------------+-----------+---------------+-----------------+------+
 ```
 
-|column            |type  |description                                       |
-|:-----------------|:----:|:-------------------------------------------------|
-|filename          |string|The Parquet file name                             |
-|block             |int   |Block number starting at 1                        |
-|column            |string|Block column name                                 |
-|codec             |string|The coded used to compress the block column values|
-|type              |string|The data type of the block column                 |
-|encodings         |string|Encodings of the block column                     |
-|minValue          |string|Minimum value of this column in this block        |
-|maxValue          |string|Maximum value of this column in this block        |
-|columnStart       |long  |Start position of block column in Parquet file    |
-|compressedBytes   |long  |Number of compressed bytes of this block column   |
-|uncompressedBytes |long  |Number of uncompressed bytes of this block column |
-|valueCount        |long  |Number of values in this block column             |
+|column            |type  |description                                           |
+|:-----------------|:----:|:-----------------------------------------------------|
+|filename          |string|The Parquet file name                                 |
+|block             |int   |Block / RowGroup number starting at 1                 |
+|column            |string|Block / RowGroup column name                          |
+|codec             |string|The coded used to compress the block column values    |
+|type              |string|The data type of the block column                     |
+|encodings         |string|Encodings of the block column                         |
+|minValue          |string|Minimum value of this column in this block            |
+|maxValue          |string|Maximum value of this column in this block            |
+|columnStart       |long  |Start position of the block column in the Parquet file|
+|compressedBytes   |long  |Number of compressed bytes of this block column       |
+|uncompressedBytes |long  |Number of uncompressed bytes of this block column     |
+|valueCount        |long  |Number of values in this block column                 |
 
 ## Parquet partition metadata
 
@@ -147,15 +148,15 @@ spark.read.parquet_partitions("/path/to/parquet").show()
 +---------+-----+----+------+------+---------------+-----------------+----+-------------+----------+
 ```
 
-|column           |type  |description                                       |
-|:----------------|:----:|:-------------------------------------------------|
-|partition        |int   |The Spark partition id                            |
-|start            |long  |The start position of the partition               |
-|end              |long  |The end position of the partition                 |
-|length           |long  |The length of the partition                       |
-|blocks           |int   |The number of Parquet blocks in this partition    |
-|compressedBytes  |long  |The number of compressed bytes in this partition  |
-|uncompressedBytes|long  |The number of uncompressed bytes in this partition|
-|rows             |long  |The number of rows in this partition              |
-|filename         |string|The Parquet file name                             |
-|fileLength       |long  |The length of the Parquet file                    |
+|column           |type  |description                                               |
+|:----------------|:----:|:---------------------------------------------------------|
+|partition        |int   |The Spark partition id                                    |
+|start            |long  |The start position of the partition                       |
+|end              |long  |The end position of the partition                         |
+|length           |long  |The length of the partition                               |
+|blocks           |int   |The number of Parquet blocks / RowGroups in this partition|
+|compressedBytes  |long  |The number of compressed bytes in this partition          |
+|uncompressedBytes|long  |The number of uncompressed bytes in this partition        |
+|rows             |long  |The number of rows in this partition                      |
+|filename         |string|The Parquet file name                                     |
+|fileLength       |long  |The length of the Parquet file                            |

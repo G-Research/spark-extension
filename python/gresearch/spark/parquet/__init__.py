@@ -50,8 +50,8 @@ def parquet_blocks(self: DataFrameReader, *paths: str) -> DataFrame:
 
     This provides the following per-block information:
     - filename (string): The file name
-    - block (int): Block number starting at 1
-    - blockStart (long): Start position of block in Parquet file
+    - block (int): Block / RowGroup number starting at 1
+    - blockStart (long): Start position of the block in the Parquet file
     - compressedBytes (long): Number of compressed bytes in block
     - uncompressedBytes (long): Number of uncompressed bytes in block
     - rows (long): Number of rows in block
@@ -71,14 +71,14 @@ def parquet_block_columns(self: DataFrameReader, *paths: str) -> DataFrame:
 
     This provides the following per-block-column information:
     - filename (string): The file name
-    - block (int): Block number starting at 1
-    - column (string): Block column name
+    - block (int): Block / RowGroup number starting at 1
+    - column (string): Block / RowGroup column name
     - codec (string): The coded used to compress the block column values
     - type (string): The data type of the block column
     - encodings (string): Encodings of the block column
     - minValue (string): Minimum value of this column in this block
     - maxValue (string): Maximum value of this column in this block
-    - columnStart (long): Start position of block column in Parquet file
+    - columnStart (long): Start position of the block column in the Parquet file
     - compressedBytes (long): Number of compressed bytes of this block column
     - uncompressedBytes (long): Number of uncompressed bytes of this block column
     - values (long): Number of values in this block column
@@ -103,7 +103,7 @@ def parquet_partitions(self: DataFrameReader, *paths: str) -> DataFrame:
     - partitionStart (long): The start position of the partition
     - partitionEnd (long): The end position of the partition
     - partitionLength (long): The length of the partition
-    - blocks (int): The number of Parquet blocks in this partition
+    - blocks (int): The number of Parquet blocks / RowGroups in this partition
     - compressedBytes (long): The number of compressed bytes in this partition
     - uncompressedBytes (long): The number of uncompressed bytes in this partition
     - rows (long): The number of rows in this partition
