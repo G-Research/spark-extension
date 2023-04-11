@@ -62,7 +62,7 @@ next_pkg_version="$(next_version "$pkg_version" "$branch")"
 
 # bump the version
 echo "Bump version to $next_pkg_version"
-./set-version $next_pkg_version-SNAPSHOT
+./set-version.sh $next_pkg_version-SNAPSHOT
 
 # commit changes to local repo
 echo
