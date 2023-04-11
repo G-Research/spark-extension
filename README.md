@@ -18,6 +18,10 @@ requires a window spec, this transformation provides the row number across the e
 **[Partitioned Writing](PARTITIONING.md):** The `writePartitionedBy` action writes your `Dataset` partitioned and
 efficiently laid out with a single operation.
 
+**[Inspect Parquet files](PARQUET.md):** The structure of Parquet files (the metadata, not the data stored in Parquet) can be inspected similar to [parquet-tools](https://pypi.org/project/parquet-tools/)
+or [parquet-cli](https://pypi.org/project/parquet-cli/) by reading from a simple Spark data source.
+This simplifies identifying why some Parquet files cannot be split by Spark into scalable partitions.
+
 **[Fluent method call](CONDITIONAL.md):** `T.call(transformation: T => R): R`: Turns a transformation `T => R`,
 that is not part of `T` into a fluent method call on `T`. This allows writing fluent code like:
 
@@ -45,7 +49,6 @@ i.doThis()
 
 **Backticks:** `backticks(string: String, strings: String*): String)`: Encloses the given column name with backticks (`` ` ``) when needed.
 This is a handy way to ensure column names with special characters like dots (`.`) work with `col()` or `select()`.
-
 
 ## Using Spark Extension
 
