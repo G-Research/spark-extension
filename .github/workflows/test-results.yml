@@ -14,9 +14,10 @@ jobs:
 
     steps:
       - name: Download and Extract Artifacts
-        uses: dawidd6/action-download-artifact@7132ab516fba5f602fafae6fdd4822afa10db76f
+        uses: EnricoMi/action-download-artifact@master
         with:
           run_id: ${{ github.event.workflow_run.id }}
+          filter: "/ Test Results /"
           path: artifacts
 
       - name: Publish Test Results
