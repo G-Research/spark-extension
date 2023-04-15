@@ -45,7 +45,8 @@ Once you have released the new version, release from the same tag for all other 
 |3.1  |2.12.10 (and 2.13.4)|
 |3.2  |2.12.15 and 2.13.5|
 |3.3  |2.12.15 and 2.13.8|
-|3.4  |2.12.16 and 2.13.8|
+|3.4  |2.12.17 and 2.13.8|
+|3.5  |2.12.17 and 2.13.8|
 - Always use the latest Spark version per Spark minor version
 - Release process:
   - Checkout the release tag, e.g. `git checkout v1.0.0`
