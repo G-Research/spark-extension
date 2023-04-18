@@ -2,17 +2,21 @@ package uk.co.gresearch.spark
 
 import java.util.Properties
 
+/**
+ * Provides versions from build environment.
+ */
 trait BuildVersion {
   val propertyFileName = "spark-extension-build.properties"
 
   lazy val props: Properties = {
     val properties = new Properties
+
     val in = Option(Thread.currentThread().getContextClassLoader.getResourceAsStream(propertyFileName))
     if (in.isEmpty) {
       throw new RuntimeException(s"Property file $propertyFileName not found in class path")
     }
 
-    properties.load(in.get)
+    in.foreach(properties.load)
     properties
   }
 

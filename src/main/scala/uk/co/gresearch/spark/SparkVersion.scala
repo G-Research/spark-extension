@@ -2,6 +2,9 @@ package uk.co.gresearch.spark
 
 import org.apache.spark.SPARK_VERSION_SHORT
 
+/**
+ * Provides versions form runtime environment.
+ */
 trait SparkVersion {
   private def SparkVersionSeq: Seq[Int] = SPARK_VERSION_SHORT.split('.').toSeq.map(_.toInt)
 

@@ -33,7 +33,7 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
   val emptyDataFrame: DataFrame = spark.createDataFrame(Seq.empty[Value])
 
   test("Get Spark version") {
-    assert(VersionString.contains(s"$BuildSparkCompatVersionString."))
+    assert(VersionString.contains(s"-$BuildSparkCompatVersionString-") || VersionString.endsWith(s"-$BuildSparkCompatVersionString"))
 
     assert(spark.version.startsWith(s"$BuildSparkCompatVersionString."))
     assert(SparkVersion === BuildSparkVersion)
