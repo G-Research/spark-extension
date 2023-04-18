@@ -1,0 +1,223 @@
+package uk.co.gresearch.spark.diff
+
+import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
+import scopt.OptionParser
+import uk.co.gresearch._
+
+object App {
+  // define available options
+  case class Options(master: Option[String] = None,
+                     appName: Option[String] = None,
+
+                     leftPath: Option[String] = None,
+                     rightPath: Option[String] = None,
+                     outputPath: Option[String] = None,
+
+                     leftFormat: Option[String] = None,
+                     rightFormat: Option[String] = None,
+                     outputFormat: Option[String] = None,
+
+                     leftSchema: Option[String] = None,
+                     rightSchema: Option[String] = None,
+
+                     leftOptions: Map[String, String] = Map.empty,
+                     rightOptions: Map[String, String] = Map.empty,
+                     outputOptions: Map[String, String] = Map.empty,
+
+                     saveMode: SaveMode = SaveMode.ErrorIfExists,
+
+                     diffOptions: DiffOptions = DiffOptions.default)
+
+  // read options from args
+  val parser: OptionParser[Options] = new scopt.OptionParser[Options]("spark-extension_2.12-2.7.0-3.5-SNAPSHOT.jar") {
+    head("Spark Diff app (2.7.0-3.3-SNAPSHOT)")
+    head()
+
+    arg[String]("left")
+      .required()
+      .valueName("<left-path>")
+      .action((x, c) => c.copy(leftPath = Some(x)))
+      .text("file path (requires format option) or table name to read left dataframe")
+
+    arg[String]("right")
+      .required()
+      .valueName("<right-path>")
+      .action((x, c) => c.copy(rightPath = Some(x)))
+      .text("file path (requires format option) or table name to read right dataframe")
+
+    arg[String]("diff")
+      .required()
+      .valueName("<diff-path>")
+      .action((x, c) => c.copy(outputPath = Some(x)))
+      .text("file path (requires format option) or table name to write diff dataframe")
+
+    note("")
+    note("Spark session")
+    opt[String]("master")
+      .valueName("<master>")
+      .action((x, c) => c.copy(master = Some(x)))
+      .text("Spark master (local, yarn, ...), not needed with spark-submit")
+    opt[String]("app-name")
+      .valueName("<app-name>")
+      .action((x, c) => c.copy(appName = Some(x)))
+      .text("Spark application name")
+      .withFallback(() => "Diff App")
+
+    note("")
+    note("Input and output")
+    opt[String]('f', "format")
+      .valueName("<format>")
+      .action((x, c) => c.copy(
+        leftFormat = c.leftFormat.orElse(Some(x)),
+        rightFormat = c.rightFormat.orElse(Some(x)),
+        outputFormat = c.outputFormat.orElse(Some(x))
+      ))
+      .text("input and output file format (csv, json, parquet, ...)")
+    opt[String]("left-format")
+      .valueName("<format>")
+      .action((x, c) => c.copy(leftFormat = Some(x)))
+      .text("left input file format (csv, json, parquet, ...)")
+    opt[String]("right-format")
+      .valueName("<format>")
+      .action((x, c) => c.copy(rightFormat = Some(x)))
+      .text("right input file format (csv, json, parquet, ...)")
+    opt[String]("output-format")
+      .valueName("<formt>")
+      .action((x, c) => c.copy(outputFormat = Some(x)))
+      .text("output file format (csv, json, parquet, ...)")
+
+    note("")
+    opt[String]('s', "schema")
+      .valueName("<schema>")
+      .action((x, c) => c.copy(
+        leftSchema = c.leftSchema.orElse(Some(x)),
+        rightSchema = c.rightSchema.orElse(Some(x))
+      ))
+      .text("input schema")
+    opt[String]("left-schema")
+      .valueName("<schema>")
+      .action((x, c) => c.copy(leftSchema = Some(x)))
+      .text("left input schema")
+    opt[String]("right-schema")
+      .valueName("<schema>")
+      .action((x, c) => c.copy(rightSchema = Some(x)))
+      .text("right input schema")
+
+    note("")
+    opt[(String, String)]("left-option")
+      .unbounded()
+      .optional()
+      .keyValueName("key", "val")
+      .action((x, c) => c.copy(leftOptions = c.leftOptions + (x._1 -> x._2)))
+      .text("left input option")
+    opt[(String, String)]("right-option")
+      .unbounded()
+      .optional()
+      .keyValueName("key", "val")
+      .action((x, c) => c.copy(rightOptions = c.rightOptions + (x._1 -> x._2)))
+      .text("right input option")
+    opt[(String, String)]("output-option")
+      .unbounded()
+      .optional()
+      .keyValueName("key", "val")
+      .action((x, c) => c.copy(outputOptions = c.outputOptions + (x._1 -> x._2)))
+      .text("output option")
+
+    note("")
+    opt[String]("save-mode")
+      .optional()
+      .valueName("<save-mode>")
+      .action((x, c) => c.copy(saveMode = SaveMode.valueOf(x)))
+      .text(s"save mode for writing output (${SaveMode.values().mkString(", ")}, default ${Options().saveMode})")
+
+    note("")
+    note("Diffing options")
+    opt[String]("diff-column")
+      .optional()
+      .valueName("<name>")
+      .action((x, c) => c.copy(diffOptions = c.diffOptions.copy(diffColumn = x)))
+      .text(s"column name for diff column (default '${DiffOptions.default.diffColumn}')")
+    opt[String]("left-prefix")
+      .optional()
+      .valueName("<prefix>")
+      .action((x, c) => c.copy(diffOptions = c.diffOptions.copy(leftColumnPrefix = x)))
+      .text(s"prefix for left column names (default '${DiffOptions.default.leftColumnPrefix}')")
+    opt[String]("right-prefix")
+      .optional()
+      .valueName("<prefix>")
+      .action((x, c) => c.copy(diffOptions = c.diffOptions.copy(rightColumnPrefix = x)))
+      .text(s"prefix for right column names (default '${DiffOptions.default.rightColumnPrefix}')")
+    opt[String]("insert-value")
+      .optional()
+      .valueName("<value>")
+      .action((x, c) => c.copy(diffOptions = c.diffOptions.copy(insertDiffValue = x)))
+      .text(s"value for insertion (default '${DiffOptions.default.insertDiffValue}')")
+    opt[String]("change-value")
+      .optional()
+      .valueName("<value>")
+      .action((x, c) => c.copy(diffOptions = c.diffOptions.copy(changeDiffValue = x)))
+      .text(s"value for change (default '${DiffOptions.default.changeDiffValue}')")
+    opt[String]("delete-value")
+      .optional()
+      .valueName("<value>")
+      .action((x, c) => c.copy(diffOptions = c.diffOptions.copy(deleteDiffValue = x)))
+      .text(s"value for deletion (default '${DiffOptions.default.deleteDiffValue}')")
+    opt[String]("no-change-value")
+      .optional()
+      .valueName("<val>")
+      .action((x, c) => c.copy(diffOptions = c.diffOptions.copy(nochangeDiffValue = x)))
+      .text(s"value for no change (default '${DiffOptions.default.nochangeDiffValue}')")
+    opt[String]("change-column")
+      .optional()
+      .valueName("<name>")
+      .action((x, c) => c.copy(diffOptions = c.diffOptions.copy(changeColumn = Some(x))))
+      .text(s"column name for change column (default is no such column)")
+    opt[String]("diff-mode")
+      .optional()
+      .valueName("<mode>")
+      .action((x, c) => c.copy(diffOptions = c.diffOptions.copy(diffMode = DiffMode.withName(x))))
+      .text(s"diff mode (${DiffMode.values.mkString(", ")}, default ${Options().diffOptions.diffMode})")
+    opt[Boolean]("sparse")
+      .optional()
+      .action((x, c) => c.copy(diffOptions = c.diffOptions.copy(sparseMode = x)))
+      .text(s"enable sparse diff")
+
+    note("")
+    note("General")
+    help("help").text("prints this usage text")
+  }
+
+  def read(spark: SparkSession, format: Option[String], path: String, schema: Option[String], options: Map[String, String]): DataFrame =
+    spark.read
+      .when(format.isDefined).call(_.format(format.get))
+      .options(options)
+      .when(schema.isDefined).call(_.schema(schema.get))
+      .when(format.isDefined).either(_.load(path)).or(_.table(path))
+
+  def write(df: DataFrame, format: Option[String], path: String, options: Map[String, String], saveMode: SaveMode): Unit =
+    df.write
+      .when(format.isDefined).call(_.format(format.get))
+      .options(options)
+      .mode(saveMode)
+      .when(format.isDefined).either(_.save(path)).or(_.saveAsTable(path))
+
+  def main(args: Array[String]): Unit = {
+    // parse options
+    val options = parser.parse(args, Options()) match {
+      case Some(options) => options
+      case None => sys.exit(1)
+    }
+
+    // create spark session
+    val spark = SparkSession.builder()
+      .appName(options.appName.get)
+      .enableHiveSupport()
+      .when(options.master.isDefined).call(_.master(options.master.get))
+      .getOrCreate()
+
+    // read and write
+    val left = read(spark, options.leftFormat, options.leftPath.get, options.leftSchema, options.leftOptions)
+    val right = read(spark, options.rightFormat, options.rightPath.get, options.rightSchema, options.rightOptions)
+    write(left.diff(right), options.outputFormat, options.outputPath.get, options.outputOptions, options.saveMode)
+  }
+}
