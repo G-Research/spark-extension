@@ -16,6 +16,8 @@ trait BuildVersion {
     properties
   }
 
+  lazy val VersionString: String = props.getProperty("project.version")
+
   lazy val BuildSparkMajorVersion: Int = props.getProperty("spark.major.version").toInt
   lazy val BuildSparkMinorVersion: Int = props.getProperty("spark.minor.version").toInt
   lazy val BuildSparkPatchVersion: Int = props.getProperty("spark.patch.version").toInt

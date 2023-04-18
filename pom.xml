@@ -167,7 +167,7 @@
               <goal>write-project-properties</goal>
             </goals>
             <configuration>
-              <outputFile>${project.build.testOutputDirectory}/spark-extension-build.properties</outputFile>
+              <outputFile>${project.build.outputDirectory}/spark-extension-build.properties</outputFile>
             </configuration>
           </execution>
         </executions>

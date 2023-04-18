@@ -25,7 +25,7 @@ import org.scalatest.funsuite.AnyFunSuite
 import uk.co.gresearch.ExtendedAny
 import uk.co.gresearch.spark.SparkSuite.Value
 
-class SparkSuite extends AnyFunSuite with SparkTestSession with SparkVersion with BuildVersion {
+class SparkSuite extends AnyFunSuite with SparkTestSession {
 
   import spark.implicits._
 
@@ -33,6 +33,7 @@ class SparkSuite extends AnyFunSuite with SparkTestSession with SparkVersion wit
   val emptyDataFrame: DataFrame = spark.createDataFrame(Seq.empty[Value])
 
   test("Get Spark version") {
+    assert(VersionString.contains(s"$BuildSparkCompatVersionString."))
     assert(spark.version.startsWith(s"$BuildSparkCompatVersionString."))
     assert(SparkVersion === BuildSparkVersion)
     assert(SparkCompatVersion === BuildSparkCompatVersion)
