@@ -34,6 +34,7 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
 
   test("Get Spark version") {
     assert(VersionString.contains(s"$BuildSparkCompatVersionString."))
+
     assert(spark.version.startsWith(s"$BuildSparkCompatVersionString."))
     assert(SparkVersion === BuildSparkVersion)
     assert(SparkCompatVersion === BuildSparkCompatVersion)

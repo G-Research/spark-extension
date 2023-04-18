@@ -17,12 +17,20 @@ trait BuildVersion {
   }
 
   lazy val VersionString: String = props.getProperty("project.version")
-
+  
   lazy val BuildSparkMajorVersion: Int = props.getProperty("spark.major.version").toInt
   lazy val BuildSparkMinorVersion: Int = props.getProperty("spark.minor.version").toInt
   lazy val BuildSparkPatchVersion: Int = props.getProperty("spark.patch.version").toInt
   lazy val BuildSparkCompatVersionString: String = props.getProperty("spark.compat.version")
 
+  lazy val BuildScalaMajorVersion: Int = props.getProperty("scala.major.version").toInt
+  lazy val BuildScalaMinorVersion: Int = props.getProperty("scala.minor.version").toInt
+  lazy val BuildScalaPatchVersion: Int = props.getProperty("scala.patch.version").toInt
+  lazy val BuildScalaCompatVersionString: String = props.getProperty("scala.compat.version")
+
   val BuildSparkVersion: (Int, Int, Int) = (BuildSparkMajorVersion, BuildSparkMinorVersion, BuildSparkPatchVersion)
   val BuildSparkCompatVersion: (Int, Int) = (BuildSparkMajorVersion, BuildSparkMinorVersion)
+
+  val BuildScalaVersion: (Int, Int, Int) = (BuildScalaMajorVersion, BuildScalaMinorVersion, BuildScalaPatchVersion)
+  val BuildScalaCompatVersion: (Int, Int) = (BuildScalaMajorVersion, BuildScalaMinorVersion)
 }
