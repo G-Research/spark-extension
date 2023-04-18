@@ -79,6 +79,16 @@ Add this dependency to your `pom.xml` file:
 </dependency>
 ```
 
+### Spark Submit
+
+Submit your Spark app with the Spark Extension dependency (version ≥1.1.0) as follows:
+
+```shell script
+spark-submit --packages uk.co.gresearch.spark:spark-extension_2.12:2.6.0-3.3 [jar]
+```
+
+Note: Pick the right Scala version (here 2.12) and Spark version (here 3.3) depending on your Spark version.
+
 ### Spark Shell
 
 Launch a Spark Shell with the Spark Extension dependency (version ≥1.1.0) as follows:
