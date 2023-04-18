@@ -25,7 +25,7 @@ import org.scalatest.funsuite.AnyFunSuite
 import uk.co.gresearch.ExtendedAny
 import uk.co.gresearch.spark.SparkSuite.Value
 
-class SparkSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
+class SparkSuite extends AnyFunSuite with SparkTestSession with SparkVersion with BuildVersion {
 
   import spark.implicits._
 
@@ -33,9 +33,13 @@ class SparkSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
   val emptyDataFrame: DataFrame = spark.createDataFrame(Seq.empty[Value])
 
   test("Get Spark version") {
-    assert(spark.version.startsWith(s"$SparkCompatMajorVersion.$SparkCompatMinorVersion."))
-    assert(SparkCompatVersion === (SparkCompatMajorVersion, SparkCompatMinorVersion))
-    assert(SparkCompatVersionString === s"$SparkCompatMajorVersion.$SparkCompatMinorVersion")
+    assert(spark.version.startsWith(s"$BuildSparkCompatVersionString."))
+    assert(SparkVersion === BuildSparkVersion)
+    assert(SparkCompatVersion === BuildSparkCompatVersion)
+    assert(SparkCompatVersionString === BuildSparkCompatVersionString)
+    assert(SparkMajorVersion === BuildSparkMajorVersion)
+    assert(SparkMinorVersion === BuildSparkMinorVersion)
+    assert(SparkPatchVersion === BuildSparkPatchVersion)
   }
 
   Seq(MEMORY_AND_DISK, MEMORY_ONLY, DISK_ONLY, NONE).foreach { level =>

@@ -30,9 +30,6 @@ import scala.util.Properties
 
 package object spark extends Logging with SparkVersion {
 
-  val SparkCompatVersion: (Int, Int) = (SparkCompatMajorVersion, SparkCompatMinorVersion)
-  val SparkCompatVersionString: String = s"$SparkCompatMajorVersion.$SparkCompatMinorVersion"
-
   /**
    * Provides a prefix that makes any string distinct w.r.t. the given strings.
    * @param existing strings
