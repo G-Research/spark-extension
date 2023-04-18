@@ -29,8 +29,9 @@ object App {
                      diffOptions: DiffOptions = DiffOptions.default)
 
   // read options from args
-  val parser: OptionParser[Options] = new scopt.OptionParser[Options]("spark-extension_2.12-2.7.0-3.5-SNAPSHOT.jar") {
-    head("Spark Diff app (2.7.0-3.3-SNAPSHOT)")
+  val programName = s"spark-extension_${spark.BuildScalaCompatVersionString}-${spark.VersionString}.jar"
+  val parser: OptionParser[Options] = new scopt.OptionParser[Options](programName) {
+    head(s"Spark Diff app (${spark.VersionString})")
     head()
 
     arg[String]("left")
