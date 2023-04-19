@@ -121,21 +121,21 @@ spark.read.parquet_block_columns("/path/to/parquet").show()
 +-------------+-----+------+------+-------------------+-------------------+--------------------+------------------+-----------+---------------+-----------------+------+-----+
 ```
 
-|column            |type  |description                                           |
-|:-----------------|:----:|:-----------------------------------------------------|
-|filename          |string|The Parquet file name                                 |
-|block             |int   |Block / RowGroup number starting at 1                 |
-|column            |string|Block / RowGroup column name                          |
-|codec             |string|The coded used to compress the block column values    |
-|type              |string|The data type of the block column                     |
-|encodings         |string|Encodings of the block column                         |
-|minValue          |string|Minimum value of this column in this block            |
-|maxValue          |string|Maximum value of this column in this block            |
-|columnStart       |long  |Start position of the block column in the Parquet file|
-|compressedBytes   |long  |Number of compressed bytes of this block column       |
-|uncompressedBytes |long  |Number of uncompressed bytes of this block column     |
-|values            |long  |Number of values in this block column                 |
-|nulls             |long  |Number of null values in this block column            |
+|column            |type         |description                                           |
+|:-----------------|:-----------:|:-----------------------------------------------------|
+|filename          |string       |The Parquet file name                                 |
+|block             |int          |Block / RowGroup number starting at 1                 |
+|column            |array<string>|Block / RowGroup column name                          |
+|codec             |string       |The coded used to compress the block column values    |
+|type              |string       |The data type of the block column                     |
+|encodings         |array<string>|Encodings of the block column                         |
+|minValue          |string       |Minimum value of this column in this block            |
+|maxValue          |string       |Maximum value of this column in this block            |
+|columnStart       |long         |Start position of the block column in the Parquet file|
+|compressedBytes   |long         |Number of compressed bytes of this block column       |
+|uncompressedBytes |long         |Number of uncompressed bytes of this block column     |
+|values            |long         |Number of values in this block column                 |
+|nulls             |long         |Number of null values in this block column            |
 
 ## Parquet partition metadata
 
