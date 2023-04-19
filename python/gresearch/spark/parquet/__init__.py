@@ -72,17 +72,18 @@ def parquet_block_columns(self: DataFrameReader, *paths: str) -> DataFrame:
     This provides the following per-block-column information:
     - filename (string): The file name
     - block (int): Block / RowGroup number starting at 1
-    - column (string): Block / RowGroup column name
+    - column (array<string>): Block / RowGroup column name
     - codec (string): The coded used to compress the block column values
     - type (string): The data type of the block column
-    - encodings (string): Encodings of the block column
+    - encodings (array<string>): Encodings of the block column
     - minValue (string): Minimum value of this column in this block
     - maxValue (string): Maximum value of this column in this block
     - columnStart (long): Start position of the block column in the Parquet file
     - compressedBytes (long): Number of compressed bytes of this block column
     - uncompressedBytes (long): Number of uncompressed bytes of this block column
     - values (long): Number of values in this block column
-    
+    - nulls (long): Number of null values in this block column
+
     :param self: a Spark DataFrameReader
     :param paths: paths one or more paths to Parquet files or directories
     :return: dataframe with Parquet metadata
