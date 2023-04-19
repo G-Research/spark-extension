@@ -101,7 +101,7 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
       StructType(Seq(
         StructField("filename", StringType, nullable = true),
         StructField("block", IntegerType, nullable = false),
-        StructField("column", StringType, nullable = true),
+        StructField("column", ArrayType(StringType), nullable = true),
         StructField("codec", StringType, nullable = true),
         StructField("type", StringType, nullable = true),
         StructField("encodings", ArrayType(StringType), nullable = true),
@@ -120,7 +120,9 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
         Row("file2.parquet", 2, "[id]", "SNAPPY", "required int64 id", "[BIT_PACKED, PLAIN]", "200", "299", 1273, 440, 826, 100),
         Row("file2.parquet", 2, "[val]", "SNAPPY", "required double val", "[BIT_PACKED, PLAIN]", "0.011277044401634018", "0.970525681750662", 1713, 830, 825, 100),
       ),
-      (df: DataFrame) => df.withColumn("encodings", $"encodings".cast(StringType))
+      (df: DataFrame) => df
+        .withColumn("column", $"column".cast(StringType))
+        .withColumn("encodings", $"encodings".cast(StringType))
     )
   }
 
