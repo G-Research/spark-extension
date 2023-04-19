@@ -172,11 +172,12 @@ package object parquet {
                 column.getTotalSize,
                 column.getTotalUncompressedSize,
                 column.getValueCount,
+                column.getStatistics.getNumNulls,
               )
             }
           }
         }
-      }.toDF("filename", "block", "column", "codec", "type", "encodings", "minValue", "maxValue", "columnStart", "compressedBytes", "uncompressedBytes", "values")
+      }.toDF("filename", "block", "column", "codec", "type", "encodings", "minValue", "maxValue", "columnStart", "compressedBytes", "uncompressedBytes", "values", "nulls")
     }
 
     /**
