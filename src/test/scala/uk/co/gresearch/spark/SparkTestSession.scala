@@ -29,6 +29,7 @@ trait SparkTestSession extends SQLHelper {
       .appName("spark test example")
       .config("spark.sql.shuffle.partitions", 2)
       .config("spark.local.dir", ".")
+      .enableHiveSupport()
       .getOrCreate()
   }
 
