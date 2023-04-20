@@ -73,9 +73,16 @@
     </dependency>
 
     <dependency>
+      <groupId>org.apache.spark</groupId>
+      <artifactId>spark-hive_${scala.compat.version}</artifactId>
+      <version>${spark.version}</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <dependency>
       <groupId>com.github.scopt</groupId>
       <artifactId>scopt_${scala.compat.version}</artifactId>
-      <version>3.7.1</version>
+      <version>4.1.0</version>
     </dependency>
 
     <!-- Test -->
