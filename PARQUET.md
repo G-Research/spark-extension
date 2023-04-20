@@ -4,6 +4,19 @@ The structure of Parquet files (the metadata, not the data stored in Parquet) ca
 or [parquet-cli](https://pypi.org/project/parquet-cli/)
 by reading from a simple Spark data source.
 
+Parquet metadata can be read on [file level](#parquet-file-metadata),
+[row group level](#parquet-block--rowgroup-metadata),
+[column chunk level](#parquet-block-column-metadata) and
+[Spark Parquet partition level](#parquet-partition-metadata).
+Multiple files can be inspected at once.
+
+Any location that can be read by Spark (`spark.read.parquet(…)`) can be inspected.
+This means the path can point to a single Parquet file, a directory with Parquet files,
+or multiple paths separated by a comma (`,`). Paths can contain wildcards like `*`.
+Multiple files will be inspected in parallel and distributed by Spark.
+No actual rows or values will be read from the Parquet files, only metadata, which is very fast.
+This allows to inspect Parquet files that have different schemata with one `spark.read` operation.
+
 First, import the new Parquet metadata data sources:
 
 ```scala
