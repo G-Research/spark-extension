@@ -90,10 +90,16 @@
   </dependencies>
 
   <repositories>
+    <!-- the official source for Spark releases, mirrored to Maven central -->
+    <repository>
+      <id>apache releases</id>
+      <name>Apache Releases</name>
+      <url>https://repository.apache.org/content/repositories/releases/</url>
+    </repository>
     <!-- required to resolve Spark snapshot versions -->
     <repository>
-      <id>apache</id>
-      <name>Apache</name>
+      <id>apache snapshots</id>
+      <name>Apache Snapshots</name>
       <url>https://repository.apache.org/snapshots/</url>
     </repository>
   </repositories>
