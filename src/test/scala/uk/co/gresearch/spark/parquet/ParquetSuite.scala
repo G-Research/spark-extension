@@ -187,7 +187,7 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
     test(s"read parquet partitions (${partitionSize.getOrElse("default")} bytes)") {
       withSQLConf(partitionSize.map(size => Seq("spark.sql.files.maxPartitionBytes" -> size.toString)).getOrElse(Seq.empty): _*) {
         val expected = expectedRows.map {
-          case row if SparkCompatMajorVersion > 3 || SparkCompatMinorVersion >= 3 => row
+          case row if SparkMajorVersion > 3 || SparkMinorVersion >= 3 => row
           case row => Row(unapplySeq(row).get.updated(8, null): _*)
         }
 

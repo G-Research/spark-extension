@@ -24,17 +24,25 @@ then
     spark_compat=${spark%.*}
     scala_compat=${scala%.*}
 
-    scala_patch=${scala/*./}
+    spark_major=${spark_compat%.*}
+    scala_major=${scala_compat%.*}
+
+    spark_minor=${spark_compat/*./}
+    scala_minor=${scala_compat/*./}
+
     spark_patch=${spark/*./}
+    scala_patch=${scala/*./}
 
     echo "setting spark=$spark and scala=$scala"
     sed -i -E \
         -e "s%^(  <artifactId>)([^_]+)[_0-9.]+(</artifactId>)$%\1\2_${scala_compat}\3%" \
         -e "s%^(  <version>)([^-]+)-[^-]+(.*</version>)$%\1\2-$spark_compat\3%" \
-        -e "s%^(    <scala.compat.version>).+(</scala.compat.version>)$%\1${scala_compat}\2%" \
-        -e "s%^(    <scala.version>\\\$\{scala.compat.version\}.).+(</scala.version>)$%\1$scala_patch\2%" \
-        -e "s%^(    <spark.compat.version>).+(</spark.compat.version>)$%\1${spark_compat}\2%" \
-        -e "s%^(    <spark.version>\\\$\{spark.compat.version\}.).+(</spark.version>)$%\1$spark_patch\2%" \
+        -e "s%^(    <scala.major.version>).+(</scala.major.version>)$%\1${scala_major}\2%" \
+        -e "s%^(    <scala.minor.version>).+(</scala.minor.version>)$%\1${scala_minor}\2%" \
+        -e "s%^(    <scala.patch.version>).+(</scala.patch.version>)$%\1${scala_patch}\2%" \
+        -e "s%^(    <spark.major.version>).+(</spark.major.version>)$%\1${spark_major}\2%" \
+        -e "s%^(    <spark.minor.version>).+(</spark.minor.version>)$%\1${spark_minor}\2%" \
+        -e "s%^(    <spark.patch.version>).+(</spark.patch.version>)$%\1${spark_patch}\2%" \
         pom.xml
 
     version=$(grep -m 1 version pom.xml | sed "s/\s*<[^>]*>\s*//g")
