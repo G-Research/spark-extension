@@ -24,7 +24,7 @@ trait BuildVersion {
   
   lazy val BuildSparkMajorVersion: Int = props.getProperty("spark.major.version").toInt
   lazy val BuildSparkMinorVersion: Int = props.getProperty("spark.minor.version").toInt
-  lazy val BuildSparkPatchVersion: Int = props.getProperty("spark.patch.version").toInt
+  lazy val BuildSparkPatchVersion: Int = props.getProperty("spark.patch.version").split("-").head.toInt
   lazy val BuildSparkCompatVersionString: String = props.getProperty("spark.compat.version")
 
   lazy val BuildScalaMajorVersion: Int = props.getProperty("scala.major.version").toInt
