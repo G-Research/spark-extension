@@ -178,9 +178,9 @@ object App {
       .valueName("<mode>")
       .action((x, c) => c.copy(diffOptions = c.diffOptions.copy(diffMode = DiffMode.withName(x))))
       .text(s"diff mode (${DiffMode.values.mkString(", ")}, default ${Options().diffOptions.diffMode})")
-    opt[Boolean]("sparse")
+    opt[Unit]("sparse")
       .optional()
-      .action((x, c) => c.copy(diffOptions = c.diffOptions.copy(sparseMode = x)))
+      .action((_, c) => c.copy(diffOptions = c.diffOptions.copy(sparseMode = true)))
       .text(s"enable sparse diff")
 
     note("")
