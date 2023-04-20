@@ -24,8 +24,8 @@ object App {
                      rightOptions: Map[String, String] = Map.empty,
                      outputOptions: Map[String, String] = Map.empty,
 
+                     ids: Seq[String] = Seq.empty,
                      saveMode: SaveMode = SaveMode.ErrorIfExists,
-
                      diffOptions: DiffOptions = DiffOptions.default)
 
   // read options from args
@@ -125,6 +125,11 @@ object App {
       .text("output option")
 
     note("")
+    opt[String]("id")
+      .unbounded()
+      .valueName("<name>")
+      .action((x, c) => c.copy(ids = c.ids :+ x))
+      .text(s"id column name")
     opt[String]("save-mode")
       .optional()
       .valueName("<save-mode>")
@@ -219,6 +224,6 @@ object App {
     // read and write
     val left = read(spark, options.leftFormat, options.leftPath.get, options.leftSchema, options.leftOptions)
     val right = read(spark, options.rightFormat, options.rightPath.get, options.rightSchema, options.rightOptions)
-    write(left.diff(right), options.outputFormat, options.outputPath.get, options.outputOptions, options.saveMode)
+    write(left.diff(right, options.ids: _*), options.outputFormat, options.outputPath.get, options.outputOptions, options.saveMode)
   }
 }
