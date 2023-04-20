@@ -25,6 +25,7 @@ object App {
                      outputOptions: Map[String, String] = Map.empty,
 
                      ids: Seq[String] = Seq.empty,
+                     ignore: Seq[String] = Seq.empty,
                      saveMode: SaveMode = SaveMode.ErrorIfExists,
                      diffOptions: DiffOptions = DiffOptions.default)
 
@@ -130,6 +131,11 @@ object App {
       .valueName("<name>")
       .action((x, c) => c.copy(ids = c.ids :+ x))
       .text(s"id column name")
+    opt[String]("ignore")
+      .unbounded()
+      .valueName("<name>")
+      .action((x, c) => c.copy(ignore = c.ignore :+ x))
+      .text(s"ignore column name")
     opt[String]("save-mode")
       .optional()
       .valueName("<save-mode>")
@@ -224,6 +230,7 @@ object App {
     // read and write
     val left = read(spark, options.leftFormat, options.leftPath.get, options.leftSchema, options.leftOptions)
     val right = read(spark, options.rightFormat, options.rightPath.get, options.rightSchema, options.rightOptions)
-    write(left.diff(right, options.ids: _*), options.outputFormat, options.outputPath.get, options.outputOptions, options.saveMode)
+    val diff = left.diff(right, options.diffOptions, options.ids, options.ignore)
+    write(diff, options.outputFormat, options.outputPath.get, options.outputOptions, options.saveMode)
   }
 }
