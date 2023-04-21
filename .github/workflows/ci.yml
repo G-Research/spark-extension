@@ -12,6 +12,8 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions: {}
+
 jobs:
   build:
     name: Build (Spark ${{ matrix.spark-version }} Scala ${{ matrix.scala-version }})
@@ -330,6 +332,9 @@ jobs:
     needs: test_success
     runs-on: ubuntu-latest
     if: always()
+    permissions:
+      checks: write
+      pull-requests: write
 
     steps:
       - name: Download Artifacts
