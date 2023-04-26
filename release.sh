@@ -48,7 +48,7 @@ version=$(grep --max-count=1 "<version>.*</version>" pom.xml | sed -E -e "s/\s*<
 jars=$(find $HOME/.m2 $HOME/.ivy2 -name "*spark-extension_*-$version-*-SNAPSHOT.jar")
 if [[ -n "$jars" ]]
 then
-  echo "There are installed SNAPSHOT jars, these may interfer with release tests. These must be deleted first:"
+  echo "There are installed SNAPSHOT jars, these may interfere with release tests. These must be deleted first:"
   echo "$jars"
   exit 1
 fi

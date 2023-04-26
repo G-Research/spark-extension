@@ -3,9 +3,9 @@
 set -eo pipefail
 
 version=$(grep --max-count=1 "<version>.*</version>" pom.xml | sed -E -e "s/\s*<[^>]+>//g")
-spark_compat=$(grep --max-count=1 spark.compat.version pom.xml | sed -E -e "s/\s*<[^>]+>//g")
-spark=$(grep --max-count=1 spark.version pom.xml | sed -E -e "s/\s*<[^>]+>//g" -e "s/\\\$\{spark.compat.version\}/$spark_compat/")
-scala_compat=$(grep --max-count=1 scala.compat.version pom.xml | sed -E -e "s/\s*<[^>]+>//g")
+spark_compat=$(grep --max-count=1 "<spark.compat.version>" pom.xml | sed -E -e "s/\s*<[^>]+>//g")
+spark=$(grep --max-count=1 "<spark.version>" pom.xml | sed -E -e "s/\s*<[^>]+>//g" -e "s/\\\$\{spark.compat.version\}/$spark_compat/")
+scala_compat=$(grep --max-count=1 "<scala.compat.version>" pom.xml | sed -E -e "s/\s*<[^>]+>//g")
 
 echo
 echo "Testing Spark $spark and Scala $scala_compat"
