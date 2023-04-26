@@ -188,15 +188,15 @@ You can control the number of partitions via the `parallelism` parameter:
 
 ```scala
 // Scala
-spark.read.parquetMetadata(100, "/path/to/parquet").show()
-spark.read.parquetBlocks(100, "/path/to/parquet").show()
-spark.read.parquetBlockColumns(100, "/path/to/parquet").show()
-spark.read.parquetPartitions(100, "/path/to/parquet").show()
+spark.read.parquetMetadata(100, "/path/to/parquet")
+spark.read.parquetBlocks(100, "/path/to/parquet")
+spark.read.parquetBlockColumns(100, "/path/to/parquet")
+spark.read.parquetPartitions(100, "/path/to/parquet")
 ```
 ```python
 # Python
-spark.read.parquet_metadata("/path/to/parquet", parallelism=100).show()
-spark.read.parquet_blocks("/path/to/parquet", parallelism=100).show()
-spark.read.parquet_block_columns("/path/to/parquet", parallelism=100).show()
-spark.read.parquet_partitions("/path/to/parquet", parallelism=100).show()
+spark.read.parquet_metadata("/path/to/parquet", parallelism=100)
+spark.read.parquet_blocks("/path/to/parquet", parallelism=100)
+spark.read.parquet_block_columns("/path/to/parquet", parallelism=100)
+spark.read.parquet_partitions("/path/to/parquet", parallelism=100)
 ```

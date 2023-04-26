@@ -22,14 +22,12 @@ import org.apache.hadoop.fs.Path
 import org.apache.parquet.hadoop.metadata.BlockMetaData
 import org.apache.parquet.hadoop.{Footer, ParquetFileReader}
 import org.apache.spark.sql.execution.datasources.FilePartition
-import org.apache.spark.sql.{DataFrame, DataFrameReader, Dataset, Encoder, Encoders}
+import org.apache.spark.sql._
+import uk.co.gresearch._
 
 import scala.collection.JavaConverters.collectionAsScalaIterableConverter
 import scala.collection.convert.ImplicitConversions.`iterable AsScalaIterable`
 import scala.reflect.ClassTag
-
-import uk.co.gresearch._
-
 
 package object parquet {
   private implicit val intEncoder: Encoder[Int] = Encoders.scalaInt
@@ -83,7 +81,6 @@ package object parquet {
     def parquetMetadata(parallelism: Int, paths: String*): DataFrame = parquetMetadata(Some(parallelism), paths)
 
     private def parquetMetadata(parallelism: Option[Int], paths: Seq[String]): DataFrame = {
-      Option(null).getClass.getSimpleName
       val files = getFiles(parallelism, paths, (_, file) => file.filePath)(Encoders.STRING)
       import files.sparkSession.implicits._
 
