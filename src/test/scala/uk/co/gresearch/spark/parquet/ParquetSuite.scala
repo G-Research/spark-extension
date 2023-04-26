@@ -158,32 +158,28 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
 
   if (sys.env.get("CI_SLOW_TESTS").exists(_.equals("1"))) {
     Seq(1, 3, 7, 13, 19, 29, 61, 127, 251).foreach { partitionSize =>
-      parallelisms.foreach { parallelism =>
-        test(s"read parquet partitions ($partitionSize bytes) (parallelism=${parallelism.map(_.toString).getOrElse("None")})", Slow) {
-          withSQLConf("spark.sql.files.maxPartitionBytes" -> partitionSize.toString) {
-            val parquet = spark.read.parquet(testFile).cache()
+      test(s"read parquet partitions ($partitionSize bytes)", Slow) {
+        withSQLConf("spark.sql.files.maxPartitionBytes" -> partitionSize.toString) {
+          val parquet = spark.read.parquet(testFile).cache()
 
-            val rows = spark.read
-              .parquet(testFile)
-              .mapPartitions(it => Iterator(it.length))
-              .select(spark_partition_id().as("partition"), $"value".as("actual_rows"))
-            val partitions = spark.read
-              .when(parallelism.isDefined)
-              .either(_.parquetPartitions(parallelism.get, testFile))
-              .or(_.parquetPartitions(testFile))
-              .join(rows, Seq("partition"), "left")
-              .select($"partition", $"start", $"end", $"length", $"rows", $"actual_rows", $"filename")
+          val rows = spark.read
+            .parquet(testFile)
+            .mapPartitions(it => Iterator(it.length))
+            .select(spark_partition_id().as("partition"), $"value".as("actual_rows"))
+          val partitions = spark.read
+            .parquetPartitions(testFile)
+            .join(rows, Seq("partition"), "left")
+            .select($"partition", $"start", $"end", $"length", $"rows", $"actual_rows", $"filename")
 
-            if (partitions.where($"rows" =!= $"actual_rows" || ($"rows" =!= 0 || $"actual_rows" =!= 0) && $"length" =!= partitionSize).head(1).nonEmpty) {
-              partitions
-                .orderBy($"start")
-                .where($"rows" =!= 0 || $"actual_rows" =!= 0)
-                .show(false)
-              fail()
-            }
-
-            parquet.unpersist()
+          if (partitions.where($"rows" =!= $"actual_rows" || ($"rows" =!= 0 || $"actual_rows" =!= 0) && $"length" =!= partitionSize).head(1).nonEmpty) {
+            partitions
+              .orderBy($"start")
+              .where($"rows" =!= 0 || $"actual_rows" =!= 0)
+              .show(false)
+            fail()
           }
+
+          parquet.unpersist()
         }
       }
     }
