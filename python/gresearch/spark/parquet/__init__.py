@@ -12,19 +12,26 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+from typing import Optional
+
+from py4j.java_gateway import JavaObject
 from pyspark.sql import DataFrameReader, DataFrame
 
 from gresearch.spark import _to_seq
 
 
-def _reader(reader: DataFrameReader) -> DataFrameReader:
+def _jreader(reader: DataFrameReader) -> JavaObject:
     jvm = reader._spark._jvm
     return jvm.uk.co.gresearch.spark.parquet.__getattr__("package$").__getattr__("MODULE$").ExtendedDataFrameReader(reader._jreader)
 
 
-def parquet_metadata(self: DataFrameReader, *paths: str) -> DataFrame:
+def parquet_metadata(self: DataFrameReader, *paths: str, parallelism: Optional[int] = None) -> DataFrame:
     """
     Read the metadata of Parquet files into a Dataframe.
+
+    The returned DataFrame has as many partitions as specified via `parallelism`.
+    If not specified, there are as many partitions as there are Parquet files,
+    at most `spark.sparkContext.defaultParallelism` partitions.
 
     This provides the following per-file information:
     - filename (string): The file name
@@ -37,16 +44,24 @@ def parquet_metadata(self: DataFrameReader, *paths: str) -> DataFrame:
 
     :param self: a Spark DataFrameReader
     :param paths: paths one or more paths to Parquet files or directories
+    :param parallelism: number of partitions of returned DataFrame
     :return: dataframe with Parquet metadata
     """
     jvm = self._spark._jvm
-    jdf = _reader(self).parquetMetadata(_to_seq(jvm, list(paths)))
+    if parallelism is None:
+        jdf = _jreader(self).parquetMetadata(_to_seq(jvm, list(paths)))
+    else:
+        jdf = _jreader(self).parquetMetadata(parallelism, _to_seq(jvm, list(paths)))
     return DataFrame(jdf, self._spark)
 
 
-def parquet_blocks(self: DataFrameReader, *paths: str) -> DataFrame:
+def parquet_blocks(self: DataFrameReader, *paths: str, parallelism: Optional[int] = None) -> DataFrame:
     """
     Read the metadata of Parquet blocks into a Dataframe.
+
+    The returned DataFrame has as many partitions as specified via `parallelism`.
+    If not specified, there are as many partitions as there are Parquet files,
+    at most `spark.sparkContext.defaultParallelism` partitions.
 
     This provides the following per-block information:
     - filename (string): The file name
@@ -58,16 +73,24 @@ def parquet_blocks(self: DataFrameReader, *paths: str) -> DataFrame:
 
     :param self: a Spark DataFrameReader
     :param paths: paths one or more paths to Parquet files or directories
+    :param parallelism: number of partitions of returned DataFrame
     :return: dataframe with Parquet metadata
     """
     jvm = self._spark._jvm
-    jdf = _reader(self).parquetBlocks(_to_seq(jvm, list(paths)))
+    if parallelism is None:
+        jdf = _jreader(self).parquetBlocks(_to_seq(jvm, list(paths)))
+    else:
+        jdf = _jreader(self).parquetBlocks(parallelism, _to_seq(jvm, list(paths)))
     return DataFrame(jdf, self._spark)
 
 
-def parquet_block_columns(self: DataFrameReader, *paths: str) -> DataFrame:
+def parquet_block_columns(self: DataFrameReader, *paths: str, parallelism: Optional[int] = None) -> DataFrame:
     """
     Read the metadata of Parquet block columns into a Dataframe.
+
+    The returned DataFrame has as many partitions as specified via `parallelism`.
+    If not specified, there are as many partitions as there are Parquet files,
+    at most `spark.sparkContext.defaultParallelism` partitions.
 
     This provides the following per-block-column information:
     - filename (string): The file name
@@ -86,16 +109,24 @@ def parquet_block_columns(self: DataFrameReader, *paths: str) -> DataFrame:
 
     :param self: a Spark DataFrameReader
     :param paths: paths one or more paths to Parquet files or directories
+    :param parallelism: number of partitions of returned DataFrame
     :return: dataframe with Parquet metadata
     """
     jvm = self._spark._jvm
-    jdf = _reader(self).parquetBlockColumns(_to_seq(jvm, list(paths)))
+    if parallelism is None:
+        jdf = _jreader(self).parquetBlockColumns(_to_seq(jvm, list(paths)))
+    else:
+        jdf = _jreader(self).parquetBlockColumns(parallelism, _to_seq(jvm, list(paths)))
     return DataFrame(jdf, self._spark)
 
 
-def parquet_partitions(self: DataFrameReader, *paths: str) -> DataFrame:
+def parquet_partitions(self: DataFrameReader, *paths: str, parallelism: Optional[int] = None) -> DataFrame:
     """
     Read the metadata of how Spark partitions Parquet files into a Dataframe.
+
+    The returned DataFrame has as many partitions as specified via `parallelism`.
+    If not specified, there are as many partitions as there are Parquet files,
+    at most `spark.sparkContext.defaultParallelism` partitions.
 
     This provides the following per-partition information:
     - partition (int): The Spark partition id
@@ -111,10 +142,14 @@ def parquet_partitions(self: DataFrameReader, *paths: str) -> DataFrame:
 
     :param self: a Spark DataFrameReader
     :param paths: paths one or more paths to Parquet files or directories
+    :param parallelism: number of partitions of returned DataFrame
     :return: dataframe with Parquet metadata
     """
     jvm = self._spark._jvm
-    jdf = _reader(self).parquetPartitions(_to_seq(jvm, list(paths)))
+    if parallelism is None:
+        jdf = _jreader(self).parquetPartitions(_to_seq(jvm, list(paths)))
+    else:
+        jdf = _jreader(self).parquetPartitions(parallelism, _to_seq(jvm, list(paths)))
     return DataFrame(jdf, self._spark)
 
 

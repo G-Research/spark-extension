@@ -174,3 +174,29 @@ spark.read.parquet_partitions("/path/to/parquet").show()
 |rows             |long  |The number of rows in this partition                      |
 |filename         |string|The Parquet file name                                     |
 |fileLength       |long  |The length of the Parquet file                            |
+
+## Performance
+
+Retrieving Parquet metadata is parallelized and distributed by Spark. The result Dataframe
+has as many partitions as there are Parquet files in the given `path`, but at most
+`spark.sparkContext.defaultParallelism` partitions.
+
+Each result partition reads Parquet metadata from its Parquet files sequentially,
+while partitions are executed in parallel (depending on the number of Spark cores of your Spark job).
+
+You can control the number of partitions via the `parallelism` parameter:
+
+```scala
+// Scala
+spark.read.parquetMetadata(100, "/path/to/parquet").show()
+spark.read.parquetBlocks(100, "/path/to/parquet").show()
+spark.read.parquetBlockColumns(100, "/path/to/parquet").show()
+spark.read.parquetPartitions(100, "/path/to/parquet").show()
+```
+```python
+# Python
+spark.read.parquet_metadata("/path/to/parquet", parallelism=100).show()
+spark.read.parquet_blocks("/path/to/parquet", parallelism=100).show()
+spark.read.parquet_block_columns("/path/to/parquet", parallelism=100).show()
+spark.read.parquet_partitions("/path/to/parquet", parallelism=100).show()
+```
