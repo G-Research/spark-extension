@@ -60,8 +60,8 @@ object App {
     note("  - Diff CSV files 'left.csv' and 'right.csv' and write result into CSV file 'diff.csv':")
     note(s"    spark-submit --packages com.github.scopt:scopt_${spark.BuildScalaCompatVersionString}:4.1.0 $programName --format csv left.csv right.csv diff.csv")
     note("")
-    note("  - Diff CSV file 'left.csv' with Parquet file 'right.parquet' and write result into Hive table 'diff':")
-    note(s"    spark-submit --packages com.github.scopt:scopt_${spark.BuildScalaCompatVersionString}:4.1.0 $programName --left-format csv --right-format parquet --hive left.csv right.parquet diff")
+    note("  - Diff CSV file 'left.csv' with Parquet file 'right.parquet' with id column 'id', and write result into Hive table 'diff':")
+    note(s"    spark-submit --packages com.github.scopt:scopt_${spark.BuildScalaCompatVersionString}:4.1.0 $programName --left-format csv --right-format parquet --hive --id id left.csv right.parquet diff")
 
     note("")
     note("Spark session")
