@@ -404,24 +404,36 @@ The latter variant is prefixed with `_with_options`.
 * `def diff(self: DataFrame, other: DataFrame, *id_columns: str) -> DataFrame`
 * `def diffwith(self: DataFrame, other: DataFrame, *id_columns: str) -> DataFrame:`
 
-## Spark application
+## Diff Spark application
 
-There is also a Spark application that can be used to perform a diff. It reads two DataFrames
+There is also a Spark application that can be used to create a diff DataFrame. The application reads two DataFrames
 `left` and `right` from files or tables, executes the diff transformation and writes the result DataFrame to a file or table.
 The Diff app can be run via `spark-submit`:
 
 ```shell
-spark-submit --packages com.github.scopt:scopt_2.13:4.1.0 --class uk.co.gresearch.spark.diff.App spark-extension_2.13-2.7.0-3.4.jar --help
+# Scala 2.12
+spark-submit --packages com.github.scopt:scopt_2.12:4.1.0 spark-extension_2.12-2.7.0-3.4.jar --help
+
+# Scala 2.13
+spark-submit --packages com.github.scopt:scopt_2.13:4.1.0 spark-extension_2.13-2.7.0-3.4.jar --help
 ```
 
 ```
-Spark Diff app (2.7.0-3.4-SNAPSHOT)
+Spark Diff app (2.7.0-3.4)
 
-Usage: spark-extension_2.13-2.7.0-3.4-SNAPSHOT.jar [options] left right diff
+Usage: spark-extension_2.13-2.7.0-3.4.jar [options] left right diff
 
   left                     file path (requires format option) or table name to read left dataframe
   right                    file path (requires format option) or table name to read right dataframe
   diff                     file path (requires format option) or table name to write diff dataframe
+
+Examples:
+
+  - Diff CSV files 'left.csv' and 'right.csv' and write result into CSV file 'diff.csv':
+    spark-submit --packages com.github.scopt:scopt_2.13:4.1.0 spark-extension_2.13-2.7.0-3.4.jar --format csv left.csv right.csv diff.csv
+
+  - Diff CSV file 'left.csv' with Parquet file 'right.parquet' and write result into Hive table 'diff':
+    spark-submit --packages com.github.scopt:scopt_2.13:4.1.0 spark-extension_2.13-2.7.0-3.4.jar --left-format csv --right-format parquet --hive left.csv right.parquet diff
 
 Spark session
   --master <master>        Spark master (local, yarn, ...), not needed with spark-submit
@@ -460,4 +472,16 @@ Diffing options
 
 General
   --help                   prints this usage text
+```
+
+### Examples
+
+Diff CSV files `left.csv` and `right.csv` and write result into CSV file `diff.csv`:
+```shell
+spark-submit --packages com.github.scopt:scopt_2.13:4.1.0 spark-extension_2.13-2.7.0-3.4.jar --format csv left.csv right.csv diff.csv
+```
+
+Diff CSV file `left.csv` with Parquet file `right.parquet` and write result into Hive table `diff`:
+```shell
+spark-submit --packages com.github.scopt:scopt_2.13:4.1.0 spark-extension_2.13-2.7.0-3.4.jar --left-format csv --right-format parquet --hive left.csv right.parquet diff
 ```

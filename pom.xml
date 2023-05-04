@@ -82,6 +82,7 @@
     <dependency>
       <groupId>com.github.scopt</groupId>
       <artifactId>scopt_${scala.compat.version}</artifactId>
+      <!-- keep DIFF.md section "Diff Spark application" synced with this value -->
       <version>4.1.0</version>
     </dependency>
 
