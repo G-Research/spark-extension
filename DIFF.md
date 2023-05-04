@@ -403,3 +403,61 @@ The latter variant is prefixed with `_with_options`.
 
 * `def diff(self: DataFrame, other: DataFrame, *id_columns: str) -> DataFrame`
 * `def diffwith(self: DataFrame, other: DataFrame, *id_columns: str) -> DataFrame:`
+
+## Spark application
+
+There is also a Spark application that can be used to perform a diff. It reads two DataFrames
+`left` and `right` from files or tables, executes the diff transformation and writes the result DataFrame to a file or table.
+The Diff app can be run via `spark-submit`:
+
+```shell
+spark-submit --packages com.github.scopt:scopt_2.13:4.1.0 --class uk.co.gresearch.spark.diff.App spark-extension_2.13-2.7.0-3.4.jar --help
+```
+
+```
+Spark Diff app (2.7.0-3.4-SNAPSHOT)
+
+Usage: spark-extension_2.13-2.7.0-3.4-SNAPSHOT.jar [options] left right diff
+
+  left                     file path (requires format option) or table name to read left dataframe
+  right                    file path (requires format option) or table name to read right dataframe
+  diff                     file path (requires format option) or table name to write diff dataframe
+
+Spark session
+  --master <master>        Spark master (local, yarn, ...), not needed with spark-submit
+  --app-name <app-name>    Spark application name
+  --hive                   enable Hive support to read from and write to Hive tables
+
+Input and output
+  -f, --format <format>    input and output file format (csv, json, parquet, ...)
+  --left-format <format>   left input file format (csv, json, parquet, ...)
+  --right-format <format>  right input file format (csv, json, parquet, ...)
+  --output-format <formt>  output file format (csv, json, parquet, ...)
+
+  -s, --schema <schema>    input schema
+  --left-schema <schema>   left input schema
+  --right-schema <schema>  right input schema
+
+  --left-option:key=val    left input option
+  --right-option:key=val   right input option
+  --output-option:key=val  output option
+
+  --id <name>              id column name
+  --ignore <name>          ignore column name
+  --save-mode <save-mode>  save mode for writing output (Append, Overwrite, ErrorIfExists, Ignore, default ErrorIfExists)
+
+Diffing options
+  --diff-column <name>     column name for diff column (default 'diff')
+  --left-prefix <prefix>   prefix for left column names (default 'left')
+  --right-prefix <prefix>  prefix for right column names (default 'right')
+  --insert-value <value>   value for insertion (default 'I')
+  --change-value <value>   value for change (default 'C')
+  --delete-value <value>   value for deletion (default 'D')
+  --no-change-value <val>  value for no change (default 'N')
+  --change-column <name>   column name for change column (default is no such column)
+  --diff-mode <mode>       diff mode (ColumnByColumn, SideBySide, LeftSide, RightSide, default ColumnByColumn)
+  --sparse                 enable sparse diff
+
+General
+  --help                   prints this usage text
+```
