@@ -8,6 +8,7 @@ object App {
   // define available options
   case class Options(master: Option[String] = None,
                      appName: Option[String] = None,
+                     hive: Boolean = false,
 
                      leftPath: Option[String] = None,
                      rightPath: Option[String] = None,
@@ -64,6 +65,10 @@ object App {
       .action((x, c) => c.copy(appName = Some(x)))
       .text("Spark application name")
       .withFallback(() => "Diff App")
+    opt[Unit]("hive")
+      .optional()
+      .action((_, c) => c.copy(hive = true))
+      .text(s"enable Hive support to read from and write to Hive tables")
 
     note("")
     note("Input and output")
@@ -223,7 +228,7 @@ object App {
     // create spark session
     val spark = SparkSession.builder()
       .appName(options.appName.get)
-      .enableHiveSupport()
+      .when(options.hive).call(_.enableHiveSupport())
       .when(options.master.isDefined).call(_.master(options.master.get))
       .getOrCreate()
 
