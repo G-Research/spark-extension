@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+## [UNRELEASED] - YYYY-MM-DD
+
+### Added
+
+- Spark app to diff files or tables and write result back to file or table. (#160)
 
 ## [2.6.0] - 2023-04-11
 
