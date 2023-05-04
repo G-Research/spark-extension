@@ -7,11 +7,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Added
 
 - Spark app to diff files or tables and write result back to file or table. (#160)
+- Add null value count to `parquetBlockColumns` and `parquet_block_columns`. (#162)
+- Add `parallelism` argument to Parquet metadata methods. (#164)
 
 ### Changed
 
-- Added null value count to `parquetBlockColumns` and `parquet_block_columns`. (#162)
-- Changed data type of column name in `parquetBlockColumns` and `parquet_block_columns` to array of strings.
+- Change data type of column name in `parquetBlockColumns` and `parquet_block_columns` to array of strings.
   Cast to string to get earlier behaviour (string column name). (#162)
 
 ## [2.6.0] - 2023-04-11
