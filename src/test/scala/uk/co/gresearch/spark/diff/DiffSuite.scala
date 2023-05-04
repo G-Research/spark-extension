@@ -19,7 +19,7 @@ package uk.co.gresearch.spark.diff
 import org.apache.spark.sql.functions.regexp_replace
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.{Dataset, Encoders, Row}
+import org.apache.spark.sql.{Dataset, Encoders, Row, SparkSession}
 import org.scalatest.funsuite.AnyFunSuite
 import uk.co.gresearch.spark.{SparkTestSession, distinctPrefixFor}
 
@@ -93,21 +93,40 @@ case class DiffAsOneSide(diff: String,
                          id: Int,
                          value: Option[String])
 
+object DiffSuite {
+  def left(spark: SparkSession): Dataset[Value] = {
+    import spark.implicits._
+    Seq(
+      Value(1, Some("one")),
+      Value(2, Some("two")),
+      Value(3, Some("three"))
+    ).toDS()
+  }
+
+  def right(spark: SparkSession): Dataset[Value] = {
+    import spark.implicits._
+    Seq(
+      Value(1, Some("one")),
+      Value(2, Some("Two")),
+      Value(4, Some("four"))
+    ).toDS()
+  }
+
+  val expectedDiff: Seq[Row] = Seq(
+    Row("N", 1, "one", "one"),
+    Row("C", 2, "two", "Two"),
+    Row("D", 3, "three", null),
+    Row("I", 4, null, "four")
+  )
+
+}
+
 class DiffSuite extends AnyFunSuite with SparkTestSession {
 
   import spark.implicits._
 
-  lazy val left: Dataset[Value] = Seq(
-    Value(1, Some("one")),
-    Value(2, Some("two")),
-    Value(3, Some("three"))
-  ).toDS()
-
-  lazy val right: Dataset[Value] = Seq(
-    Value(1, Some("one")),
-    Value(2, Some("Two")),
-    Value(4, Some("four"))
-  ).toDS()
+  lazy val left: Dataset[Value] = DiffSuite.left(spark)
+  lazy val right: Dataset[Value] = DiffSuite.right(spark)
 
   lazy val left7: Dataset[Value7] = Seq(
     Value7(1, Some("one"), Some("one label")),
@@ -155,12 +174,7 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
 
   lazy val expectedDiffColumns: Seq[String] = Seq("diff", "id", "left_value", "right_value")
 
-  lazy val expectedDiff: Seq[Row] = Seq(
-    Row("N", 1, "one", "one"),
-    Row("C", 2, "two", "Two"),
-    Row("D", 3, "three", null),
-    Row("I", 4, null, "four")
-  )
+  lazy val expectedDiff: Seq[Row] = DiffSuite.expectedDiff
 
   lazy val expectedReverseDiff: Seq[Row] = Seq(
     Row("N", 1, "one", "one"),

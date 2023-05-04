@@ -72,6 +72,20 @@
       <scope>provided</scope>
     </dependency>
 
+    <dependency>
+      <groupId>org.apache.spark</groupId>
+      <artifactId>spark-hive_${scala.compat.version}</artifactId>
+      <version>${spark.version}</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>com.github.scopt</groupId>
+      <artifactId>scopt_${scala.compat.version}</artifactId>
+      <!-- keep DIFF.md section "Diff Spark application" synced with this value -->
+      <version>4.1.0</version>
+    </dependency>
+
     <!-- Test -->
     <dependency>
       <groupId>org.apache.spark</groupId>
@@ -208,6 +222,19 @@
             </configuration>
           </execution>
         </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>3.3.0</version>
+        <configuration>
+          <archive>
+            <manifest>
+              <addClasspath>true</addClasspath>
+              <mainClass>uk.co.gresearch.spark.diff.App</mainClass>
+            </manifest>
+          </archive>
+        </configuration>
       </plugin>
       <!-- run java tests -->
       <plugin>
