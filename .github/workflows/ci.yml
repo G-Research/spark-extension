@@ -21,6 +21,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - spark-compat-version: '3.0'
+            spark-version: '3.0.3'
+            scala-compat-version: '2.12'
+            scala-version: '2.12.10'
+          - spark-compat-version: '3.1'
+            spark-version: '3.1.3'
+            scala-compat-version: '2.12'
+            scala-version: '2.12.10'
           - spark-compat-version: '3.2'
             spark-version: '3.2.4'
             scala-compat-version: '2.12'
@@ -121,6 +129,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - spark-compat-version: '3.0'
+            spark-version: '3.0.3'
+            scala-compat-version: '2.12'
+            scala-version: '2.12.10'
+          - spark-compat-version: '3.1'
+            spark-version: '3.1.3'
+            scala-compat-version: '2.12'
+            scala-version: '2.12.10'
           - spark-compat-version: '3.2'
             spark-version: '3.2.4'
             scala-compat-version: '2.12'
@@ -162,6 +178,14 @@ jobs:
           - spark-compat-version: '3.3'
             spark-patch-version: '3'
         include:
+          - spark-compat-version: '3.0'
+            scala-compat-version: '2.12'
+            scala-version: '2.12.10'
+            spark-patch-version: '3'
+          - spark-compat-version: '3.1'
+            scala-compat-version: '2.12'
+            scala-version: '2.12.10'
+            spark-patch-version: '3'
           - spark-compat-version: '3.2'
             scala-compat-version: '2.12'
             scala-version: '2.12.15'
@@ -220,6 +244,16 @@ jobs:
         python-version: ['3.8', '3.9', '3.10']
 
         include:
+          - spark-compat-version: '3.0'
+            spark-version: '3.0.3'
+            scala-compat-version: '2.12'
+            scala-version: '2.12.10'
+            python-version: '3.8'
+          - spark-compat-version: '3.1'
+            spark-version: '3.1.3'
+            scala-compat-version: '2.12'
+            scala-version: '2.12.10'
+            python-version: '3.8'
           - spark-compat-version: '3.2'
             spark-version: '3.2.4'
             scala-compat-version: '2.12'
