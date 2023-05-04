@@ -22,10 +22,12 @@ import org.apache.hadoop.fs.Path
 import org.apache.parquet.hadoop.metadata.BlockMetaData
 import org.apache.parquet.hadoop.{Footer, ParquetFileReader}
 import org.apache.spark.sql.execution.datasources.FilePartition
-import org.apache.spark.sql.{DataFrame, DataFrameReader, Encoder, Encoders}
+import org.apache.spark.sql._
+import uk.co.gresearch._
 
 import scala.collection.JavaConverters.collectionAsScalaIterableConverter
 import scala.collection.convert.ImplicitConversions.`iterable AsScalaIterable`
+import scala.reflect.ClassTag
 
 package object parquet {
   private implicit val intEncoder: Encoder[Int] = Encoders.scalaInt
@@ -38,6 +40,9 @@ package object parquet {
   implicit class ExtendedDataFrameReader(reader: DataFrameReader) {
     /**
      * Read the metadata of Parquet files into a Dataframe.
+     *
+     * The returned DataFrame has as many partitions as there are Parquet files,
+     * at most `spark.sparkContext.defaultParallelism` partitions.
      *
      * This provides the following per-file information:
      * - filename (string): The file name
@@ -52,34 +57,57 @@ package object parquet {
      * @return dataframe with Parquet metadata
      */
     @scala.annotation.varargs
-    def parquetMetadata(paths: String*): DataFrame = {
-      val df = reader.parquet(paths: _*)
-      val files = df.rdd.partitions.flatMap(_.asInstanceOf[FilePartition].files.map(file => SplitFile(file).filePath)).toSeq.distinct
+    def parquetMetadata(paths: String*): DataFrame = parquetMetadata(None, paths)
 
-      val spark = df.sparkSession
-      import spark.implicits._
+    /**
+     * Read the metadata of Parquet files into a Dataframe.
+     *
+     * The returned DataFrame has as many partitions as specified via `parallelism`.
+     *
+     * This provides the following per-file information:
+     * - filename (string): The file name
+     * - blocks (int): Number of blocks / RowGroups in the Parquet file
+     * - compressedBytes (long): Number of compressed bytes of all blocks
+     * - uncompressedBytes (long): Number of uncompressed bytes of all blocks
+     * - rows (long): Number of rows of all blocks
+     * - createdBy (string): The createdBy string of the Parquet file, e.g. library used to write the file
+     * - schema (string): The schema
+     *
+     * @param parallelism number of partitions of returned DataFrame
+     * @param paths one or more paths to Parquet files or directories
+     * @return dataframe with Parquet metadata
+     */
+    @scala.annotation.varargs
+    def parquetMetadata(parallelism: Int, paths: String*): DataFrame = parquetMetadata(Some(parallelism), paths)
 
-      spark.createDataset(files).flatMap { file =>
-        val conf = new Configuration()
-        val inputPath = new Path(file)
-        val inputFileStatus = inputPath.getFileSystem(conf).getFileStatus(inputPath)
-        val footers = ParquetFileReader.readFooters(conf, inputFileStatus, false)
-        footers.asScala.map { footer =>
-          (
-            footer.getFile.toString,
-            footer.getParquetMetadata.getBlocks.size(),
-            footer.getParquetMetadata.getBlocks.asScala.map(_.getCompressedSize).sum,
-            footer.getParquetMetadata.getBlocks.asScala.map(_.getTotalByteSize).sum,
-            footer.getParquetMetadata.getBlocks.asScala.map(_.getRowCount).sum,
-            footer.getParquetMetadata.getFileMetaData.getCreatedBy,
-            footer.getParquetMetadata.getFileMetaData.getSchema.toString,
-          )
-        }
-      }.toDF("filename", "blocks", "compressedBytes", "uncompressedBytes", "rows", "createdBy", "schema")
+    private def parquetMetadata(parallelism: Option[Int], paths: Seq[String]): DataFrame = {
+      val files = getFiles(parallelism, paths, (_, file) => file.filePath)(Encoders.STRING)
+      import files.sparkSession.implicits._
+
+      files.flatMap { file =>
+          val conf = new Configuration()
+          val inputPath = new Path(file)
+          val inputFileStatus = inputPath.getFileSystem(conf).getFileStatus(inputPath)
+          val footers = ParquetFileReader.readFooters(conf, inputFileStatus, false)
+          footers.asScala.map { footer =>
+            (
+              footer.getFile.toString,
+              footer.getParquetMetadata.getBlocks.size(),
+              footer.getParquetMetadata.getBlocks.asScala.map(_.getCompressedSize).sum,
+              footer.getParquetMetadata.getBlocks.asScala.map(_.getTotalByteSize).sum,
+              footer.getParquetMetadata.getBlocks.asScala.map(_.getRowCount).sum,
+              footer.getParquetMetadata.getFileMetaData.getCreatedBy,
+              footer.getParquetMetadata.getFileMetaData.getSchema.toString,
+            )
+          }
+        }.toDF("filename", "blocks", "compressedBytes", "uncompressedBytes", "rows", "createdBy", "schema")
     }
 
     /**
      * Read the metadata of Parquet blocks into a Dataframe.
+     *
+     * The returned DataFrame has as many partitions as there are Parquet files,
+     * at most `spark.sparkContext.defaultParallelism` partitions.
      *
      * This provides the following per-block information:
      * - filename (string): The file name
@@ -93,14 +121,33 @@ package object parquet {
      * @return dataframe with Parquet block metadata
      */
     @scala.annotation.varargs
-    def parquetBlocks(paths: String*): DataFrame = {
-      val df = reader.parquet(paths: _*)
-      val files = df.rdd.partitions.flatMap(_.asInstanceOf[FilePartition].files.map(file => SplitFile(file).filePath)).toSeq.distinct
+    def parquetBlocks(paths: String*): DataFrame = parquetBlocks(None, paths)
 
-      val spark = df.sparkSession
-      import spark.implicits._
+    /**
+     * Read the metadata of Parquet blocks into a Dataframe.
+     *
+     * The returned DataFrame has as many partitions as specified via `parallelism`.
+     *
+     * This provides the following per-block information:
+     * - filename (string): The file name
+     * - block (int): Block / RowGroup number starting at 1
+     * - blockStart (long): Start position of the block in the Parquet file
+     * - compressedBytes (long): Number of compressed bytes in block
+     * - uncompressedBytes (long): Number of uncompressed bytes in block
+     * - rows (long): Number of rows in block
+     *
+     * @param parallelism number of partitions of returned DataFrame
+     * @param paths one or more paths to Parquet files or directories
+     * @return dataframe with Parquet block metadata
+     */
+    @scala.annotation.varargs
+    def parquetBlocks(parallelism: Int, paths: String*): DataFrame = parquetBlocks(Some(parallelism), paths)
 
-      spark.createDataset(files).flatMap { file =>
+    private def parquetBlocks(parallelism: Option[Int], paths: Seq[String]): DataFrame = {
+      val files = getFiles(parallelism, paths, (_, file) => file.filePath)(Encoders.STRING)
+      import files.sparkSession.implicits._
+
+      files.flatMap { file =>
         val conf = new Configuration()
         val inputPath = new Path(file)
         val inputFileStatus = inputPath.getFileSystem(conf).getFileStatus(inputPath)
@@ -123,6 +170,9 @@ package object parquet {
     /**
      * Read the metadata of Parquet block columns into a Dataframe.
      *
+     * The returned DataFrame has as many partitions as there are Parquet files,
+     * at most `spark.sparkContext.defaultParallelism` partitions.
+     *
      * This provides the following per-block-column information:
      * - filename (string): The file name
      * - block (int): Block / RowGroup number starting at 1
@@ -141,14 +191,39 @@ package object parquet {
      * @return dataframe with Parquet block metadata
      */
     @scala.annotation.varargs
-    def parquetBlockColumns(paths: String*): DataFrame = {
-      val df = reader.parquet(paths: _*)
-      val files = df.rdd.partitions.flatMap(_.asInstanceOf[FilePartition].files.map(file => SplitFile(file).filePath)).toSeq.distinct
+    def parquetBlockColumns(paths: String*): DataFrame = parquetBlockColumns(None, paths)
 
-      val spark = df.sparkSession
-      import spark.implicits._
+    /**
+     * Read the metadata of Parquet block columns into a Dataframe.
+     *
+     * The returned DataFrame has as many partitions as specified via `parallelism`.
+     *
+     * This provides the following per-block-column information:
+     * - filename (string): The file name
+     * - block (int): Block / RowGroup number starting at 1
+     * - column (string): Block / RowGroup column name
+     * - codec (string): The coded used to compress the block column values
+     * - type (string): The data type of the block column
+     * - encodings (string): Encodings of the block column
+     * - minValue (string): Minimum value of this column in this block
+     * - maxValue (string): Maximum value of this column in this block
+     * - columnStart (long): Start position of the block column in the Parquet file
+     * - compressedBytes (long): Number of compressed bytes of this block column
+     * - uncompressedBytes (long): Number of uncompressed bytes of this block column
+     * - values (long): Number of values in this block column
+     *
+     * @param parallelism number of partitions of returned DataFrame
+     * @param paths one or more paths to Parquet files or directories
+     * @return dataframe with Parquet block metadata
+     */
+    @scala.annotation.varargs
+    def parquetBlockColumns(parallelism: Int, paths: String*): DataFrame = parquetBlockColumns(Some(parallelism), paths)
 
-      spark.createDataset(files).flatMap { file =>
+    private def parquetBlockColumns(parallelism: Option[Int], paths: Seq[String]): DataFrame = {
+      val files = getFiles(parallelism, paths, (_, file) => file.filePath)(Encoders.STRING)
+      import files.sparkSession.implicits._
+
+      files.flatMap { file =>
         val conf = new Configuration()
         val inputPath = new Path(file)
         val inputFileStatus = inputPath.getFileSystem(conf).getFileStatus(inputPath)
@@ -180,6 +255,9 @@ package object parquet {
     /**
      * Read the metadata of how Spark partitions Parquet files into a Dataframe.
      *
+     * The returned DataFrame has as many partitions as there are Parquet files,
+     * at most `spark.sparkContext.defaultParallelism` partitions.
+     *
      * This provides the following per-partition information:
      * - partition (int): The Spark partition id
      * - filename (string): The Parquet file name
@@ -196,14 +274,37 @@ package object parquet {
      * @return dataframe with Spark Parquet partition metadata
      */
     @scala.annotation.varargs
-    def parquetPartitions(paths: String*): DataFrame = {
-      val df = reader.parquet(paths: _*)
-      val files = df.rdd.partitions.flatMap(part => part.asInstanceOf[FilePartition].files.map(file => (part.index, SplitFile(file)))).toSeq
+    def parquetPartitions(paths: String*): DataFrame = parquetPartitions(None, paths)
 
-      val spark = df.sparkSession
-      import spark.implicits._
+    /**
+     * Read the metadata of how Spark partitions Parquet files into a Dataframe.
+     *
+     * The returned DataFrame has as many partitions as specified via `parallelism`.
+     *
+     * This provides the following per-partition information:
+     * - partition (int): The Spark partition id
+     * - filename (string): The Parquet file name
+     * - fileLength (long): The length of the Parquet file
+     * - start (long): The start position of the partition
+     * - end (long): The end position of the partition
+     * - length (long): The length of the partition
+     * - blocks (int): The number of Parquet blocks / RowGroups in this partition
+     * - compressedBytes (long): The number of compressed bytes in this partition
+     * - uncompressedBytes (long): The number of uncompressed bytes in this partition
+     * - rows (long): The number of rows in this partition
+     *
+     * @param parallelism number of partitions of returned DataFrame
+     * @param paths one or more paths to Parquet files or directories
+     * @return dataframe with Spark Parquet partition metadata
+     */
+    @scala.annotation.varargs
+    def parquetPartitions(parallelism: Int, paths: String*): DataFrame = parquetPartitions(Some(parallelism), paths)
 
-      spark.createDataset(files).flatMap { case (part, file) =>
+    private def parquetPartitions(parallelism: Option[Int], paths: Seq[String]): DataFrame = {
+      val files = getFiles(parallelism, paths, (part, file) => (part, file))(Encoders.tuple(Encoders.scalaInt, Encoders.product[SplitFile]))
+      import files.sparkSession.implicits._
+
+      files.flatMap { case (part, file) =>
         val conf = new Configuration()
         val inputPath = new Path(file.filePath)
         val inputFileStatus = inputPath.getFileSystem(conf).getFileStatus(inputPath)
@@ -223,6 +324,22 @@ package object parquet {
             file.fileSize,
           )}
       }.toDF("partition", "start", "end", "length", "blocks", "compressedBytes", "uncompressedBytes", "rows", "filename", "fileLength")
+    }
+
+    private def getFiles[T : Encoder](parallelism: Option[Int], paths: Seq[String], fileFunc: (Int, SplitFile) => T): Dataset[T] = {
+      val encoder = implicitly[Encoder[T]]
+      implicit val classTag: ClassTag[T] = encoder.clsTag
+
+      val df = reader.parquet(paths: _*)
+      val files = df.rdd.partitions.flatMap(part =>
+        part.asInstanceOf[FilePartition]
+          .files
+          .map(file => fileFunc(part.index, SplitFile(file)))
+      ).toSeq.distinct
+      val spark = df.sparkSession
+
+      spark.createDataset(files)
+        .when(parallelism.isDefined).call(_.repartition(parallelism.get))
     }
   }
 

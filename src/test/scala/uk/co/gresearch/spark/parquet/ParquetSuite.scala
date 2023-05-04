@@ -19,7 +19,7 @@ package uk.co.gresearch.spark.parquet
 import org.apache.spark.sql.Row.unapplySeq
 import org.apache.spark.sql.functions.{regexp_replace, spark_partition_id}
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.{DataFrame, Row}
+import org.apache.spark.sql.{Column, DataFrame, Row}
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.tagobjects.Slow
 import uk.co.gresearch._
@@ -36,11 +36,25 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
   //   spark.range(100, 300, 1).select($"id", rand().as("val")).repartitionByRange(1, $"id").write.mode(SaveMode.Append).parquet("test.parquet")eq((3, "three"), (4, "four"), (5, "five"), (6, "six"), (7, "seven")).toDF("id", "value").repartitionByRange(1, $"id").write.mode(SaveMode.Append).parquet("test.parquet")
   val testFile = "src/test/files/test.parquet"
 
+  val parallelisms = Seq(None, Some(1), Some(2), Some(8))
 
-  def assertDf(actual: DataFrame, expectedSchema: StructType, expectedRows: Seq[Row], postProcess: DataFrame => DataFrame = identity): Unit = {
+  def assertDf(actual: DataFrame,
+               order: Seq[Column],
+               expectedSchema: StructType,
+               expectedRows: Seq[Row],
+               expectedParallelism: Option[Int],
+               postProcess: DataFrame => DataFrame = identity): Unit = {
     assert(actual.schema === expectedSchema)
+
+    if (expectedParallelism.isDefined) {
+      assert(actual.rdd.getNumPartitions === expectedParallelism.get)
+    } else {
+      assert(actual.rdd.getNumPartitions === actual.sparkSession.sparkContext.defaultParallelism)
+    }
+
     val replaced =
       actual
+        .orderBy(order: _*)
         .withColumn("filename", regexp_replace($"filename", ".*/test.parquet/", ""))
         .when(actual.columns.contains("schema"))
         .call(_.withColumn("schema", regexp_replace($"schema", "\n", "\\\\n")))
@@ -48,83 +62,98 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
     assert(replaced.collect() === expectedRows)
   }
 
-  test("read parquet metadata") {
-    val createdBy = "parquet-mr version 1.12.2 (build 77e30c8093386ec52c3cfa6c34b7ef3321322c94)"
-    val schema = "message spark_schema {\\n  required int64 id;\\n  required double val;\\n}\\n"
+  parallelisms.foreach { parallelism =>
+    test(s"read parquet metadata (parallelism=${parallelism.map(_.toString).getOrElse("None")})") {
+      val createdBy = "parquet-mr version 1.12.2 (build 77e30c8093386ec52c3cfa6c34b7ef3321322c94)"
+      val schema = "message spark_schema {\\n  required int64 id;\\n  required double val;\\n}\\n"
 
-    assertDf(
-      spark.read
-        .parquetMetadata(testFile)
-        .orderBy($"filename"),
-      StructType(Seq(
-        StructField("filename", StringType, nullable = true),
-        StructField("blocks", IntegerType, nullable = false),
-        StructField("compressedBytes", LongType, nullable = false),
-        StructField("uncompressedBytes", LongType, nullable = false),
-        StructField("rows", LongType, nullable = false),
-        StructField("createdBy", StringType, nullable = true),
-        StructField("schema", StringType, nullable = true),
-      )),
-      Seq(
-        Row("file1.parquet", 1, 1268, 1652, 100, createdBy, schema),
-        Row("file2.parquet", 2, 2539, 3302, 200, createdBy, schema),
+      assertDf(
+        spark.read
+          .when(parallelism.isDefined)
+          .either(_.parquetMetadata(parallelism.get, testFile))
+          .or(_.parquetMetadata(testFile)),
+        Seq($"filename"),
+        StructType(Seq(
+          StructField("filename", StringType, nullable = true),
+          StructField("blocks", IntegerType, nullable = false),
+          StructField("compressedBytes", LongType, nullable = false),
+          StructField("uncompressedBytes", LongType, nullable = false),
+          StructField("rows", LongType, nullable = false),
+          StructField("createdBy", StringType, nullable = true),
+          StructField("schema", StringType, nullable = true),
+        )),
+        Seq(
+          Row("file1.parquet", 1, 1268, 1652, 100, createdBy, schema),
+          Row("file2.parquet", 2, 2539, 3302, 200, createdBy, schema),
+        ),
+        parallelism
       )
-    )
+    }
   }
 
-  test("read parquet blocks") {
-    assertDf(
-      spark.read
-        .parquetBlocks(testFile)
-        .orderBy($"filename", $"block"),
-      StructType(Seq(
-        StructField("filename", StringType, nullable = true),
-        StructField("block", IntegerType, nullable = false),
-        StructField("blockStart", LongType, nullable = false),
-        StructField("compressedBytes", LongType, nullable = false),
-        StructField("uncompressedBytes", LongType, nullable = false),
-        StructField("rows", LongType, nullable = false),
-      )),
-      Seq(
-        Row("file1.parquet", 1, 4, 1268, 1652, 100),
-        Row("file2.parquet", 1, 4, 1269, 1651, 100),
-        Row("file2.parquet", 2, 1273, 1270, 1651, 100),
+  parallelisms.foreach { parallelism =>
+    test(s"read parquet blocks (parallelism=${parallelism.map(_.toString).getOrElse("None")})") {
+      assertDf(
+        spark.read
+          .when(parallelism.isDefined)
+          .either(_.parquetBlocks(parallelism.get, testFile))
+          .or(_.parquetBlocks(testFile)),
+        Seq($"filename", $"block"),
+        StructType(Seq(
+          StructField("filename", StringType, nullable = true),
+          StructField("block", IntegerType, nullable = false),
+          StructField("blockStart", LongType, nullable = false),
+          StructField("compressedBytes", LongType, nullable = false),
+          StructField("uncompressedBytes", LongType, nullable = false),
+          StructField("rows", LongType, nullable = false),
+        )),
+        Seq(
+          Row("file1.parquet", 1, 4, 1268, 1652, 100),
+          Row("file2.parquet", 1, 4, 1269, 1651, 100),
+          Row("file2.parquet", 2, 1273, 1270, 1651, 100),
+        ),
+        parallelism
       )
-    )
+    }
   }
 
-  test("read parquet block columns") {
-    assertDf(
-      spark.read
-        .parquetBlockColumns(testFile)
-        .orderBy($"filename", $"block", $"column"),
-      StructType(Seq(
-        StructField("filename", StringType, nullable = true),
-        StructField("block", IntegerType, nullable = false),
-        StructField("column", ArrayType(StringType), nullable = true),
-        StructField("codec", StringType, nullable = true),
-        StructField("type", StringType, nullable = true),
-        StructField("encodings", ArrayType(StringType), nullable = true),
-        StructField("minValue", StringType, nullable = true),
-        StructField("maxValue", StringType, nullable = true),
-        StructField("columnStart", LongType, nullable = false),
-        StructField("compressedBytes", LongType, nullable = false),
-        StructField("uncompressedBytes", LongType, nullable = false),
-        StructField("values", LongType, nullable = false),
-        StructField("nulls", LongType, nullable = false),
-      )),
-      Seq(
-        Row("file1.parquet", 1, "[id]", "SNAPPY", "required int64 id", "[BIT_PACKED, PLAIN]", "0", "99", 4, 437, 826, 100, 0),
-        Row("file1.parquet", 1, "[val]", "SNAPPY", "required double val", "[BIT_PACKED, PLAIN]", "0.005067503372006343", "0.9973357672164814", 441, 831, 826, 100, 0),
-        Row("file2.parquet", 1, "[id]", "SNAPPY", "required int64 id", "[BIT_PACKED, PLAIN]", "100", "199", 4, 438, 825, 100, 0),
-        Row("file2.parquet", 1, "[val]", "SNAPPY", "required double val", "[BIT_PACKED, PLAIN]", "0.010617521596503865", "0.999189783846449", 442, 831, 826, 100, 0),
-        Row("file2.parquet", 2, "[id]", "SNAPPY", "required int64 id", "[BIT_PACKED, PLAIN]", "200", "299", 1273, 440, 826, 100, 0),
-        Row("file2.parquet", 2, "[val]", "SNAPPY", "required double val", "[BIT_PACKED, PLAIN]", "0.011277044401634018", "0.970525681750662", 1713, 830, 825, 100, 0),
-      ),
-      (df: DataFrame) => df
-        .withColumn("column", $"column".cast(StringType))
-        .withColumn("encodings", $"encodings".cast(StringType))
-    )
+  parallelisms.foreach { parallelism =>
+    test(s"read parquet block columns (parallelism=${parallelism.map(_.toString).getOrElse("None")})") {
+      assertDf(
+        spark.read
+          .when(parallelism.isDefined)
+          .either(_.parquetBlockColumns(parallelism.get, testFile))
+          .or(_.parquetBlockColumns(testFile)),
+        Seq($"filename", $"block", $"column"),
+        StructType(Seq(
+          StructField("filename", StringType, nullable = true),
+          StructField("block", IntegerType, nullable = false),
+          StructField("column", ArrayType(StringType), nullable = true),
+          StructField("codec", StringType, nullable = true),
+          StructField("type", StringType, nullable = true),
+          StructField("encodings", ArrayType(StringType), nullable = true),
+          StructField("minValue", StringType, nullable = true),
+          StructField("maxValue", StringType, nullable = true),
+          StructField("columnStart", LongType, nullable = false),
+          StructField("compressedBytes", LongType, nullable = false),
+          StructField("uncompressedBytes", LongType, nullable = false),
+          StructField("values", LongType, nullable = false),
+          StructField("nulls", LongType, nullable = false),
+        )),
+        Seq(
+          Row("file1.parquet", 1, "[id]", "SNAPPY", "required int64 id", "[BIT_PACKED, PLAIN]", "0", "99", 4, 437, 826, 100, 0),
+          Row("file1.parquet", 1, "[val]", "SNAPPY", "required double val", "[BIT_PACKED, PLAIN]", "0.005067503372006343", "0.9973357672164814", 441, 831, 826, 100, 0),
+          Row("file2.parquet", 1, "[id]", "SNAPPY", "required int64 id", "[BIT_PACKED, PLAIN]", "100", "199", 4, 438, 825, 100, 0),
+          Row("file2.parquet", 1, "[val]", "SNAPPY", "required double val", "[BIT_PACKED, PLAIN]", "0.010617521596503865", "0.999189783846449", 442, 831, 826, 100, 0),
+          Row("file2.parquet", 2, "[id]", "SNAPPY", "required int64 id", "[BIT_PACKED, PLAIN]", "200", "299", 1273, 440, 826, 100, 0),
+          Row("file2.parquet", 2, "[val]", "SNAPPY", "required double val", "[BIT_PACKED, PLAIN]", "0.011277044401634018", "0.970525681750662", 1713, 830, 825, 100, 0),
+        ),
+        parallelism,
+        (df: DataFrame) => df
+          .withColumn("column", $"column".cast(StringType))
+          .withColumn("encodings", $"encodings".cast(StringType))
+      )
+    }
   }
 
   if (sys.env.get("CI_SLOW_TESTS").exists(_.equals("1"))) {
@@ -187,40 +216,43 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
       Row(3072, 3493, 421, 0, 0, 0, 0, "file2.parquet", 3493),
     ),
   ).foreach { case (partitionSize, expectedRows) =>
-    test(s"read parquet partitions (${partitionSize.getOrElse("default")} bytes)") {
-      withSQLConf(partitionSize.map(size => Seq("spark.sql.files.maxPartitionBytes" -> size.toString)).getOrElse(Seq.empty): _*) {
-        val expected = expectedRows.map {
-          case row if SparkMajorVersion > 3 || SparkMinorVersion >= 3 => row
-          case row => Row(unapplySeq(row).get.updated(8, null): _*)
+    parallelisms.foreach { parallelism =>
+      test(s"read parquet partitions (${partitionSize.getOrElse("default")} bytes) (parallelism=${parallelism.map(_.toString).getOrElse("None")})") {
+        withSQLConf(partitionSize.map(size => Seq("spark.sql.files.maxPartitionBytes" -> size.toString)).getOrElse(Seq.empty): _*) {
+          val expected = expectedRows.map {
+            case row if SparkMajorVersion > 3 || SparkMinorVersion >= 3 => row
+            case row => Row(unapplySeq(row).get.updated(8, null): _*)
+          }
+
+          val actual = spark.read
+            .when(parallelism.isDefined)
+            .either(_.parquetPartitions(parallelism.get, testFile))
+            .or(_.parquetPartitions(testFile))
+            .cache()
+
+          val partitions = actual.select($"partition").as[Int].collect()
+          if (partitionSize.isDefined) {
+            assert(partitions.indices === partitions.sorted)
+          } else {
+            assert(Seq(0, 0) === partitions)
+          }
+
+          val schema = StructType(Seq(
+            StructField("partition", IntegerType, nullable = false),
+            StructField("start", LongType, nullable = false),
+            StructField("end", LongType, nullable = false),
+            StructField("length", LongType, nullable = false),
+            StructField("blocks", IntegerType, nullable = false),
+            StructField("compressedBytes", LongType, nullable = false),
+            StructField("uncompressedBytes", LongType, nullable = false),
+            StructField("rows", LongType, nullable = false),
+            StructField("filename", StringType, nullable = true),
+            StructField("fileLength", LongType, nullable = true),
+          ))
+
+          assertDf(actual, Seq($"filename", $"start"), schema, expected, parallelism, df => df.drop("partition"))
+          actual.unpersist()
         }
-
-        val actual = spark.read
-          .parquetPartitions(testFile)
-          .orderBy($"filename", $"start")
-          .cache()
-
-        val partitions = actual.select($"partition").as[Int].collect()
-        if (partitionSize.isDefined) {
-          assert(partitions.indices === partitions.sorted)
-        } else {
-          assert(Seq(0, 0) === partitions)
-        }
-
-        val schema = StructType(Seq(
-          StructField("partition", IntegerType, nullable = false),
-          StructField("start", LongType, nullable = false),
-          StructField("end", LongType, nullable = false),
-          StructField("length", LongType, nullable = false),
-          StructField("blocks", IntegerType, nullable = false),
-          StructField("compressedBytes", LongType, nullable = false),
-          StructField("uncompressedBytes", LongType, nullable = false),
-          StructField("rows", LongType, nullable = false),
-          StructField("filename", StringType, nullable = true),
-          StructField("fileLength", LongType, nullable = true),
-        ))
-
-        assertDf(actual, schema, expected, df => df.drop("partition"))
-        actual.unpersist()
       }
     }
   }
