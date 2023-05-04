@@ -109,32 +109,33 @@ spark.read.parquetBlockColumns("/path/to/parquet").show()
 spark.read.parquet_block_columns("/path/to/parquet").show()
 ```
 ```
-+-------------+-----+------+------+-------------------+-------------------+--------------------+------------------+-----------+---------------+-----------------+------+
-|     filename|block|column| codec|               type|          encodings|            minValue|          maxValue|columnStart|compressedBytes|uncompressedBytes|values|
-+-------------+-----+------+------+-------------------+-------------------+--------------------+------------------+-----------+---------------+-----------------+------+
-|file1.parquet|    1|  [id]|SNAPPY|  required int64 id|[BIT_PACKED, PLAIN]|                   0|                99|          4|            437|              826|   100|
-|file1.parquet|    1| [val]|SNAPPY|required double val|[BIT_PACKED, PLAIN]|0.005067503372006343|0.9973357672164814|        441|            831|              826|   100|
-|file2.parquet|    1|  [id]|SNAPPY|  required int64 id|[BIT_PACKED, PLAIN]|                 100|               199|          4|            438|              825|   100|
-|file2.parquet|    1| [val]|SNAPPY|required double val|[BIT_PACKED, PLAIN]|0.010617521596503865| 0.999189783846449|        442|            831|              826|   100|
-|file2.parquet|    2|  [id]|SNAPPY|  required int64 id|[BIT_PACKED, PLAIN]|                 200|               299|       1273|            440|              826|   100|
-|file2.parquet|    2| [val]|SNAPPY|required double val|[BIT_PACKED, PLAIN]|0.011277044401634018| 0.970525681750662|       1713|            830|              825|   100|
-+-------------+-----+------+------+-------------------+-------------------+--------------------+------------------+-----------+---------------+-----------------+------+
++-------------+-----+------+------+-------------------+-------------------+--------------------+------------------+-----------+---------------+-----------------+------+-----+
+|     filename|block|column| codec|               type|          encodings|            minValue|          maxValue|columnStart|compressedBytes|uncompressedBytes|values|nulls|
++-------------+-----+------+------+-------------------+-------------------+--------------------+------------------+-----------+---------------+-----------------+------+-----+
+|file1.parquet|    1|  [id]|SNAPPY|  required int64 id|[BIT_PACKED, PLAIN]|                   0|                99|          4|            437|              826|   100|    0|
+|file1.parquet|    1| [val]|SNAPPY|required double val|[BIT_PACKED, PLAIN]|0.005067503372006343|0.9973357672164814|        441|            831|              826|   100|    0|
+|file2.parquet|    1|  [id]|SNAPPY|  required int64 id|[BIT_PACKED, PLAIN]|                 100|               199|          4|            438|              825|   100|    0|
+|file2.parquet|    1| [val]|SNAPPY|required double val|[BIT_PACKED, PLAIN]|0.010617521596503865| 0.999189783846449|        442|            831|              826|   100|    0|
+|file2.parquet|    2|  [id]|SNAPPY|  required int64 id|[BIT_PACKED, PLAIN]|                 200|               299|       1273|            440|              826|   100|    0|
+|file2.parquet|    2| [val]|SNAPPY|required double val|[BIT_PACKED, PLAIN]|0.011277044401634018| 0.970525681750662|       1713|            830|              825|   100|    0|
++-------------+-----+------+------+-------------------+-------------------+--------------------+------------------+-----------+---------------+-----------------+------+-----+
 ```
 
-|column            |type  |description                                           |
-|:-----------------|:----:|:-----------------------------------------------------|
-|filename          |string|The Parquet file name                                 |
-|block             |int   |Block / RowGroup number starting at 1                 |
-|column            |string|Block / RowGroup column name                          |
-|codec             |string|The coded used to compress the block column values    |
-|type              |string|The data type of the block column                     |
-|encodings         |string|Encodings of the block column                         |
-|minValue          |string|Minimum value of this column in this block            |
-|maxValue          |string|Maximum value of this column in this block            |
-|columnStart       |long  |Start position of the block column in the Parquet file|
-|compressedBytes   |long  |Number of compressed bytes of this block column       |
-|uncompressedBytes |long  |Number of uncompressed bytes of this block column     |
-|valueCount        |long  |Number of values in this block column                 |
+|column            |type         |description                                           |
+|:-----------------|:-----------:|:-----------------------------------------------------|
+|filename          |string       |The Parquet file name                                 |
+|block             |int          |Block / RowGroup number starting at 1                 |
+|column            |array<string>|Block / RowGroup column name                          |
+|codec             |string       |The coded used to compress the block column values    |
+|type              |string       |The data type of the block column                     |
+|encodings         |array<string>|Encodings of the block column                         |
+|minValue          |string       |Minimum value of this column in this block            |
+|maxValue          |string       |Maximum value of this column in this block            |
+|columnStart       |long         |Start position of the block column in the Parquet file|
+|compressedBytes   |long         |Number of compressed bytes of this block column       |
+|uncompressedBytes |long         |Number of uncompressed bytes of this block column     |
+|values            |long         |Number of values in this block column                 |
+|nulls             |long         |Number of null values in this block column            |
 
 ## Parquet partition metadata
 

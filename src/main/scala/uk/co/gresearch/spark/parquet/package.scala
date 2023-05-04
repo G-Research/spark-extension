@@ -22,10 +22,10 @@ import org.apache.hadoop.fs.Path
 import org.apache.parquet.hadoop.metadata.BlockMetaData
 import org.apache.parquet.hadoop.{Footer, ParquetFileReader}
 import org.apache.spark.sql.execution.datasources.FilePartition
-import org.apache.spark.sql.functions.spark_partition_id
 import org.apache.spark.sql.{DataFrame, DataFrameReader, Encoder, Encoders}
 
 import scala.collection.JavaConverters.collectionAsScalaIterableConverter
+import scala.collection.convert.ImplicitConversions.`iterable AsScalaIterable`
 
 package object parquet {
   private implicit val intEncoder: Encoder[Int] = Encoders.scalaInt
@@ -159,7 +159,7 @@ package object parquet {
               (
                 footer.getFile.toString,
                 idx + 1,
-                column.getPath.toString,
+                column.getPath.toSeq,
                 column.getCodec.toString,
                 column.getPrimitiveType.toString,
                 column.getEncodings.asScala.toSeq.map(_.toString).sorted,
@@ -169,11 +169,12 @@ package object parquet {
                 column.getTotalSize,
                 column.getTotalUncompressedSize,
                 column.getValueCount,
+                column.getStatistics.getNumNulls,
               )
             }
           }
         }
-      }.toDF("filename", "block", "column", "codec", "type", "encodings", "minValue", "maxValue", "columnStart", "compressedBytes", "uncompressedBytes", "values")
+      }.toDF("filename", "block", "column", "codec", "type", "encodings", "minValue", "maxValue", "columnStart", "compressedBytes", "uncompressedBytes", "values", "nulls")
     }
 
     /**
