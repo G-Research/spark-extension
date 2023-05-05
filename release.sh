@@ -49,21 +49,22 @@ jars=$(find $HOME/.m2 $HOME/.ivy2 -name "*spark-extension_*-$version-*-SNAPSHOT.
 if [[ -n "$jars" ]]
 then
   echo "There are installed SNAPSHOT jars, these may interfere with release tests. These must be deleted first:"
-  echo "$jars"
+  echo "$jars" | tr '\n' ' '
+  echo
   exit 1
 fi
 
 # testing all versions
-./set-version.sh 3.0.3 2.12.10 && mvn clean deploy && ./build-whl.sh && ./test-release.sh || exit 1
-./set-version.sh 3.1.3 2.12.10 && mvn clean deploy && ./build-whl.sh && ./test-release.sh || exit 1
-./set-version.sh 3.2.4 2.12.15 && mvn clean deploy && ./build-whl.sh && ./test-release.sh || exit 1
-./set-version.sh 3.3.2 2.12.15 && mvn clean deploy && ./build-whl.sh && ./test-release.sh || exit 1
-./set-version.sh 3.4.0 2.12.17 && mvn clean deploy && ./build-whl.sh && ./test-release.sh || exit 1
+./set-version.sh 3.0.3 2.12.10 && mvn clean deploy -Dsign && ./build-whl.sh && ./test-release.sh || exit 1
+./set-version.sh 3.1.3 2.12.10 && mvn clean deploy -Dsign && ./build-whl.sh && ./test-release.sh || exit 1
+./set-version.sh 3.2.4 2.12.15 && mvn clean deploy -Dsign && ./build-whl.sh && ./test-release.sh || exit 1
+./set-version.sh 3.3.2 2.12.15 && mvn clean deploy -Dsign && ./build-whl.sh && ./test-release.sh || exit 1
+./set-version.sh 3.4.0 2.12.17 && mvn clean deploy -Dsign && ./build-whl.sh && ./test-release.sh || exit 1
 rm -rf python/dist
 
-./set-version.sh 3.2.4 2.13.5 && mvn clean deploy && ./test-release.sh || exit 1
-./set-version.sh 3.3.2 2.13.8 && mvn clean deploy && ./test-release.sh || exit 1
-./set-version.sh 3.4.0 2.13.8 && mvn clean deploy && ./test-release.sh || exit 1
+./set-version.sh 3.2.4 2.13.5 && mvn clean deploy -Dsign && ./test-release.sh || exit 1
+./set-version.sh 3.3.2 2.13.8 && mvn clean deploy -Dsign && ./test-release.sh || exit 1
+./set-version.sh 3.4.0 2.13.8 && mvn clean deploy -Dsign && ./test-release.sh || exit 1
 
 # all SNAPSHOT versions build, test and complete the example, releasing
 
