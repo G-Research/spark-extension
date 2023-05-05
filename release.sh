@@ -55,16 +55,18 @@ then
 fi
 
 # testing all versions
-./set-version.sh 3.0.3 2.12.10 && mvn clean deploy -Dsign && ./build-whl.sh && ./test-release.sh || exit 1
-./set-version.sh 3.1.3 2.12.10 && mvn clean deploy -Dsign && ./build-whl.sh && ./test-release.sh || exit 1
-./set-version.sh 3.2.4 2.12.15 && mvn clean deploy -Dsign && ./build-whl.sh && ./test-release.sh || exit 1
-./set-version.sh 3.3.2 2.12.15 && mvn clean deploy -Dsign && ./build-whl.sh && ./test-release.sh || exit 1
-./set-version.sh 3.4.0 2.12.17 && mvn clean deploy -Dsign && ./build-whl.sh && ./test-release.sh || exit 1
+rm -rf metastore_db/ spark-warehouse/
+./set-version.sh 3.0.3 2.12.10; mvn clean deploy -Dsign; ./build-whl.sh; ./test-release.sh
+./set-version.sh 3.1.3 2.12.10; mvn clean deploy -Dsign; ./build-whl.sh; ./test-release.sh
+./set-version.sh 3.2.4 2.12.15; mvn clean deploy -Dsign; ./build-whl.sh; ./test-release.sh
+./set-version.sh 3.3.2 2.12.15; mvn clean deploy -Dsign; ./build-whl.sh; ./test-release.sh
+./set-version.sh 3.4.0 2.12.17; mvn clean deploy -Dsign; ./build-whl.sh; ./test-release.sh
 rm -rf python/dist
 
-./set-version.sh 3.2.4 2.13.5 && mvn clean deploy -Dsign && ./test-release.sh || exit 1
-./set-version.sh 3.3.2 2.13.8 && mvn clean deploy -Dsign && ./test-release.sh || exit 1
-./set-version.sh 3.4.0 2.13.8 && mvn clean deploy -Dsign && ./test-release.sh || exit 1
+./set-version.sh 3.2.4 2.13.5; mvn clean deploy -Dsign; ./test-release.sh
+./set-version.sh 3.3.2 2.13.8; mvn clean deploy -Dsign; ./test-release.sh
+./set-version.sh 3.4.0 2.13.8; mvn clean deploy -Dsign; ./test-release.sh
+rm -rf metastore_db/ spark-warehouse/
 
 # all SNAPSHOT versions build, test and complete the example, releasing
 
@@ -101,15 +103,15 @@ echo
 # create release
 echo "Creating release packages"
 mkdir -p python/pyspark/jars/
-./set-version.sh 3.0.3 2.12.10 && mvn clean deploy -Dsign && mvn nexus-staging:release && ./build-whl.sh
-./set-version.sh 3.1.3 2.12.10 && mvn clean deploy -Dsign && mvn nexus-staging:release && ./build-whl.sh
-./set-version.sh 3.2.4 2.12.15 && mvn clean deploy -Dsign && mvn nexus-staging:release && ./build-whl.sh
-./set-version.sh 3.3.2 2.12.15 && mvn clean deploy -Dsign && mvn nexus-staging:release && ./build-whl.sh
-./set-version.sh 3.4.0 2.12.17 && mvn clean deploy -Dsign && mvn nexus-staging:release && ./build-whl.sh
+./set-version.sh 3.0.3 2.12.10; mvn clean deploy -Dsign; mvn nexus-staging:release; ./build-whl.sh
+./set-version.sh 3.1.3 2.12.10; mvn clean deploy -Dsign; mvn nexus-staging:release; ./build-whl.sh
+./set-version.sh 3.2.4 2.12.15; mvn clean deploy -Dsign; mvn nexus-staging:release; ./build-whl.sh
+./set-version.sh 3.3.2 2.12.15; mvn clean deploy -Dsign; mvn nexus-staging:release; ./build-whl.sh
+./set-version.sh 3.4.0 2.12.17; mvn clean deploy -Dsign; mvn nexus-staging:release; ./build-whl.sh
 
-./set-version.sh 3.2.4 2.13.5 && mvn clean deploy -Dsign && mvn nexus-staging:release
-./set-version.sh 3.3.2 2.13.8 && mvn clean deploy -Dsign && mvn nexus-staging:release
-./set-version.sh 3.4.0 2.13.8 && mvn clean deploy -Dsign && mvn nexus-staging:release
+./set-version.sh 3.2.4 2.13.5; mvn clean deploy -Dsign; mvn nexus-staging:release
+./set-version.sh 3.3.2 2.13.8; mvn clean deploy -Dsign; mvn nexus-staging:release
+./set-version.sh 3.4.0 2.13.8; mvn clean deploy -Dsign; mvn nexus-staging:release
 
 # upload to test PyPi
 pip install twine
