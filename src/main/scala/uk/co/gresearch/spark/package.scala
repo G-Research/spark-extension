@@ -25,9 +25,6 @@ import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.storage.StorageLevel
 import uk.co.gresearch.spark.group.SortedGroupByDataset
 
-import java.io.IOException
-import scala.util.Properties
-
 package object spark extends Logging with SparkVersion with BuildVersion {
 
   /**
@@ -76,6 +73,28 @@ package object spark extends Logging with SparkVersion with BuildVersion {
   @scala.annotation.varargs
   def backticks(string: String, strings: String*): String =
     Backticks.column_name(string, strings: _*)
+
+  def withJobDescription[T](description: String, onlyIfNotSet: Boolean = false)(func: => T)(implicit session: SparkSession): T = {
+    val context = session.sparkContext
+    val earlierDescriptionOption = Option(context.getLocalProperty("spark.job.description"))
+    if (earlierDescriptionOption.isDefined && onlyIfNotSet) {
+      func
+    } else {
+      try {
+        context.setJobDescription(description)
+        func
+      } finally {
+        context.setJobDescription(earlierDescriptionOption.orNull)
+      }
+    }
+  }
+
+  def appendJobDescription[T](extraDescription: String, separator: String = " - ")(func: => T)(implicit session: SparkSession): T = {
+    val context = session.sparkContext
+    val earlierDescriptionOption = Option(context.getLocalProperty("spark.job.description"))
+    val description = earlierDescriptionOption.map(_ + separator + extraDescription).getOrElse(extraDescription)
+    withJobDescription(description)(func)
+  }
 
   /**
    * Implicit class to extend a Spark Dataset.

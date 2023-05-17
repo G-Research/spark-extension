@@ -16,6 +16,7 @@
 
 package uk.co.gresearch.spark
 
+import org.apache.spark.TaskContext
 import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.expressions.{Descending, SortOrder}
 import org.apache.spark.sql.functions._
@@ -23,7 +24,7 @@ import org.apache.spark.storage.StorageLevel
 import org.apache.spark.storage.StorageLevel.{DISK_ONLY, MEMORY_AND_DISK, MEMORY_ONLY, NONE}
 import org.scalatest.funsuite.AnyFunSuite
 import uk.co.gresearch.ExtendedAny
-import uk.co.gresearch.spark.SparkSuite.Value
+import uk.co.gresearch.spark.SparkSuite.{Value, collectJobDescription}
 
 class SparkSuite extends AnyFunSuite with SparkTestSession {
 
@@ -135,6 +136,71 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
     assert(backticks("column", "a.field") === "column.`a.field`")
     assert(backticks("a.column", "a.field") === "`a.column`.`a.field`")
     assert(backticks("the.alias", "a.column", "a.field") === "`the.alias`.`a.column`.`a.field`")
+  }
+
+  def doTestJobDescription(func: () => Array[(Long, Long, String)])(expected: Option[String]): Unit = {
+    val descriptions = func()
+    assert(descriptions === 0.to(2).map(id => (id, id, expected.orNull)))
+  }
+
+  test("without job description") {
+    doTestJobDescription { () => collectJobDescription(spark) }(None)
+  }
+
+  test("with job description") {
+    implicit val session: SparkSession = spark
+    doTestJobDescription { () => collectJobDescription(spark) }(None)
+    doTestJobDescription { () => withJobDescription("test job description") { collectJobDescription(spark) } }(Some("test job description"))
+    doTestJobDescription { () => collectJobDescription(spark) }(None)
+  }
+
+  test("with existing job description") {
+    implicit val session: SparkSession = spark
+
+    doTestJobDescription { () => collectJobDescription(spark) }(None)
+    doTestJobDescription { () =>
+      withJobDescription("outer job description") {
+        doTestJobDescription { () => collectJobDescription(spark) }(Some("outer job description"))
+        val descriptions = withJobDescription("inner job description") {
+          collectJobDescription(spark)
+        }
+        doTestJobDescription { () => collectJobDescription(spark) }(Some("outer job description"))
+        descriptions
+      }
+    }(Some("inner job description"))
+    doTestJobDescription { () => collectJobDescription(spark) }(None)
+    doTestJobDescription { () =>
+      withJobDescription("outer job description") {
+        doTestJobDescription { () => collectJobDescription(spark) }(Some("outer job description"))
+        val descriptions = withJobDescription("inner job description", true) {
+          collectJobDescription(spark)
+        }
+        doTestJobDescription { () => collectJobDescription(spark) }(Some("outer job description"))
+        descriptions
+      }
+    }(Some("outer job description"))
+    doTestJobDescription { () => collectJobDescription(spark) }(None)
+  }
+
+  test("append job description") {
+    implicit val session: SparkSession = spark
+    doTestJobDescription { () => collectJobDescription(spark) }(None)
+    doTestJobDescription { () =>
+      appendJobDescription("test") {
+        doTestJobDescription { () =>
+          appendJobDescription("job") {
+            doTestJobDescription { () =>
+              appendJobDescription("description", " ") {
+                collectJobDescription(spark)
+              }
+            }(Some("test - job description"))
+            collectJobDescription(spark)
+          }
+        }(Some("test - job"))
+        collectJobDescription(spark)
+      }
+    }(Some("test"))
+    doTestJobDescription { () => collectJobDescription(spark) }(None)
   }
 
   def assertIsDataset[T](actual: Dataset[T]): Unit = {
@@ -423,4 +489,15 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
 
 object SparkSuite {
   case class Value(id: Int, string: String)
+
+  def collectJobDescription(spark: SparkSession): Array[(Long, Long, String)] = {
+    import spark.implicits._
+    spark
+      .range(0, 3, 1, 3)
+      .mapPartitions(it => it.map(id => (id, TaskContext.get().partitionId(), TaskContext.get().getLocalProperty("spark.job.description"))))
+      .as[(Long, Long, String)]
+      .sort()
+      .collect()
+  }
+
 }

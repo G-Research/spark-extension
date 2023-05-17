@@ -50,6 +50,28 @@ i.doThis()
 **Backticks:** `backticks(string: String, strings: String*): String)`: Encloses the given column name with backticks (`` ` ``) when needed.
 This is a handy way to ensure column names with special characters like dots (`.`) work with `col()` or `select()`.
 
+**Spark job description:** Set Spark job description for all Spark jobs within a context:
+
+```scala
+import uk.co.gresearch.spark._
+
+implicit val session: SparkSession = spark
+
+withJobDescription("parquet file") {
+  val df = spark.read.parquet("data.parquet")
+  val count = appendJobDescription("count") {
+    df.count
+  }
+  appendJobDescription("write") {
+    df.write.csv("data.csv")
+  }
+}
+```
+
+| Without job description  | With job description |
+|:---:|:---:|
+| ![](/home/enrico/Work/git/spark-extension/without-job-description.png "Spark job without description in UI") | ![](/home/enrico/Work/git/spark-extension/with-job-description.png "Spark job with description in UI") |
+
 ## Using Spark Extension
 
 The `spark-extension` package is available for all Spark 3.2, 3.4 and 3.4 versions. Some Spark earlier versions may also be supported.
