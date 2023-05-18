@@ -16,6 +16,8 @@
 
 package uk.co.gresearch
 
+import org.apache.spark.SparkContext
+import org.apache.spark.api.java.JavaSparkContext
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.encoders.RowEncoder
@@ -75,6 +77,22 @@ package object spark extends Logging with SparkVersion with BuildVersion {
     Backticks.column_name(string, strings: _*)
 
   /**
+   * Set the job description and return the earlier description. Only set the description if it is not set.
+   *
+   * @param description job description
+   * @param ifNotSet job description is only set if no description is set yet
+   * @param context spark context
+   * @return
+   */
+  def setJobDescription(description: String, ifNotSet: Boolean = false)(implicit context: SparkContext): String = {
+    val earlierDescriptionOption = Option(context.getLocalProperty("spark.job.description"))
+    if (earlierDescriptionOption.isEmpty || !ifNotSet) {
+      context.setJobDescription(description)
+    }
+    earlierDescriptionOption.orNull
+  }
+
+  /**
    * Adds a job description to all Spark jobs started within the given function.
    * The current Job description is restored after exit of the function.
    *
@@ -93,25 +111,37 @@ package object spark extends Logging with SparkVersion with BuildVersion {
    *
    * With `onlyIfNotSet == true`, the description is only set if no job description is set yet.
    *
+   * Any modification to the job description during execution of the function is reverted,
+   * even if `onlyIfNotSet == true`.
+   *
    * @param description job description
-   * @param onlyIfNotSet job description is only set if no description is set yet
+   * @param ifNotSet job description is only set if no description is set yet
    * @param func code to execute while job description is set
    * @param session spark session
    * @tparam T return type of func
    */
-  def withJobDescription[T](description: String, onlyIfNotSet: Boolean = false)(func: => T)(implicit session: SparkSession): T = {
-    val context = session.sparkContext
-    val earlierDescriptionOption = Option(context.getLocalProperty("spark.job.description"))
-    if (earlierDescriptionOption.isDefined && onlyIfNotSet) {
+  def withJobDescription[T](description: String, ifNotSet: Boolean = false)(func: => T)(implicit session: SparkSession): T = {
+    val earlierDescription = setJobDescription(description, ifNotSet)(session.sparkContext)
+    try {
       func
-    } else {
-      try {
-        context.setJobDescription(description)
-        func
-      } finally {
-        context.setJobDescription(earlierDescriptionOption.orNull)
-      }
+    } finally {
+      setJobDescription(earlierDescription)(session.sparkContext)
     }
+  }
+
+  /**
+   * Append the job description and return the earlier description.
+   *
+   * @param extraDescription job description
+   * @param separator separator to join exiting and extra description with
+   * @param context spark context
+   * @return
+   */
+  def appendJobDescription(extraDescription: String, separator: String, context: SparkContext): String = {
+    val earlierDescriptionOption = Option(context.getLocalProperty("spark.job.description"))
+    val description = earlierDescriptionOption.map(_ + separator + extraDescription).getOrElse(extraDescription)
+    context.setJobDescription(description)
+    earlierDescriptionOption.orNull
   }
 
   /**
@@ -134,6 +164,8 @@ package object spark extends Logging with SparkVersion with BuildVersion {
    *   }
    * }}}
    *
+   * Any modification to the job description during execution of the function is reverted.
+   *
    * @param extraDescription job description to be appended
    * @param separator separator used when appending description
    * @param func code to execute while job description is set
@@ -141,10 +173,12 @@ package object spark extends Logging with SparkVersion with BuildVersion {
    * @tparam T return type of func
    */
   def appendJobDescription[T](extraDescription: String, separator: String = " - ")(func: => T)(implicit session: SparkSession): T = {
-    val context = session.sparkContext
-    val earlierDescriptionOption = Option(context.getLocalProperty("spark.job.description"))
-    val description = earlierDescriptionOption.map(_ + separator + extraDescription).getOrElse(extraDescription)
-    withJobDescription(description)(func)
+    val earlierDescription = appendJobDescription(extraDescription, separator, session.sparkContext)
+    try {
+      func
+    } finally {
+      setJobDescription(earlierDescription)(session.sparkContext)
+    }
   }
 
   /**

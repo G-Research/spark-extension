@@ -12,9 +12,11 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+from contextlib import contextmanager
 from typing import Any, Union, List, Optional, Mapping
 
 from py4j.java_gateway import JVMView, JavaObject
+from pyspark import SparkContext
 from pyspark.sql import DataFrame
 from pyspark.sql.column import Column
 from pyspark.sql.context import SQLContext
@@ -110,3 +112,35 @@ def session_or_ctx(self: DataFrame) -> Union[SparkSession, SQLContext]:
 
 DataFrame.with_row_numbers = with_row_numbers
 DataFrame.session_or_ctx = session_or_ctx
+
+
+def set_description(description: str, if_not_set: bool = False):
+    context = SparkContext._active_spark_context
+    jvm = context._jvm
+    spark_package = jvm.uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$")
+    return spark_package.setJobDescription(description, if_not_set, context._jsc.sc())
+
+
+@contextmanager
+def job_description(description: str, if_not_set: bool = False):
+    earlier = set_description(description, if_not_set)
+    try:
+        yield
+    finally:
+        set_description(earlier)
+
+
+def append_description(extra_description: str, separator: str = " - "):
+    context = SparkContext._active_spark_context
+    jvm = context._jvm
+    spark_package = jvm.uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$")
+    return spark_package.appendJobDescription(extra_description, separator, context._jsc.sc())
+
+
+@contextmanager
+def append_job_description(extra_description: str, separator: str = " - "):
+    earlier = append_description(extra_description, separator)
+    try:
+        yield
+    finally:
+        set_description(earlier)

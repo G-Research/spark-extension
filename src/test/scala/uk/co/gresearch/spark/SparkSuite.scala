@@ -138,69 +138,77 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
     assert(backticks("the.alias", "a.column", "a.field") === "`the.alias`.`a.column`.`a.field`")
   }
 
-  def doTestJobDescription(func: () => Array[(Long, Long, String)])(expected: Option[String]): Unit = {
-    val descriptions = func()
+  def assertJobDescription(expected: Option[String]): Unit = {
+    val descriptions = collectJobDescription(spark)
     assert(descriptions === 0.to(2).map(id => (id, id, expected.orNull)))
   }
 
   test("without job description") {
-    doTestJobDescription { () => collectJobDescription(spark) }(None)
+    assertJobDescription(None)
   }
 
   test("with job description") {
     implicit val session: SparkSession = spark
-    doTestJobDescription { () => collectJobDescription(spark) }(None)
-    doTestJobDescription { () => withJobDescription("test job description") { collectJobDescription(spark) } }(Some("test job description"))
-    doTestJobDescription { () => collectJobDescription(spark) }(None)
+
+    assertJobDescription(None)
+    withJobDescription("test job description") {
+      assertJobDescription(Some("test job description"))
+      spark.sparkContext.setJobDescription("modified")
+      assertJobDescription(Some("modified"))
+    }
+    assertJobDescription(None)
   }
 
   test("with existing job description") {
     implicit val session: SparkSession = spark
 
-    doTestJobDescription { () => collectJobDescription(spark) }(None)
-    doTestJobDescription { () =>
-      withJobDescription("outer job description") {
-        doTestJobDescription { () => collectJobDescription(spark) }(Some("outer job description"))
-        val descriptions = withJobDescription("inner job description") {
-          collectJobDescription(spark)
-        }
-        doTestJobDescription { () => collectJobDescription(spark) }(Some("outer job description"))
-        descriptions
+    assertJobDescription(None)
+    withJobDescription("outer job description") {
+      assertJobDescription(Some("outer job description"))
+      withJobDescription("inner job description") {
+        assertJobDescription(Some("inner job description"))
+        spark.sparkContext.setJobDescription("modified")
+        assertJobDescription(Some("modified"))
       }
-    }(Some("inner job description"))
-    doTestJobDescription { () => collectJobDescription(spark) }(None)
-    doTestJobDescription { () =>
-      withJobDescription("outer job description") {
-        doTestJobDescription { () => collectJobDescription(spark) }(Some("outer job description"))
-        val descriptions = withJobDescription("inner job description", true) {
-          collectJobDescription(spark)
-        }
-        doTestJobDescription { () => collectJobDescription(spark) }(Some("outer job description"))
-        descriptions
+      assertJobDescription(Some("outer job description"))
+    }
+    assertJobDescription(None)
+  }
+
+  test("with existing job description if not set") {
+    implicit val session: SparkSession = spark
+
+    assertJobDescription(None)
+    withJobDescription("outer job description") {
+      assertJobDescription(Some("outer job description"))
+      withJobDescription("inner job description", true) {
+        assertJobDescription(Some("outer job description"))
+        spark.sparkContext.setJobDescription("modified")
+        assertJobDescription(Some("modified"))
       }
-    }(Some("outer job description"))
-    doTestJobDescription { () => collectJobDescription(spark) }(None)
+      assertJobDescription(Some("outer job description"))
+    }
+    assertJobDescription(None)
   }
 
   test("append job description") {
     implicit val session: SparkSession = spark
-    doTestJobDescription { () => collectJobDescription(spark) }(None)
-    doTestJobDescription { () =>
-      appendJobDescription("test") {
-        doTestJobDescription { () =>
-          appendJobDescription("job") {
-            doTestJobDescription { () =>
-              appendJobDescription("description", " ") {
-                collectJobDescription(spark)
-              }
-            }(Some("test - job description"))
-            collectJobDescription(spark)
-          }
-        }(Some("test - job"))
-        collectJobDescription(spark)
+
+    assertJobDescription(None)
+    appendJobDescription("test") {
+      assertJobDescription(Some("test"))
+      appendJobDescription("job") {
+        assertJobDescription(Some("test - job"))
+        appendJobDescription("description", " ") {
+          assertJobDescription(Some("test - job description"))
+          spark.sparkContext.setJobDescription("modified")
+          assertJobDescription(Some("modified"))
+        }
+        assertJobDescription(Some("test - job"))
       }
-    }(Some("test"))
-    doTestJobDescription { () => collectJobDescription(spark) }(None)
+      assertJobDescription(Some("test"))
+    }
+    assertJobDescription(None)
   }
 
   def assertIsDataset[T](actual: Dataset[T]): Unit = {
