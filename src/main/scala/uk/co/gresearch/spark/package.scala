@@ -74,6 +74,31 @@ package object spark extends Logging with SparkVersion with BuildVersion {
   def backticks(string: String, strings: String*): String =
     Backticks.column_name(string, strings: _*)
 
+  /**
+   * Adds a job description to all Spark jobs started within the given function.
+   * The current Job description is restored after exit of the function.
+   *
+   * Usage example:
+   *
+   * {{{
+   *   import uk.co.gresearch.spark._
+   *
+   *   implicit val session: SparkSession = spark
+   *
+   *   val count = withJobDescription("parquet file") {
+   *     val df = spark.read.parquet("data.parquet")
+   *     df.count
+   *   }
+   * }}}
+   *
+   * With `onlyIfNotSet == true`, the description is only set if no job description is set yet.
+   *
+   * @param description job description
+   * @param onlyIfNotSet job description is only set if no description is set yet
+   * @param func code to execute while job description is set
+   * @param session spark session
+   * @tparam T return type of func
+   */
   def withJobDescription[T](description: String, onlyIfNotSet: Boolean = false)(func: => T)(implicit session: SparkSession): T = {
     val context = session.sparkContext
     val earlierDescriptionOption = Option(context.getLocalProperty("spark.job.description"))
@@ -89,6 +114,32 @@ package object spark extends Logging with SparkVersion with BuildVersion {
     }
   }
 
+  /**
+   * Appends a job description to all Spark jobs started within the given function.
+   * The current Job description is extended by the separator and the extra description
+   * on entering the function, and restored after exit of the function.
+   *
+   * Usage example:
+   *
+   * {{{
+   *   import uk.co.gresearch.spark._
+   *
+   *   implicit val session: SparkSession = spark
+   *
+   *   val count = appendJobDescription("parquet file") {
+   *     val df = spark.read.parquet("data.parquet")
+   *     appendJobDescription("count") {
+   *       df.count
+   *     }
+   *   }
+   * }}}
+   *
+   * @param extraDescription job description to be appended
+   * @param separator separator used when appending description
+   * @param func code to execute while job description is set
+   * @param session spark session
+   * @tparam T return type of func
+   */
   def appendJobDescription[T](extraDescription: String, separator: String = " - ")(func: => T)(implicit session: SparkSession): T = {
     val context = session.sparkContext
     val earlierDescriptionOption = Option(context.getLocalProperty("spark.job.description"))
