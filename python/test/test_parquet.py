@@ -24,15 +24,27 @@ class ParquetTest(SparkTest):
 
     def test_parquet_metadata(self):
         self.assertEqual(self.spark.read.parquet_metadata(self.test_file).count(), 2)
+        self.assertEqual(self.spark.read.parquet_metadata(self.test_file, self.test_file).count(), 2)
+        self.assertEqual(self.spark.read.parquet_metadata(self.test_file, parallelism=100).count(), 2)
+        self.assertEqual(self.spark.read.parquet_metadata(self.test_file, self.test_file, parallelism=100).count(), 2)
 
     def test_parquet_blocks(self):
         self.assertEqual(self.spark.read.parquet_blocks(self.test_file).count(), 3)
+        self.assertEqual(self.spark.read.parquet_blocks(self.test_file, self.test_file).count(), 3)
+        self.assertEqual(self.spark.read.parquet_blocks(self.test_file, parallelism=100).count(), 3)
+        self.assertEqual(self.spark.read.parquet_blocks(self.test_file, self.test_file, parallelism=100).count(), 3)
 
     def test_parquet_block_columns(self):
         self.assertEqual(self.spark.read.parquet_block_columns(self.test_file).count(), 6)
+        self.assertEqual(self.spark.read.parquet_block_columns(self.test_file, self.test_file).count(), 6)
+        self.assertEqual(self.spark.read.parquet_block_columns(self.test_file, parallelism=100).count(), 6)
+        self.assertEqual(self.spark.read.parquet_block_columns(self.test_file, self.test_file, parallelism=100).count(), 6)
 
     def test_parquet_partitions(self):
         self.assertEqual(self.spark.read.parquet_partitions(self.test_file).count(), 2)
+        self.assertEqual(self.spark.read.parquet_partitions(self.test_file, self.test_file).count(), 2)
+        self.assertEqual(self.spark.read.parquet_partitions(self.test_file, parallelism=100).count(), 2)
+        self.assertEqual(self.spark.read.parquet_partitions(self.test_file, self.test_file, parallelism=100).count(), 2)
 
 
 if __name__ == '__main__':

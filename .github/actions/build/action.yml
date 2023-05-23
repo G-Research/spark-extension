@@ -50,6 +50,7 @@ runs:
         *
         !.*
         !target/*-javadoc.jar
+        !target/*-sources.jar
         !target/site
 
 branding:

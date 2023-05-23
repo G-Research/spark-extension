@@ -2,7 +2,7 @@
 
 This project provides extensions to the [Apache Spark project](https://spark.apache.org/) in Scala and Python:
 
-**[Diff](DIFF.md):** A `diff` transformation for `Dataset`s that computes the differences between
+**[Diff](DIFF.md):** A `diff` transformation and application for `Dataset`s that computes the differences between
 two datasets, i.e. which rows to _add_, _delete_ or _change_ to get from one dataset to the other.
 
 **[SortedGroups](GROUPS.md):** A `groupByKey` transformation that groups rows by a key while providing
@@ -85,11 +85,11 @@ unix_epoch_nanos_to_dotnet_ticks(column_or_name)
 
 ## Using Spark Extension
 
-The `spark-extension` package is available for all Spark 3.0, 3.1, 3.2 and 3.3 versions. The package version
-has the following semantics: `spark-extension_{SCALA_COMPAT_VERSION}-{VERSION}-{SPARK_COMPAT_VERSION}`:
+The `spark-extension` package is available for all Spark 3.2, 3.4 and 3.4 versions. Some Spark earlier versions may also be supported.
+The package version has the following semantics: `spark-extension_{SCALA_COMPAT_VERSION}-{VERSION}-{SPARK_COMPAT_VERSION}`:
 
 - `SCALA_COMPAT_VERSION`: Scala binary compatibility (minor) version. Available are `2.12` and `2.13`.
-- `SPARK_COMPAT_VERSION`: Apache Spark binary compatibility (minor) version. Available are `3.0`, `3.1`, `3.2` and `3.3`.
+- `SPARK_COMPAT_VERSION`: Apache Spark binary compatibility (minor) version. Available are `3.2`, `3.3` and `3.4`.
 - `VERSION`: The package version, e.g. `2.1.0`.
 
 ### SBT
@@ -97,7 +97,7 @@ has the following semantics: `spark-extension_{SCALA_COMPAT_VERSION}-{VERSION}-{
 Add this line to your `build.sbt` file:
 
 ```sbt
-libraryDependencies += "uk.co.gresearch.spark" %% "spark-extension" % "2.6.0-3.3"
+libraryDependencies += "uk.co.gresearch.spark" %% "spark-extension" % "2.7.0-3.4"
 ```
 
 ### Maven
@@ -108,19 +108,29 @@ Add this dependency to your `pom.xml` file:
 <dependency>
   <groupId>uk.co.gresearch.spark</groupId>
   <artifactId>spark-extension_2.12</artifactId>
-  <version>2.6.0-3.3</version>
+  <version>2.7.0-3.4</version>
 </dependency>
 ```
+
+### Spark Submit
+
+Submit your Spark app with the Spark Extension dependency (version ≥1.1.0) as follows:
+
+```shell script
+spark-submit --packages uk.co.gresearch.spark:spark-extension_2.12:2.7.0-3.3 [jar]
+```
+
+Note: Pick the right Scala version (here 2.12) and Spark version (here 3.3) depending on your Spark version.
 
 ### Spark Shell
 
 Launch a Spark Shell with the Spark Extension dependency (version ≥1.1.0) as follows:
 
 ```shell script
-spark-shell --packages uk.co.gresearch.spark:spark-extension_2.12:2.6.0-3.3
+spark-shell --packages uk.co.gresearch.spark:spark-extension_2.12:2.7.0-3.4
 ```
 
-Note: Pick the right Scala version (here 2.12) and Spark version (here 3.3) depending on your Spark Shell version.
+Note: Pick the right Scala version (here 2.12) and Spark version (here 3.4) depending on your Spark Shell version.
 
 ### Python
 
@@ -133,31 +143,31 @@ from pyspark.sql import SparkSession
 
 spark = SparkSession \
     .builder \
-    .config("spark.jars.packages", "uk.co.gresearch.spark:spark-extension_2.12:2.6.0-3.3") \
+    .config("spark.jars.packages", "uk.co.gresearch.spark:spark-extension_2.12:2.7.0-3.4") \
     .getOrCreate()
 ```
 
-Note: Pick the right Scala version (here 2.12) and Spark version (here 3.3) depending on your PySpark version.
+Note: Pick the right Scala version (here 2.12) and Spark version (here 3.4) depending on your PySpark version.
 
 #### PySpark REPL
 
 Launch the Python Spark REPL with the Spark Extension dependency (version ≥1.1.0) as follows:
 
 ```shell script
-pyspark --packages uk.co.gresearch.spark:spark-extension_2.12:2.6.0-3.3
+pyspark --packages uk.co.gresearch.spark:spark-extension_2.12:2.7.0-3.4
 ```
 
-Note: Pick the right Scala version (here 2.12) and Spark version (here 3.3) depending on your PySpark version.
+Note: Pick the right Scala version (here 2.12) and Spark version (here 3.4) depending on your PySpark version.
 
 #### PySpark `spark-submit`
 
 Run your Python scripts that use PySpark via `spark-submit`:
 
 ```shell script
-spark-submit --packages uk.co.gresearch.spark:spark-extension_2.12:2.6.0-3.3 [script.py]
+spark-submit --packages uk.co.gresearch.spark:spark-extension_2.12:2.7.0-3.4 [script.py]
 ```
 
-Note: Pick the right Scala version (here 2.12) and Spark version (here 3.3) depending on your Spark version.
+Note: Pick the right Scala version (here 2.12) and Spark version (here 3.4) depending on your Spark version.
 
 #### PyPi package (local Spark cluster only)
 
@@ -168,17 +178,17 @@ Running your Python application on a Spark cluster will still require one of the
 to add the Scala package to the Spark environment.
 
 ```shell script
-pip install pyspark-extension==2.6.0.3.3
+pip install pyspark-extension==2.7.0.3.4
 ```
 
-Note: Pick the right Spark version (here 3.3) depending on your PySpark version.
+Note: Pick the right Spark version (here 3.4) depending on your PySpark version.
 
 ### Your favorite Data Science notebook
 
 There are plenty of [Data Science notebooks](https://datasciencenotebook.org/) around. To use this library,
 add **a jar dependency** to your notebook using these **Maven coordinates**:
 
-    uk.co.gresearch.spark:spark-extension_2.12:2.6.0-3.3
+    uk.co.gresearch.spark:spark-extension_2.12:2.7.0-3.4
 
 Or [download the jar](https://mvnrepository.com/artifact/uk.co.gresearch.spark/spark-extension) and place it
 on a filesystem where it is accessible by the notebook, and reference that jar file directly.
@@ -197,7 +207,7 @@ If you want to build for a Spark or Scala version different to what is defined i
 sh set-version.sh [SPARK-VERSION] [SCALA-VERSION]
 ```
 
-For example, switch to Spark 3.3.0 and Scala 2.13.8 by running `sh set-version.sh 3.3.0 2.13.8`.
+For example, switch to Spark 3.4.0 and Scala 2.13.8 by running `sh set-version.sh 3.4.0 2.13.8`.
 
 ### Build the Scala project
 

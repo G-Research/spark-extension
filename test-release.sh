@@ -3,9 +3,16 @@
 set -eo pipefail
 
 version=$(grep --max-count=1 "<version>.*</version>" pom.xml | sed -E -e "s/\s*<[^>]+>//g")
-spark_compat=$(grep --max-count=1 spark.compat.version pom.xml | sed -E -e "s/\s*<[^>]+>//g")
-spark=$(grep --max-count=1 spark.version pom.xml | sed -E -e "s/\s*<[^>]+>//g" -e "s/\\\$\{spark.compat.version\}/$spark_compat/")
-scala_compat=$(grep --max-count=1 scala.compat.version pom.xml | sed -E -e "s/\s*<[^>]+>//g")
+
+spark_major=$(grep --max-count=1 "<spark.major.version>" pom.xml | sed -E -e "s/\s*<[^>]+>//g")
+spark_minor=$(grep --max-count=1 "<spark.minor.version>" pom.xml | sed -E -e "s/\s*<[^>]+>//g")
+spark_patch=$(grep --max-count=1 "<spark.patch.version>" pom.xml | sed -E -e "s/\s*<[^>]+>//g")
+spark_compat="$spark_major.$spark_minor"
+spark="$spark_major.$spark_minor.$spark_patch"
+
+scala_major=$(grep --max-count=1 "<scala.major.version>" pom.xml | sed -E -e "s/\s*<[^>]+>//g")
+scala_minor=$(grep --max-count=1 "<scala.minor.version>" pom.xml | sed -E -e "s/\s*<[^>]+>//g")
+scala_compat="$scala_major.$scala_minor"
 
 echo
 echo "Testing Spark $spark and Scala $scala_compat"
@@ -48,6 +55,7 @@ then
     if [ -e "venv" ]; then rm -rf venv; fi
     virtualenv -p python3 venv
     source venv/bin/activate
+    pip install -r python/requirements-${spark_compat}_$scala_compat.txt
     pip install python/dist/pyspark_extension-${version/-*/}.$spark_compat${version/*-SNAPSHOT/.dev0}-py3-none-any.whl
     python3 test-release.py
 fi
