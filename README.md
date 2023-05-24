@@ -70,7 +70,7 @@ withJobDescription("parquet file") {
 
 | Without job description  | With job description |
 |:---:|:---:|
-| ![](/home/enrico/Work/git/spark-extension/without-job-description.png "Spark job without description in UI") | ![](/home/enrico/Work/git/spark-extension/with-job-description.png "Spark job with description in UI") |
+| ![](without-job-description.png "Spark job without description in UI") | ![](with-job-description.png "Spark job with description in UI") |
 
 ## Using Spark Extension
 
