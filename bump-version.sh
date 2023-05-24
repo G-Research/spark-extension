@@ -72,6 +72,9 @@ git show HEAD
 echo
 
 # push version bump to origin
-echo "Pushing release commit and tag to origin"
+echo "Press <ENTER> to push commit to origin"
+read
+
+echo "Pushing release commit to origin"
 git push origin "master"
 echo
