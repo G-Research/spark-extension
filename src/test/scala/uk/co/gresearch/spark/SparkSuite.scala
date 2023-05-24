@@ -16,6 +16,7 @@
 
 package uk.co.gresearch.spark
 
+import org.apache.spark.TaskContext
 import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.expressions.{Descending, SortOrder}
 import org.apache.spark.sql.functions._
@@ -23,7 +24,7 @@ import org.apache.spark.storage.StorageLevel
 import org.apache.spark.storage.StorageLevel.{DISK_ONLY, MEMORY_AND_DISK, MEMORY_ONLY, NONE}
 import org.scalatest.funsuite.AnyFunSuite
 import uk.co.gresearch.ExtendedAny
-import uk.co.gresearch.spark.SparkSuite.Value
+import uk.co.gresearch.spark.SparkSuite.{Value, collectJobDescription}
 
 class SparkSuite extends AnyFunSuite with SparkTestSession {
 
@@ -135,6 +136,79 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
     assert(backticks("column", "a.field") === "column.`a.field`")
     assert(backticks("a.column", "a.field") === "`a.column`.`a.field`")
     assert(backticks("the.alias", "a.column", "a.field") === "`the.alias`.`a.column`.`a.field`")
+  }
+
+  def assertJobDescription(expected: Option[String]): Unit = {
+    val descriptions = collectJobDescription(spark)
+    assert(descriptions === 0.to(2).map(id => (id, id, expected.orNull)))
+  }
+
+  test("without job description") {
+    assertJobDescription(None)
+  }
+
+  test("with job description") {
+    implicit val session: SparkSession = spark
+
+    assertJobDescription(None)
+    withJobDescription("test job description") {
+      assertJobDescription(Some("test job description"))
+      spark.sparkContext.setJobDescription("modified")
+      assertJobDescription(Some("modified"))
+    }
+    assertJobDescription(None)
+  }
+
+  test("with existing job description") {
+    implicit val session: SparkSession = spark
+
+    assertJobDescription(None)
+    withJobDescription("outer job description") {
+      assertJobDescription(Some("outer job description"))
+      withJobDescription("inner job description") {
+        assertJobDescription(Some("inner job description"))
+        spark.sparkContext.setJobDescription("modified")
+        assertJobDescription(Some("modified"))
+      }
+      assertJobDescription(Some("outer job description"))
+    }
+    assertJobDescription(None)
+  }
+
+  test("with existing job description if not set") {
+    implicit val session: SparkSession = spark
+
+    assertJobDescription(None)
+    withJobDescription("outer job description") {
+      assertJobDescription(Some("outer job description"))
+      withJobDescription("inner job description", true) {
+        assertJobDescription(Some("outer job description"))
+        spark.sparkContext.setJobDescription("modified")
+        assertJobDescription(Some("modified"))
+      }
+      assertJobDescription(Some("outer job description"))
+    }
+    assertJobDescription(None)
+  }
+
+  test("append job description") {
+    implicit val session: SparkSession = spark
+
+    assertJobDescription(None)
+    appendJobDescription("test") {
+      assertJobDescription(Some("test"))
+      appendJobDescription("job") {
+        assertJobDescription(Some("test - job"))
+        appendJobDescription("description", " ") {
+          assertJobDescription(Some("test - job description"))
+          spark.sparkContext.setJobDescription("modified")
+          assertJobDescription(Some("modified"))
+        }
+        assertJobDescription(Some("test - job"))
+      }
+      assertJobDescription(Some("test"))
+    }
+    assertJobDescription(None)
   }
 
   def assertIsDataset[T](actual: Dataset[T]): Unit = {
@@ -423,4 +497,15 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
 
 object SparkSuite {
   case class Value(id: Int, string: String)
+
+  def collectJobDescription(spark: SparkSession): Array[(Long, Long, String)] = {
+    import spark.implicits._
+    spark
+      .range(0, 3, 1, 3)
+      .mapPartitions(it => it.map(id => (id, TaskContext.get().partitionId(), TaskContext.get().getLocalProperty("spark.job.description"))))
+      .as[(Long, Long, String)]
+      .sort()
+      .collect()
+  }
+
 }
