@@ -13,6 +13,19 @@ requires a window spec, this transformation provides the row number across the e
 or [parquet-cli](https://pypi.org/project/parquet-cli/) by reading from a simple Spark data source.
 This simplifies identifying why some Parquet files cannot be split by Spark into scalable partitions.
 
+**Spark job description:** Set Spark job description for all Spark jobs within a context:
+
+```python
+from gresearch.spark import job_description, append_job_description
+
+with job_description("parquet file"):
+    df = spark.read.parquet("data.parquet")
+    with append_job_description("count"):
+        count = df.count
+    with append_job_description("write"):
+        df.write.csv("data.csv")
+```
+
 For details, see the [README.md](https://github.com/G-Research/spark-extension#spark-extension) at the project homepage.
 
 ## Using Spark Extension
