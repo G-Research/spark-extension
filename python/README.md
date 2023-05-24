@@ -46,6 +46,19 @@ unix_epoch_nanos_to_dotnet_ticks(column_or_name)
 ```
 </details>
 
+**Spark job description:** Set Spark job description for all Spark jobs within a context:
+
+```python
+from gresearch.spark import job_description, append_job_description
+
+with job_description("parquet file"):
+    df = spark.read.parquet("data.parquet")
+    with append_job_description("count"):
+        count = df.count
+    with append_job_description("write"):
+        df.write.csv("data.csv")
+```
+
 For details, see the [README.md](https://github.com/G-Research/spark-extension#spark-extension) at the project homepage.
 
 ## Using Spark Extension

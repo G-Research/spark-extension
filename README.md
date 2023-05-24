@@ -83,6 +83,28 @@ unix_epoch_nanos_to_dotnet_ticks(column_or_name)
 ```
 </details>
 
+**Spark job description:** Set Spark job description for all Spark jobs within a context:
+
+```scala
+import uk.co.gresearch.spark._
+
+implicit val session: SparkSession = spark
+
+withJobDescription("parquet file") {
+  val df = spark.read.parquet("data.parquet")
+  val count = appendJobDescription("count") {
+    df.count
+  }
+  appendJobDescription("write") {
+    df.write.csv("data.csv")
+  }
+}
+```
+
+| Without job description  | With job description |
+|:---:|:---:|
+| ![](without-job-description.png "Spark job without description in UI") | ![](with-job-description.png "Spark job with description in UI") |
+
 ## Using Spark Extension
 
 The `spark-extension` package is available for all Spark 3.2, 3.4 and 3.4 versions. Some Spark earlier versions may also be supported.
