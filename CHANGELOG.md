@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Added
 
 - Add method to set and automatically unset Spark job description. (#172)
+- Add column function that converts between .Net (C#, F#, Visual Basic) `DateTime.Ticks` and Spark timestamp / Unix epoch timestamps. (#153)
 
 ## [2.7.0] - 2023-05-05
 
@@ -21,12 +22,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - Change data type of column name in `parquetBlockColumns` and `parquet_block_columns` to array of strings.
   Cast to string to get earlier behaviour (string column name). (#162)
-
-## [UNRELEASED] - YYYY-MM-DD
-
-### Added
-
-- Add column function that converts between .Net (C#, F#, Visual Basic) `DateTime.Ticks` and Spark timestamp / Unix epoch timestamps. (#153)
 
 ## [2.6.0] - 2023-04-11
 
