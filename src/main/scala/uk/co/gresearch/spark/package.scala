@@ -17,7 +17,6 @@
 package uk.co.gresearch
 
 import org.apache.spark.SparkContext
-import org.apache.spark.api.java.JavaSparkContext
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.encoders.RowEncoder
@@ -109,10 +108,10 @@ package object spark extends Logging with SparkVersion with BuildVersion {
    *   }
    * }}}
    *
-   * With `onlyIfNotSet == true`, the description is only set if no job description is set yet.
+   * With `ifNotSet == true`, the description is only set if no job description is set yet.
    *
    * Any modification to the job description during execution of the function is reverted,
-   * even if `onlyIfNotSet == true`.
+   * even if `ifNotSet == true`.
    *
    * @param description job description
    * @param ifNotSet job description is only set if no description is set yet

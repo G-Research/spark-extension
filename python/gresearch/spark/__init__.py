@@ -123,6 +123,26 @@ def set_description(description: str, if_not_set: bool = False):
 
 @contextmanager
 def job_description(description: str, if_not_set: bool = False):
+    """
+    Adds a job description to all Spark jobs started within this context.
+    The current Job description is restored after leaving the context.
+
+    Usage example:
+
+    >>> from gresearch.spark import job_description
+    >>>
+    >>> with job_description("parquet file"):
+    ...     df = spark.read.parquet("data.parquet")
+    ...     count = df.count
+
+    With ``if_not_set = True``, the description is only set if no job description is set yet.
+
+    Any modification to the job description within the context is reverted on exit,
+    even if `if_not_set = True`.
+
+    :param description: job description
+    :param if_not_set: job description is only set if no description is set yet
+    """
     earlier = set_description(description, if_not_set)
     try:
         yield
@@ -139,6 +159,25 @@ def append_description(extra_description: str, separator: str = " - "):
 
 @contextmanager
 def append_job_description(extra_description: str, separator: str = " - "):
+    """
+    Appends a job description to all Spark jobs started within this context.
+    The current Job description is extended by the separator and the extra description
+    on entering the context, and restored after leaving the context.
+
+    Usage example:
+
+    >>> from gresearch.spark import append_job_description
+    >>>
+    >>> with append_job_description("parquet file"):
+    ...     df = spark.read.parquet("data.parquet")
+    ...     with append_job_description("count"):
+    ...         count = df.count
+
+    Any modification to the job description within the context is reverted on exit.
+
+    :param extra_description: job description to be appended
+    :param separator: separator used when appending description
+    """
     earlier = append_description(extra_description, separator)
     try:
         yield
