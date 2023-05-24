@@ -594,7 +594,7 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
       }.getMessage
       if (Some(spark.sparkContext.version).exists(_.startsWith("3.1."))) {
         assert(message.startsWith("cannot resolve 'unix_micros(`ts`)' due to data type mismatch: argument 1 requires timestamp type, however, '`ts`' is of bigint type.;"))
-      } else if (Some(spark.sparkContext.version).exists(_.startsWith("3.4."))) {
+      } else if (Seq("3.4", "3.5").exists(ver => Some(spark.sparkContext.version).exists(_.startsWith(s"$ver.")))) {
         assert(message.startsWith("[DATATYPE_MISMATCH.UNEXPECTED_INPUT_TYPE] Cannot resolve \"unix_micros(ts)\" due to data type mismatch: Parameter 1 requires the \"TIMESTAMP\" type, however \"ts\" has the type \"BIGINT\".;"))
       } else {
         assert(message.startsWith("cannot resolve 'unix_micros(ts)' due to data type mismatch: argument 1 requires timestamp type, however, 'ts' is of bigint type.;"))
