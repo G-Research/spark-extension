@@ -134,6 +134,16 @@ Add this dependency to your `pom.xml` file:
 </dependency>
 ```
 
+### Gradle
+
+Add this dependency to your `build.gradle` file:
+
+```groovy
+dependencies {
+    implementation "uk.co.gresearch.spark:spark-extension_2.12:2.8.0-3.4"
+}
+```
+
 ### Spark Submit
 
 Submit your Spark app with the Spark Extension dependency (version ≥1.1.0) as follows:
