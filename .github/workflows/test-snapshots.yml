@@ -4,7 +4,7 @@ on:
   workflow_call:
 
 jobs:
-  test:
+  jvm:
     name: Test (Spark ${{ matrix.spark-version }} Scala ${{ matrix.scala-version }})
     runs-on: ubuntu-latest
 
