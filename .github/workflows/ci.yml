@@ -13,6 +13,16 @@ on:
   workflow_dispatch:
 
 jobs:
+  event_file:
+    name: "Event File"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Upload
+        uses: actions/upload-artifact@v3
+        with:
+          name: Event File
+          path: ${{ github.event_path }}
+
   build-jvm:
     name: "Build JVM"
     uses: "./.github/workflows/build-jvm.yml"
@@ -45,13 +55,3 @@ jobs:
       - name: Noop
         run: true
         shell: bash
-
-  event_file:
-    name: "Event File"
-    runs-on: ubuntu-latest
-    steps:
-      - name: Upload
-        uses: actions/upload-artifact@v3
-        with:
-          name: Event File
-          path: ${{ github.event_path }}
