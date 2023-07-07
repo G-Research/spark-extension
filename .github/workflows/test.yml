@@ -1,0 +1,12 @@
+name: Test
+
+on:
+  workflow_call:
+
+jobs:
+  test-jvm:
+    uses: "./.github/workflows/test-jvm.yml"
+  test-snapshots:
+    uses: "./.github/workflows/test-snapshots.yml"
+  test-python:
+    uses: "./.github/workflows/test-python.yml"
