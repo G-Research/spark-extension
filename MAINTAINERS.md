@@ -2,4 +2,4 @@
 
 | Maintainer             | GitHub ID                                               |
 | ---------------------- | ------------------------------------------------------- |
-| EnricoMi               | [EnricoMi](https://github.com/EnricoMi)                 |
+| Enrico Minack          | [EnricoMi](https://github.com/EnricoMi)                 |
