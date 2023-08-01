@@ -19,14 +19,11 @@ package uk.co.gresearch
 import org.apache.spark.SparkContext
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql._
-import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.catalyst.expressions.NamedExpression
 import org.apache.spark.sql.functions.{col, when}
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.{DecimalType, LongType, TimestampType}
 import org.apache.spark.storage.StorageLevel
-
-import uk.co.gresearch.spark._
 import uk.co.gresearch.spark.group.SortedGroupByDataset
 
 package object spark extends Logging with SparkVersion with BuildVersion {
@@ -489,7 +486,7 @@ package object spark extends Logging with SparkVersion with BuildVersion {
    * @param ds dataset
    * @tparam T inner type of dataset
    */
-  implicit class ExtendedDataset[T: Encoder](ds: Dataset[T]) {
+  implicit class ExtendedDataset[V](ds: Dataset[V]) {
     /**
      * Compute the histogram of a column when aggregated by aggregate columns.
      * Thresholds are expected to be provided in ascending order.
@@ -609,8 +606,7 @@ package object spark extends Logging with SparkVersion with BuildVersion {
      * @param cols grouping columns
      * @param order sort columns
      */
-    def groupBySorted[K: Ordering : Encoder](cols: Column*)(order: Column*): SortedGroupByDataset[K, T] = {
-      implicit val encoder: Encoder[(K, T)] = Encoders.tuple(implicitly[Encoder[K]], implicitly[Encoder[T]])
+    def groupBySorted[K: Ordering : Encoder](cols: Column*)(order: Column*): SortedGroupByDataset[K, V] = {
       SortedGroupByDataset(ds, cols, order, None)
     }
 
@@ -629,8 +625,7 @@ package object spark extends Logging with SparkVersion with BuildVersion {
      * @param cols grouping columns
      * @param order sort columns
      */
-    def groupBySorted[K: Ordering : Encoder](partitions: Int)(cols: Column*)(order: Column*): SortedGroupByDataset[K, T] = {
-      implicit val encoder: Encoder[(K, T)] = Encoders.tuple(implicitly[Encoder[K]], implicitly[Encoder[T]])
+    def groupBySorted[K: Ordering : Encoder](partitions: Int)(cols: Column*)(order: Column*): SortedGroupByDataset[K, V] = {
       SortedGroupByDataset(ds, cols, order, Some(partitions))
     }
 
@@ -649,7 +644,7 @@ package object spark extends Logging with SparkVersion with BuildVersion {
      * @param key grouping key
      * @param order sort key
      */
-    def groupByKeySorted[K: Ordering : Encoder, O: Encoder](key: T => K, partitions: Int)(order: T => O): SortedGroupByDataset[K, T] =
+    def groupByKeySorted[K: Ordering : Encoder, O: Encoder](key: V => K, partitions: Int)(order: V => O): SortedGroupByDataset[K, V] =
       groupByKeySorted(key, Some(partitions))(order)
 
     /**
@@ -668,7 +663,7 @@ package object spark extends Logging with SparkVersion with BuildVersion {
      * @param order sort key
      * @param reverse sort reverse order
      */
-    def groupByKeySorted[K: Ordering : Encoder, O: Encoder](key: T => K, partitions: Int)(order: T => O, reverse: Boolean): SortedGroupByDataset[K, T] =
+    def groupByKeySorted[K: Ordering : Encoder, O: Encoder](key: V => K, partitions: Int)(order: V => O, reverse: Boolean): SortedGroupByDataset[K, V] =
       groupByKeySorted(key, Some(partitions))(order, reverse)
 
     /**
@@ -687,7 +682,7 @@ package object spark extends Logging with SparkVersion with BuildVersion {
      * @param order sort key
      * @param reverse sort reverse order
      */
-    def groupByKeySorted[K: Ordering : Encoder, O: Encoder](key: T => K, partitions: Option[Int] = None)(order: T => O, reverse: Boolean = false): SortedGroupByDataset[K, T] = {
+    def groupByKeySorted[K: Ordering : Encoder, O: Encoder](key: V => K, partitions: Option[Int] = None)(order: V => O, reverse: Boolean = false): SortedGroupByDataset[K, V] = {
       SortedGroupByDataset(ds, key, order, partitions, reverse)
     }
 
@@ -796,6 +791,6 @@ package object spark extends Logging with SparkVersion with BuildVersion {
    *
    * @param df dataframe
    */
-  implicit class ExtendedDataframe(df: DataFrame) extends ExtendedDataset[Row](df)(RowEncoder(df.schema))
+  implicit class ExtendedDataframe(df: DataFrame) extends ExtendedDataset[Row](df)
 
 }
