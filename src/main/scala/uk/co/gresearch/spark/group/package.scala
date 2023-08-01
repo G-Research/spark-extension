@@ -16,7 +16,6 @@
 
 package uk.co.gresearch.spark
 
-import org.apache.spark.sql.catalyst.encoders.encoderFor
 import org.apache.spark.sql.functions.{col, struct}
 import org.apache.spark.sql.{Column, Dataset, Encoder, Encoders}
 import uk.co.gresearch.ExtendedAny
