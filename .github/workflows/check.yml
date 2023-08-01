@@ -8,12 +8,14 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       major-version: ${{ steps.versions.outputs.major-version }}
-      latest-release-version: ${{ steps.versions.outputs.latest-release-version }}
-      latest-release-major-version: ${{ steps.versions.outputs.latest-release-major-version }}
+      release-version: ${{ steps.versions.outputs.release-version }}
+      release-major-version: ${{ steps.versions.outputs.release-major-version }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       - name: Get versions
         id: versions
@@ -24,17 +26,17 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "major-version=${version/.*/}" >> "$GITHUB_OUTPUT"
           release_version=$(git tag | tail -n1 | sed "s/^v//")
-          echo "latest-release-version: $release_version"
-          echo "latest-release-major-version: ${release_version/.*/}"
-          echo "latest-release-version=$release_version" >> "$GITHUB_OUTPUT"
-          echo "latest-release-major-version=${release_version/.*/}" >> "$GITHUB_OUTPUT"
+          echo "release-version: $release_version"
+          echo "release-major-version: ${release_version/.*/}"
+          echo "release-version=$release_version" >> "$GITHUB_OUTPUT"
+          echo "release-major-version=${release_version/.*/}" >> "$GITHUB_OUTPUT"
         shell: bash
 
   check:
     name: Check (Spark ${{ matrix.spark-compat-version }} Scala ${{ matrix.scala-compat-version }})
     needs: config
     runs-on: ubuntu-latest
-    if: needs.config.outputs.major-version == needs.config.outputs.latest-release-major-version
+    if: needs.config.outputs.major-version == needs.config.outputs.release-major-version
 
     strategy:
       fail-fast: false
@@ -60,4 +62,4 @@ jobs:
           scala-version: ${{ matrix.scala-version }}
           spark-compat-version: ${{ matrix.spark-compat-version }}
           scala-compat-version: ${{ matrix.scala-compat-version }}
-          package-version: ${{ needs.config.outputs.latest-release-version }}
+          package-version: ${{ needs.config.outputs.release-version }}
