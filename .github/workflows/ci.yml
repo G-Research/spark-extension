@@ -46,6 +46,10 @@ jobs:
     name: "Test Snapshots"
     needs: build-snapshots
     uses: "./.github/workflows/test-snapshots.yml"
+  check:
+    name: "Check"
+    needs: [build-jvm, build-snapshots]
+    uses: "./.github/workflows/check.yml"
 
   test_success:
     name: "Test success"

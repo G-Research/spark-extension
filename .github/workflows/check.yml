@@ -1,0 +1,71 @@
+name: Check
+
+on:
+  workflow_call:
+jobs:
+  config:
+    name: Configure check
+    runs-on: ubuntu-latest
+    outputs:
+      major-version: ${{ steps.versions.outputs.major-version }}
+      latest-release-version: ${{ steps.versions.outputs.latest-release-version }}
+      latest-release-major-version: ${{ steps.versions.outputs.latest-release-major-version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Get versions
+        id: versions
+        run: |
+          version=$(grep -m1 version pom.xml | sed -e "s/<[^>]*>//g" -e "s/ //g")
+          echo "version=$release_version" >> "$GITHUB_OUTPUT"
+          echo "major-version=${release_version/.*/}" >> "$GITHUB_OUTPUT"
+
+          release_version=$(git tag | tail -n1 | sed "s/^v//")
+          echo "latest-release-version=$release_version" >> "$GITHUB_OUTPUT"
+          echo "latest-release-major-version=${release_version/.*/}" >> "$GITHUB_OUTPUT"
+        shell: bash
+
+  check:
+    name: Check (Spark ${{ matrix.spark-compat-version }} Scala ${{ matrix.scala-version }})
+    needs: config
+    runs-on: ubuntu-latest
+    if: needs.config.outputs.major-version == needs.config.outputs.latest-release-major-version
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - spark-compat-version: '3.0'
+            scala-compat-version: '2.12'
+          - spark-compat-version: '3.1'
+            scala-compat-version: '2.12'
+          - spark-compat-version: '3.2'
+            scala-compat-version: '2.12'
+          - spark-compat-version: '3.3'
+            scala-compat-version: '2.12'
+          - spark-compat-version: '3.4'
+            scala-compat-version: '2.12'
+          - spark-compat-version: '3.5'
+            scala-compat-version: '2.12'
+
+          - spark-compat-version: '3.2'
+            scala-compat-version: '2.13'
+          - spark-compat-version: '3.3'
+            scala-compat-version: '2.13'
+          - spark-compat-version: '3.4'
+            scala-compat-version: '2.13'
+          - spark-compat-version: '3.5'
+            scala-compat-version: '2.12'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Check
+        uses: ./.github/actions/check-compat
+        with:
+          spark-compat-version: ${{ matrix.spark-compat-version }}
+          scala-compat-version: ${{ matrix.scala-compat-version }}
+          package-version: ${{ needs.config.outputs.latest-release-version }}

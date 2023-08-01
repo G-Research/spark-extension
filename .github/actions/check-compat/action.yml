@@ -1,0 +1,46 @@
+name: 'Check'
+author: 'EnricoMi'
+description: 'A GitHub Action that checks compatibility of spark-extension'
+
+inputs:
+  spark-compat-version:
+    description: Spark compatibility version, e.g. 3.4
+    required: true
+  scala-compat-version:
+    description: Scala compatibility version, e.g. 2.12
+    required: true
+  package-version:
+    description: Spark-Extension version to check against
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+  - name: Setup JDK 1.8
+    uses: actions/setup-java@v3
+    with:
+      java-version: '8'
+      distribution: 'zulu'
+
+  - name: Install Checker
+    run: apt install japi-compliance-checker
+    shell: bash
+
+  - name: Fetch package
+    run: |
+      mvn dependency:get -DremoteRepositories -Dartifact=uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:${{ inputs.package-version }}-${{ inputs.spark-compat-version }}
+    shell: bash
+
+  - name: Check
+    run: japi-compliance-checker ~/.m2/repository/uk/co/gresearch/spark/spark-extension_${{ inputs.scala-compat-version }}/${{ inputs.package-version }}-${{ inputs.spark-compat-version }}/spark-extension_${{ inputs.scala-compat-version }}-${{ inputs.package-version }}-${{ inputs.spark-compat-version }}.jar target/spark-extension*.jar
+    shell: bash
+
+  - name: Upload Report
+    uses: actions/upload-artifact@v3
+    with:
+      name: Compat-Report-${{ inputs.spark-compat-version }}-${{ inputs.scala-compat-version }}
+      path: compat_reports/spark-extension/*
+
+branding:
+  icon: 'check-circle'
+  color: 'green'
