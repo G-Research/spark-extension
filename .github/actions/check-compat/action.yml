@@ -66,6 +66,7 @@ runs:
 
   - name: Upload Report
     uses: actions/upload-artifact@v3
+    if: always()
     with:
       name: Compat-Report-${{ inputs.spark-compat-version }}-${{ inputs.scala-compat-version }}
       path: compat_reports/spark-extension/*
