@@ -28,7 +28,7 @@ runs:
   - name: Fetch Binaries Artifact
     uses: actions/download-artifact@v3
     with:
-      name: Binaries-${{ inputs.spark-compat-version }}-${{ inputs.scala-version }}
+      name: Binaries-${{ inputs.spark-compat-version }}-${{ inputs.scala-compat-version }}
       path: .
 
   - name: Cache Maven packages
@@ -69,7 +69,7 @@ runs:
   - name: Upload whl
     uses: actions/upload-artifact@v3
     with:
-      name: Whl (Spark ${{ inputs.spark-version }} Scala ${{ inputs.scala-version }})
+      name: Whl (Spark ${{ inputs.spark-compat-version }} Scala ${{ inputs.scala-compat-version }})
       path: |
         python/dist/*.whl
 

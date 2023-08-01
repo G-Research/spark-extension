@@ -31,7 +31,7 @@ runs:
   - name: Fetch Binaries Artifact
     uses: actions/download-artifact@v3
     with:
-      name: Binaries-${{ inputs.spark-compat-version }}-${{ inputs.scala-version }}
+      name: Binaries-${{ inputs.spark-compat-version }}-${{ inputs.scala-compat-version }}
       path: .
 
   - name: Cache Spark Binaries
