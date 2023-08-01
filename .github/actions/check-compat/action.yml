@@ -33,7 +33,9 @@ runs:
     with:
       path: ~/.m2/repository
       key: ${{ runner.os }}-mvn-check-${{ inputs.spark-version }}-${{ inputs.scala-version }}-${{ hashFiles('pom.xml') }}
-      restore-keys: ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-
+      restore-keys: |
+        ${{ runner.os }}-mvn-check-${{ inputs.spark-version }}-${{ inputs.scala-version }}
+        ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-
 
   - name: Setup JDK 1.8
     uses: actions/setup-java@v3
