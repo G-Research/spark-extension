@@ -28,7 +28,7 @@ jobs:
         shell: bash
 
   check:
-    name: Check (Spark ${{ matrix.spark-compat-version }} Scala ${{ matrix.scala-version }})
+    name: Check (Spark ${{ matrix.spark-compat-version }} Scala ${{ matrix.scala-compat-version }})
     needs: config
     runs-on: ubuntu-latest
     if: needs.config.outputs.major-version == needs.config.outputs.latest-release-major-version

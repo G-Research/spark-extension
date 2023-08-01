@@ -23,7 +23,7 @@ runs:
       distribution: 'zulu'
 
   - name: Install Checker
-    run: apt install japi-compliance-checker
+    run: sudo apt install japi-compliance-checker
     shell: bash
 
   - name: Fetch package
