@@ -49,7 +49,7 @@ jobs:
 
   check:
     name: "Check"
-    needs: [build-jvm, build-snapshots]
+    needs: build-jvm
     uses: "./.github/workflows/check.yml"
 
   test_success:
