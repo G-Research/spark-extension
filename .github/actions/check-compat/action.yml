@@ -49,11 +49,13 @@ runs:
 
   - name: Fetch package
     run: |
-      mvn dependency:get -DremoteRepositories -Dartifact=uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:${{ inputs.package-version }}-${{ inputs.spark-compat-version }}
+      mvn dependency:get -Dtransitive=false -DremoteRepositories -Dartifact=uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:${{ inputs.package-version }}-${{ inputs.spark-compat-version }}
     shell: bash
 
   - name: Check
-    run: japi-compliance-checker ~/.m2/repository/uk/co/gresearch/spark/spark-extension_${{ inputs.scala-compat-version }}/${{ inputs.package-version }}-${{ inputs.spark-compat-version }}/spark-extension_${{ inputs.scala-compat-version }}-${{ inputs.package-version }}-${{ inputs.spark-compat-version }}.jar target/spark-extension*.jar
+    run: |
+      ls -lah ~/.m2/repository/uk/co/gresearch/spark/spark-extension_${{ inputs.scala-compat-version }}/${{ inputs.package-version }}-${{ inputs.spark-compat-version }}/spark-extension_${{ inputs.scala-compat-version }}-${{ inputs.package-version }}-${{ inputs.spark-compat-version }}.jar target/spark-extension*.jar
+      japi-compliance-checker ~/.m2/repository/uk/co/gresearch/spark/spark-extension_${{ inputs.scala-compat-version }}/${{ inputs.package-version }}-${{ inputs.spark-compat-version }}/spark-extension_${{ inputs.scala-compat-version }}-${{ inputs.package-version }}-${{ inputs.spark-compat-version }}.jar target/spark-extension*.jar
     shell: bash
 
   - name: Upload Report
