@@ -19,10 +19,13 @@ jobs:
         id: versions
         run: |
           version=$(grep -m1 version pom.xml | sed -e "s/<[^>]*>//g" -e "s/ //g")
-          echo "version=$release_version" >> "$GITHUB_OUTPUT"
-          echo "major-version=${release_version/.*/}" >> "$GITHUB_OUTPUT"
-
+          echo "version: $version"
+          echo "major-version: ${version/.*/}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "major-version=${version/.*/}" >> "$GITHUB_OUTPUT"
           release_version=$(git tag | tail -n1 | sed "s/^v//")
+          echo "latest-release-version: $release_version"
+          echo "latest-release-major-version: ${release_version/.*/}"
           echo "latest-release-version=$release_version" >> "$GITHUB_OUTPUT"
           echo "latest-release-major-version=${release_version/.*/}" >> "$GITHUB_OUTPUT"
         shell: bash
