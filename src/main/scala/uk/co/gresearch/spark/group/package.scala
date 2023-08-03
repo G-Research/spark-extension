@@ -81,19 +81,22 @@ package object group {
   }
 
   object SortedGroupByDataset {
-    def apply[K: Ordering : Encoder, V: Encoder](ds: Dataset[V],
-                                                 groupColumns: Seq[Column],
-                                                 orderColumns: Seq[Column],
-                                                 partitions: Option[Int]): SortedGroupByDataset[K, V] = {
+    def apply[K: Ordering : Encoder, V](ds: Dataset[V],
+                                        groupColumns: Seq[Column],
+                                        orderColumns: Seq[Column],
+                                        partitions: Option[Int]): SortedGroupByDataset[K, V] = {
+      // make ds encoder implicitly available
+      implicit val valueEncoder: Encoder[V] = ds.encoder
+
       // multiple group columns are turned into a tuple,
       // while a single group column is taken as is
       val keyColumn =
-      if (groupColumns.length == 1)
-        groupColumns.head
-      else
-        struct(groupColumns: _*)
+        if (groupColumns.length == 1)
+          groupColumns.head
+        else
+          struct(groupColumns: _*)
 
-      // all columns are turned into a single colum as a struct
+      // all columns are turned into a single column as a struct
       val valColumn = struct(col("*"))
 
       // repartition by group columns with given number of partitions (if given)
@@ -112,13 +115,17 @@ package object group {
       SortedGroupByDataset(grouped)
     }
 
-    def apply[K: Ordering : Encoder, V: Encoder, O: Encoder](ds: Dataset[V],
-                                                             key: V => K,
-                                                             order: V => O,
-                                                             partitions: Option[Int],
-                                                             reverse: Boolean): SortedGroupByDataset[K, V] = {
-      implicit val kvEncoder: Encoder[(K, V)] = Encoders.tuple(implicitly[Encoder[K]], implicitly[Encoder[V]])
-      implicit val kvoEncoder: Encoder[(K, V, O)] = Encoders.tuple(implicitly[Encoder[K]], implicitly[Encoder[V]], implicitly[Encoder[O]])
+    def apply[K: Ordering : Encoder, V, O: Encoder](ds: Dataset[V],
+                                                    key: V => K,
+                                                    order: V => O,
+                                                    partitions: Option[Int],
+                                                    reverse: Boolean): SortedGroupByDataset[K, V] = {
+      // prepare encoder needed for this exercise
+      val keyEncoder: Encoder[K] = implicitly[Encoder[K]]
+      implicit val valueEncoder: Encoder[V] = ds.encoder
+      val orderEncoder: Encoder[O] = implicitly[Encoder[O]]
+      implicit val kvEncoder: Encoder[(K, V)] = Encoders.tuple(keyEncoder, valueEncoder)
+      implicit val kvoEncoder: Encoder[(K, V, O)] = Encoders.tuple(keyEncoder, valueEncoder, orderEncoder)
 
       // materialise the key and order class for each value
       val kvo = ds.map(v => (key(v), v, order(v)))

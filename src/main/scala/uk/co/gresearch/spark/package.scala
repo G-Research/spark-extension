@@ -19,14 +19,11 @@ package uk.co.gresearch
 import org.apache.spark.SparkContext
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql._
-import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.catalyst.expressions.NamedExpression
 import org.apache.spark.sql.functions.{col, when}
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.{DecimalType, LongType, TimestampType}
 import org.apache.spark.storage.StorageLevel
-
-import uk.co.gresearch.spark._
 import uk.co.gresearch.spark.group.SortedGroupByDataset
 
 package object spark extends Logging with SparkVersion with BuildVersion {
@@ -484,12 +481,90 @@ package object spark extends Logging with SparkVersion with BuildVersion {
   }
 
   /**
+   * Class to extend a Spark Dataset.
+   *
+   * @param ds dataset
+   * @tparam V inner type of dataset
+   */
+  @deprecated("Constructor with encoder is deprecated, the encoder argument is ignored, ds.encoder is used instead.", since = "2.9.0")
+  class ExtendedDataset[V](ds: Dataset[V], encoder: Encoder[V]) {
+    private val eds = ExtendedDatasetV2[V](ds)
+
+    def histogram[T: Ordering](thresholds: Seq[T], valueColumn: Column, aggregateColumns: Column*): DataFrame =
+      eds.histogram(thresholds, valueColumn, aggregateColumns: _*)
+
+    def writePartitionedBy(partitionColumns: Seq[Column],
+                           moreFileColumns: Seq[Column] = Seq.empty,
+                           moreFileOrder: Seq[Column] = Seq.empty,
+                           partitions: Option[Int] = None,
+                           writtenProjection: Option[Seq[Column]] = None,
+                           unpersistHandle: Option[UnpersistHandle] = None): DataFrameWriter[Row] =
+      eds.writePartitionedBy(partitionColumns, moreFileColumns, moreFileOrder, partitions, writtenProjection, unpersistHandle)
+
+    def groupBySorted[K: Ordering : Encoder](cols: Column*)(order: Column*): SortedGroupByDataset[K, V] =
+      eds.groupBySorted(cols: _*)(order: _*)
+
+    def groupBySorted[K: Ordering : Encoder](partitions: Int)(cols: Column*)(order: Column*): SortedGroupByDataset[K, V] =
+      eds.groupBySorted(partitions)(cols: _*)(order: _*)
+
+    def groupByKeySorted[K: Ordering : Encoder, O: Encoder](key: V => K, partitions: Int)(order: V => O): SortedGroupByDataset[K, V] =
+      eds.groupByKeySorted(key, Some(partitions))(order)
+
+    def groupByKeySorted[K: Ordering : Encoder, O: Encoder](key: V => K, partitions: Int)(order: V => O, reverse: Boolean): SortedGroupByDataset[K, V] =
+      eds.groupByKeySorted(key, Some(partitions))(order, reverse)
+
+    def groupByKeySorted[K: Ordering : Encoder, O: Encoder](key: V => K, partitions: Option[Int] = None)(order: V => O, reverse: Boolean = false): SortedGroupByDataset[K, V] =
+      eds.groupByKeySorted(key, partitions)(order, reverse)
+
+    def withRowNumbers(order: Column*): DataFrame =
+      eds.withRowNumbers(order: _*)
+
+    def withRowNumbers(rowNumberColumnName: String, order: Column*): DataFrame =
+      eds.withRowNumbers(rowNumberColumnName, order: _*)
+
+    def withRowNumbers(storageLevel: StorageLevel, order: Column*): DataFrame =
+      eds.withRowNumbers(storageLevel, order: _*)
+
+    def withRowNumbers(unpersistHandle: UnpersistHandle, order: Column*): DataFrame =
+      eds.withRowNumbers(unpersistHandle, order: _*)
+
+    def withRowNumbers(rowNumberColumnName: String,
+                       storageLevel: StorageLevel,
+                       order: Column*): DataFrame =
+      eds.withRowNumbers(rowNumberColumnName, storageLevel, order: _*)
+
+    def withRowNumbers(rowNumberColumnName: String,
+                       unpersistHandle: UnpersistHandle,
+                       order: Column*): DataFrame =
+      eds.withRowNumbers(rowNumberColumnName, unpersistHandle, order: _*)
+
+    def withRowNumbers(storageLevel: StorageLevel,
+                       unpersistHandle: UnpersistHandle,
+                       order: Column*): DataFrame =
+      eds.withRowNumbers(storageLevel, unpersistHandle, order: _*)
+
+    def withRowNumbers(rowNumberColumnName: String,
+                       storageLevel: StorageLevel,
+                       unpersistHandle: UnpersistHandle,
+                       order: Column*): DataFrame =
+      eds.withRowNumbers(rowNumberColumnName, storageLevel, unpersistHandle, order: _*)
+  }
+
+  /**
+   * Class to extend a Spark Dataset.
+   *
+   * @param ds dataset
+   * @tparam V inner type of dataset
+   */
+  def ExtendedDataset[V](ds: Dataset[V], encoder: Encoder[V]): ExtendedDataset[V] = new ExtendedDataset(ds, encoder)
+
+  /**
    * Implicit class to extend a Spark Dataset.
    *
    * @param ds dataset
-   * @tparam T inner type of dataset
+   * @tparam V inner type of dataset
    */
-  implicit class ExtendedDataset[T: Encoder](ds: Dataset[T]) {
+  implicit class ExtendedDatasetV2[V](ds: Dataset[V]) {
     /**
      * Compute the histogram of a column when aggregated by aggregate columns.
      * Thresholds are expected to be provided in ascending order.
@@ -609,8 +684,7 @@ package object spark extends Logging with SparkVersion with BuildVersion {
      * @param cols grouping columns
      * @param order sort columns
      */
-    def groupBySorted[K: Ordering : Encoder](cols: Column*)(order: Column*): SortedGroupByDataset[K, T] = {
-      implicit val encoder: Encoder[(K, T)] = Encoders.tuple(implicitly[Encoder[K]], implicitly[Encoder[T]])
+    def groupBySorted[K: Ordering : Encoder](cols: Column*)(order: Column*): SortedGroupByDataset[K, V] = {
       SortedGroupByDataset(ds, cols, order, None)
     }
 
@@ -629,8 +703,7 @@ package object spark extends Logging with SparkVersion with BuildVersion {
      * @param cols grouping columns
      * @param order sort columns
      */
-    def groupBySorted[K: Ordering : Encoder](partitions: Int)(cols: Column*)(order: Column*): SortedGroupByDataset[K, T] = {
-      implicit val encoder: Encoder[(K, T)] = Encoders.tuple(implicitly[Encoder[K]], implicitly[Encoder[T]])
+    def groupBySorted[K: Ordering : Encoder](partitions: Int)(cols: Column*)(order: Column*): SortedGroupByDataset[K, V] = {
       SortedGroupByDataset(ds, cols, order, Some(partitions))
     }
 
@@ -649,7 +722,7 @@ package object spark extends Logging with SparkVersion with BuildVersion {
      * @param key grouping key
      * @param order sort key
      */
-    def groupByKeySorted[K: Ordering : Encoder, O: Encoder](key: T => K, partitions: Int)(order: T => O): SortedGroupByDataset[K, T] =
+    def groupByKeySorted[K: Ordering : Encoder, O: Encoder](key: V => K, partitions: Int)(order: V => O): SortedGroupByDataset[K, V] =
       groupByKeySorted(key, Some(partitions))(order)
 
     /**
@@ -668,7 +741,7 @@ package object spark extends Logging with SparkVersion with BuildVersion {
      * @param order sort key
      * @param reverse sort reverse order
      */
-    def groupByKeySorted[K: Ordering : Encoder, O: Encoder](key: T => K, partitions: Int)(order: T => O, reverse: Boolean): SortedGroupByDataset[K, T] =
+    def groupByKeySorted[K: Ordering : Encoder, O: Encoder](key: V => K, partitions: Int)(order: V => O, reverse: Boolean): SortedGroupByDataset[K, V] =
       groupByKeySorted(key, Some(partitions))(order, reverse)
 
     /**
@@ -687,7 +760,7 @@ package object spark extends Logging with SparkVersion with BuildVersion {
      * @param order sort key
      * @param reverse sort reverse order
      */
-    def groupByKeySorted[K: Ordering : Encoder, O: Encoder](key: T => K, partitions: Option[Int] = None)(order: T => O, reverse: Boolean = false): SortedGroupByDataset[K, T] = {
+    def groupByKeySorted[K: Ordering : Encoder, O: Encoder](key: V => K, partitions: Option[Int] = None)(order: V => O, reverse: Boolean = false): SortedGroupByDataset[K, V] = {
       SortedGroupByDataset(ds, key, order, partitions, reverse)
     }
 
@@ -792,10 +865,25 @@ package object spark extends Logging with SparkVersion with BuildVersion {
   }
 
   /**
+   * Class to extend a Spark Dataframe.
+   *
+   * @param df dataframe
+   */
+  @deprecated("Implicit class ExtendedDataframe is deprecated, please recompile your source code.", since = "2.9.0")
+  class ExtendedDataframe(df: DataFrame) extends ExtendedDataset[Row](df, df.encoder)
+
+  /**
+   * Class to extend a Spark Dataframe.
+   *
+   * @param df dataframe
+   */
+  def ExtendedDataframe(df: DataFrame): ExtendedDataframe = new ExtendedDataframe(df)
+
+  /**
    * Implicit class to extend a Spark Dataframe, which is a Dataset[Row].
    *
    * @param df dataframe
    */
-  implicit class ExtendedDataframe(df: DataFrame) extends ExtendedDataset[Row](df)(RowEncoder(df.schema))
+  implicit class ExtendedDataframeV2(df: DataFrame) extends ExtendedDatasetV2[Row](df)
 
 }

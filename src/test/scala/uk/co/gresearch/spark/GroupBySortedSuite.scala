@@ -84,7 +84,6 @@ class GroupBySortedSuite extends AnyFunSpec with SparkTestSession {
     testGroupByIdSeqSortByValue(df.groupByKeySorted(v => (v.getInt(0), v.getInt(1)))(v => v.getDouble(2)))
   }
 
-
   def testGroupByIdSortBySeq[T](ds: SortedGroupByDataset[Int, T])
                                (implicit asTuple: T => (Int, Int, Double)): Unit = {
 
