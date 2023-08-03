@@ -481,12 +481,29 @@ package object spark extends Logging with SparkVersion with BuildVersion {
   }
 
   /**
+   * Class to extend a Spark Dataset.
+   *
+   * @param ds dataset
+   * @tparam V inner type of dataset
+   */
+  @deprecated("Constructor with encoder is deprecated, the encoder argument is ignored, ds.encoder is used instead.", since = "2.9.0")
+  class ExtendedDataset[V](ds: Dataset[V], encoder: Encoder[V]) extends ExtendedDatasetV2[V](ds)
+
+  /**
+   * Class to extend a Spark Dataset.
+   *
+   * @param ds dataset
+   * @tparam V inner type of dataset
+   */
+  def ExtendedDataset[V](ds: Dataset[V], encoder: Encoder[V]): ExtendedDataset[V] = new ExtendedDataset(ds, encoder)
+
+  /**
    * Implicit class to extend a Spark Dataset.
    *
    * @param ds dataset
-   * @tparam T inner type of dataset
+   * @tparam V inner type of dataset
    */
-  implicit class ExtendedDataset[V](ds: Dataset[V]) {
+  implicit class ExtendedDatasetV2[V](ds: Dataset[V]) {
     /**
      * Compute the histogram of a column when aggregated by aggregate columns.
      * Thresholds are expected to be provided in ascending order.
@@ -791,6 +808,6 @@ package object spark extends Logging with SparkVersion with BuildVersion {
    *
    * @param df dataframe
    */
-  implicit class ExtendedDataframe(df: DataFrame) extends ExtendedDataset[Row](df)
+  implicit class ExtendedDataframe(df: DataFrame) extends ExtendedDatasetV2[Row](df)
 
 }
