@@ -50,7 +50,9 @@ runs:
       distribution: 'zulu'
 
   - name: Install Checker
-    run: sudo apt install japi-compliance-checker
+    run: |
+      sudo apt update
+      sudo apt install japi-compliance-checker
     shell: bash
 
   - name: Fetch package
