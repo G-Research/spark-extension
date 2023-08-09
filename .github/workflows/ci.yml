@@ -23,15 +23,21 @@ jobs:
           name: Event File
           path: ${{ github.event_path }}
 
+  lint:
+    name: "Run linter"
+    uses: "./.github/workflows/linter.yml"
+
   build-jvm:
     name: "Build JVM"
+    needs: lint
     uses: "./.github/workflows/build-jvm.yml"
   build-snapshots:
     name: "Build Snapshots"
+    needs: lint
     uses: "./.github/workflows/build-snapshots.yml"
   build-python:
     name: "Build Python"
-    needs: build-jvm
+    needs: [build-jvm,lint]
     uses: "./.github/workflows/build-python.yml"
 
   test-jvm:
