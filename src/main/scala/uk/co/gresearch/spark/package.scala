@@ -28,6 +28,7 @@ import org.apache.spark.storage.StorageLevel
 
 import uk.co.gresearch.spark._
 import uk.co.gresearch.spark.group.SortedGroupByDataset
+import uk.co.gresearch.spark.observation.expression.ObservationExpression
 
 package object spark extends Logging with SparkVersion with BuildVersion {
 
@@ -506,6 +507,26 @@ package object spark extends Logging with SparkVersion with BuildVersion {
      */
     def histogram[T: Ordering](thresholds: Seq[T], valueColumn: Column, aggregateColumns: Column*): DataFrame =
       Histogram.of(ds, thresholds, valueColumn, aggregateColumns: _*)
+
+    /**
+     * Observe convenience metrics defined in uk.co.gresearch.spark.observation.expression.
+     * This is equivalent to calling `observe(Observation, Column, Column*)`.
+     * This method does not support streaming datasets.
+     *
+     * A user can retrieve the metrics by accessing `org.apache.spark.sql.Observation.get`.
+     *
+     * {{{
+     *   // Observe row count (rows) and highest id (maxid) in the Dataset while writing it
+     *   val observation = Observation("my_metrics")
+     *   val observed_ds = ds.observe(observation, Rows("rows"), As(max($"id"), "maxid"))
+     *   observed_ds.write.parquet("ds.parquet")
+     *   val metrics = observation.get
+     * }}}
+     *
+     * @throws IllegalArgumentException If this is a streaming Dataset (this.isStreaming == true)
+     */
+    def observe(observation: Observation, expr: ObservationExpression, exprs: ObservationExpression*): Dataset[V] =
+      ds.observe(observation, expr.namedExpr, exprs.map(_.namedExpr): _*)
 
     /**
      * Writes the Dataset / DataFrame via DataFrameWriter.partitionBy. In addition to partitionBy,
