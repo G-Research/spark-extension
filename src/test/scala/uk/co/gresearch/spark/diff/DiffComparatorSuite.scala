@@ -110,6 +110,8 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
     Maps(2, Map(1 -> 2L, 2 -> 2L, 3 -> 3L)),
     Maps(3, Map(1 -> 3L, 2 -> 2L, 3 -> 3L)),
     Maps(4, Map(1 -> 4L, 2 -> 2L, 3 -> 3L)),
+    Maps(6, Map(1 -> 1L, 2 -> 2L, 3 -> 3L)),
+    Maps(7, Map(1 -> 4L, 2 -> 2L, 3 -> 3L)),
   ).toDS()
 
   lazy val rightMaps: Dataset[Maps] = Seq(
@@ -117,6 +119,8 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
     Maps(2, Map(1 -> 2L, 2 -> 3L, 3 -> 3L)),
     Maps(3, Map(1 -> 3L, 2 -> 2L, 4 -> 4L)),
     Maps(5, Map(1 -> 4L, 2 -> 2L, 3 -> 3L)),
+    Maps(6, Map(3 -> 3L, 2 -> 2L, 1 -> 1L)),
+    Maps(7, Map(3 -> 4L, 2 -> 2L, 1 -> 1L)),
   ).toDS()
 
   def doTest(optionsWithTightComparators: DiffOptions,
@@ -360,7 +364,7 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
         val options = DiffOptions.default.withComparator(DiffComparators.map[Int, Long](), "map")
 
         val actual = leftMaps.diff(rightMaps, options, "id").orderBy($"id").collect()
-        val diffs = Seq((1, "N"), (2, "C"), (3, "C"), (4, "D"), (5, "I")).toDF("id", "diff")
+        val diffs = Seq((1, "N"), (2, "C"), (3, "C"), (4, "D"), (5, "I"), (6, "N"), (7, "C")).toDF("id", "diff")
         val expected = leftMaps.withColumnRenamed("map", "left_map")
           .join(rightMaps.withColumnRenamed("map", "right_map"), Seq("id"), "fullouter")
           .join(diffs, "id")
