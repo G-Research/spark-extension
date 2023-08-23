@@ -27,11 +27,14 @@ case class MapDiffComparator[K, V](private val comparator: EquivDiffComparator[U
   override def equiv(left: Column, right: Column): Column = comparator.equiv(left, right)
 }
 
-private case class MapDiffEquiv[K: ClassTag, V](keyType: DataType, valueType: DataType) extends math.Equiv[UnsafeMapData] {
+private case class MapDiffEquiv[K: ClassTag, V](keyType: DataType, valueType: DataType, keyOrderSensitive: Boolean) extends math.Equiv[UnsafeMapData] {
   override def equiv(left: UnsafeMapData, right: UnsafeMapData): Boolean = {
 
-    val leftKeysIndices: Map[K, Int] = left.keyArray().toArray(keyType).zipWithIndex.toMap
-    val rightKeysIndices: Map[K, Int] = right.keyArray().toArray(keyType).zipWithIndex.toMap
+    val leftKeys: Array[K] = left.keyArray().toArray(keyType)
+    val rightKeys: Array[K] = right.keyArray().toArray(keyType)
+
+    val leftKeysIndices: Map[K, Int] = leftKeys.zipWithIndex.toMap
+    val rightKeysIndices: Map[K, Int] = rightKeys.zipWithIndex.toMap
 
     val leftValues = left.valueArray()
     val rightValues = right.valueArray()
@@ -46,18 +49,22 @@ private case class MapDiffEquiv[K: ClassTag, V](keyType: DataType, valueType: Da
       }
 
     left.numElements() == right.numElements() &&
-      leftKeysIndices.keySet.diff(rightKeysIndices.keySet).isEmpty &&
+      (keyOrderSensitive && leftKeys.sameElements(rightKeys) || !keyOrderSensitive && leftKeys.toSet.diff(rightKeys.toSet).isEmpty) &&
       valuesAreEqual.forall(identity)
   }
 }
 
 case object MapDiffComparator {
-  def apply[K: Encoder, V: Encoder](): MapDiffComparator[K, V] = {
+  def apply[K: Encoder, V: Encoder](keyOrderSensitive: Boolean): MapDiffComparator[K, V] = {
     val keyType = encoderFor[K].schema.fields(0).dataType
     val valueType = encoderFor[V].schema.fields(0).dataType
-    val equiv = MapDiffEquiv(keyType, valueType)
+    val equiv = MapDiffEquiv(keyType, valueType, keyOrderSensitive)
     val dataType = MapType(keyType, valueType)
     val comparator = InputTypedEquivDiffComparator[UnsafeMapData](equiv, dataType)
     MapDiffComparator[K, V](comparator)
   }
+
+  // for backward compatibility to v2.4.0 up to v2.8.0
+  // replace with default value in above apply when moving to v3
+  def apply[K: Encoder, V: Encoder](): MapDiffComparator[K, V] = apply(keyOrderSensitive = false)
 }
