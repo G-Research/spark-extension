@@ -53,7 +53,7 @@ if [ "$scala_compat" == "2.12" ]
 then
     echo "Testing Python with whl package"
     if [ -e "venv" ]; then rm -rf venv; fi
-    virtualenv -p python3 venv
+    virtualenv -p python3.10 venv
     source venv/bin/activate
     pip install -r python/requirements-${spark_compat}_$scala_compat.txt
     pip install python/dist/pyspark_extension-${version/-*/}.$spark_compat${version/*-SNAPSHOT/.dev0}-py3-none-any.whl
