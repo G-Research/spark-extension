@@ -3,6 +3,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [2.9.0] - 2023-08-23
+
+### Added
+
+- Add key order sensitive map comparator (#187)
+
+### Changed
+
+- Use dataset encoder rather than implicit value encoder for implicit dataset extension class (#183)
+
+### Fixed
+
+- Fix key-sensitivity in map comparator (#186)
+
 ## [2.8.0] - 2023-05-24
 
 ### Added
