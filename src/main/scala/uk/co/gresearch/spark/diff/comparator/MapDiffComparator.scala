@@ -21,32 +21,32 @@ import org.apache.spark.sql.catalyst.expressions.UnsafeMapData
 import org.apache.spark.sql.types.{DataType, MapType}
 import org.apache.spark.sql.{Column, Encoder}
 
+import scala.reflect.ClassTag
+
 case class MapDiffComparator[K, V](private val comparator: EquivDiffComparator[UnsafeMapData]) extends DiffComparator {
   override def equiv(left: Column, right: Column): Column = comparator.equiv(left, right)
 }
 
-private case class MapDiffEquiv[K, V](keyType: DataType, valueType: DataType) extends math.Equiv[UnsafeMapData] {
+private case class MapDiffEquiv[K: ClassTag, V](keyType: DataType, valueType: DataType) extends math.Equiv[UnsafeMapData] {
   override def equiv(left: UnsafeMapData, right: UnsafeMapData): Boolean = {
-    val leftKeys: Map[K, Int] = 0.until(left.keyArray().numElements())
-      .map(ordinal => left.keyArray().get(ordinal, keyType).asInstanceOf[K] -> ordinal)
-      .toMap
-    val rightKeys: Map[K, Int] = 0.until(left.keyArray().numElements())
-      .map(ordinal => left.keyArray().get(ordinal, keyType).asInstanceOf[K] -> ordinal)
-      .toMap
+
+    val leftKeysIndices: Map[K, Int] = left.keyArray().toArray(keyType).zipWithIndex.toMap
+    val rightKeysIndices: Map[K, Int] = right.keyArray().toArray(keyType).zipWithIndex.toMap
 
     val leftValues = left.valueArray()
     val rightValues = right.valueArray()
 
-    val valuesAreEqual = leftKeys
-      .map { case (key, ordinal) => ordinal -> rightKeys(key) }
-      .map { case (leftOrdinal, rightOrdinal) => (leftOrdinal, rightOrdinal, leftValues.isNullAt(leftOrdinal), rightValues.isNullAt(rightOrdinal)) }
-      .map { case (leftOrdinal, rightOrdinal, leftIsNull, rightIsNull) =>
+    // can only be evaluated when right has same keys as left
+    lazy val valuesAreEqual = leftKeysIndices
+      .map { case (key, index) => index -> rightKeysIndices(key) }
+      .map { case (leftIndex, rightIndex) => (leftIndex, rightIndex, leftValues.isNullAt(leftIndex), rightValues.isNullAt(rightIndex)) }
+      .map { case (leftIndex, rightIndex, leftIsNull, rightIsNull) =>
         leftIsNull && rightIsNull ||
-          !leftIsNull && !rightIsNull && leftValues.get(leftOrdinal, valueType).equals(rightValues.get(rightOrdinal, valueType))
+          !leftIsNull && !rightIsNull && leftValues.get(leftIndex, valueType).equals(rightValues.get(rightIndex, valueType))
       }
 
     left.numElements() == right.numElements() &&
-      leftKeys.keySet.diff(rightKeys.keySet).isEmpty &&
+      leftKeysIndices.keySet.diff(rightKeysIndices.keySet).isEmpty &&
       valuesAreEqual.forall(identity)
   }
 }
