@@ -55,7 +55,7 @@ private case class MapDiffEquiv[K: ClassTag, V](keyType: DataType, valueType: Da
 }
 
 case object MapDiffComparator {
-  def apply[K: Encoder, V: Encoder](keyOrderSensitive: Boolean = false): MapDiffComparator[K, V] = {
+  def apply[K: Encoder, V: Encoder](keyOrderSensitive: Boolean): MapDiffComparator[K, V] = {
     val keyType = encoderFor[K].schema.fields(0).dataType
     val valueType = encoderFor[V].schema.fields(0).dataType
     val equiv = MapDiffEquiv(keyType, valueType, keyOrderSensitive)
@@ -63,4 +63,8 @@ case object MapDiffComparator {
     val comparator = InputTypedEquivDiffComparator[UnsafeMapData](equiv, dataType)
     MapDiffComparator[K, V](comparator)
   }
+
+  // for backward compatibility to v2.4.0 up to v2.8.0
+  // replace with default value in above apply when moving to v3
+  def apply[K: Encoder, V: Encoder](): MapDiffComparator[K, V] = apply(keyOrderSensitive = false)
 }

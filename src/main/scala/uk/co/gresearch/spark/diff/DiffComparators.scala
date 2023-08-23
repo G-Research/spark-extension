@@ -96,5 +96,14 @@ object DiffComparators {
   /**
    * This comparator compares two `Map[K,V]` values. They are equal when they match in all their keys and values.
    */
-  def map[K: Encoder, V: Encoder](keyOrderSensitive: Boolean = false): DiffComparator = MapDiffComparator[K, V](keyOrderSensitive)
+  def map[K: Encoder, V: Encoder](): DiffComparator = MapDiffComparator[K, V](keyOrderSensitive = false)
+
+  // for backward compatibility to v2.4.0 up to v2.8.0
+  // replace with default value in above map when moving to v3
+  /**
+   * This comparator compares two `Map[K,V]` values. They are equal when they match in all their keys and values.
+   *
+   * @param keyOrderSensitive comparator compares key order if true
+   */
+  def map[K: Encoder, V: Encoder](keyOrderSensitive: Boolean): DiffComparator = MapDiffComparator[K, V](keyOrderSensitive)
 }
