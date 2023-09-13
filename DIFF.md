@@ -419,9 +419,9 @@ spark-submit --packages com.github.scopt:scopt_2.13:4.1.0 spark-extension_2.13-2
 ```
 
 ```
-Spark Diff app (2.7.0-3.4)
+Spark Diff app (2.10.0-3.4)
 
-Usage: spark-extension_2.13-2.7.0-3.4.jar [options] left right diff
+Usage: spark-extension_2.13-2.10.0-3.4.jar [options] left right diff
 
   left                     file path (requires format option) or table name to read left dataframe
   right                    file path (requires format option) or table name to read right dataframe
@@ -430,10 +430,10 @@ Usage: spark-extension_2.13-2.7.0-3.4.jar [options] left right diff
 Examples:
 
   - Diff CSV files 'left.csv' and 'right.csv' and write result into CSV file 'diff.csv':
-    spark-submit --packages com.github.scopt:scopt_2.13:4.1.0 spark-extension_2.13-2.7.0-3.4.jar --format csv left.csv right.csv diff.csv
+    spark-submit --packages com.github.scopt:scopt_2.13:4.1.0 spark-extension_2.13-2.10.0-3.4.jar --format csv left.csv right.csv diff.csv
 
   - Diff CSV file 'left.csv' with Parquet file 'right.parquet' with id column 'id', and write result into Hive table 'diff':
-    spark-submit --packages com.github.scopt:scopt_2.13:4.1.0 spark-extension_2.13-2.7.0-3.4.jar --left-format csv --right-format parquet --hive --id id left.csv right.parquet diff
+    spark-submit --packages com.github.scopt:scopt_2.13:4.1.0 spark-extension_2.13-2.10.0-3.4.jar --left-format csv --right-format parquet --hive --id id left.csv right.parquet diff
 
 Spark session
   --master <master>        Spark master (local, yarn, ...), not needed with spark-submit
@@ -457,6 +457,7 @@ Input and output
   --id <name>              id column name
   --ignore <name>          ignore column name
   --save-mode <save-mode>  save mode for writing output (Append, Overwrite, ErrorIfExists, Ignore, default ErrorIfExists)
+  --filter <filter>        Filters for rows with these diff actions, with default diffing options use 'N', 'I', 'D', or 'C' (see 'Diffing options' section)
 
 Diffing options
   --diff-column <name>     column name for diff column (default 'diff')

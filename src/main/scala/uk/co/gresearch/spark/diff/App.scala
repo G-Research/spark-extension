@@ -16,6 +16,7 @@
 
 package uk.co.gresearch.spark.diff
 
+import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
 import scopt.OptionParser
 import uk.co.gresearch._
@@ -44,6 +45,7 @@ object App {
                      ids: Seq[String] = Seq.empty,
                      ignore: Seq[String] = Seq.empty,
                      saveMode: SaveMode = SaveMode.ErrorIfExists,
+                     filter: Set[String] = Set.empty,
                      diffOptions: DiffOptions = DiffOptions.default)
 
   // read options from args
@@ -171,6 +173,12 @@ object App {
       .valueName("<save-mode>")
       .action((x, c) => c.copy(saveMode = SaveMode.valueOf(x)))
       .text(s"save mode for writing output (${SaveMode.values().mkString(", ")}, default ${Options().saveMode})")
+    opt[String]("filter")
+      .unbounded()
+      .optional()
+      .valueName("<filter>")
+      .action((x, c) => c.copy(filter = c.filter + x))
+      .text(s"Filters for rows with these diff actions, with default diffing options use 'N', 'I', 'D', or 'C' (see 'Diffing options' section)")
 
     note("")
     note("Diffing options")
@@ -236,8 +244,9 @@ object App {
       .when(schema.isDefined).call(_.schema(schema.get))
       .when(format.isDefined).either(_.load(path)).or(_.table(path))
 
-  def write(df: DataFrame, format: Option[String], path: String, options: Map[String, String], saveMode: SaveMode): Unit =
-    df.write
+  def write(df: DataFrame, format: Option[String], path: String, options: Map[String, String], saveMode: SaveMode, filter: Set[String], diffOptions: DiffOptions): Unit =
+    df.when(filter.nonEmpty).call(_.where(col(diffOptions.diffColumn).isInCollection(filter)))
+      .write
       .when(format.isDefined).call(_.format(format.get))
       .options(options)
       .mode(saveMode)
@@ -261,6 +270,6 @@ object App {
     val left = read(spark, options.leftFormat, options.leftPath.get, options.leftSchema, options.leftOptions)
     val right = read(spark, options.rightFormat, options.rightPath.get, options.rightSchema, options.rightOptions)
     val diff = left.diff(right, options.diffOptions, options.ids, options.ignore)
-    write(diff, options.outputFormat, options.outputPath.get, options.outputOptions, options.saveMode)
+    write(diff, options.outputFormat, options.outputPath.get, options.outputOptions, options.saveMode, options.filter, options.diffOptions)
   }
 }
