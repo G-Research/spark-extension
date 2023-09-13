@@ -458,6 +458,7 @@ Input and output
   --ignore <name>          ignore column name
   --save-mode <save-mode>  save mode for writing output (Append, Overwrite, ErrorIfExists, Ignore, default ErrorIfExists)
   --filter <filter>        Filters for rows with these diff actions, with default diffing options use 'N', 'I', 'D', or 'C' (see 'Diffing options' section)
+  --statistics             Only output statistics on how many rows exist per diff action (see 'Diffing options' section)
 
 Diffing options
   --diff-column <name>     column name for diff column (default 'diff')
