@@ -36,15 +36,13 @@ runs:
 
   - name: Cache Spark Binaries
     uses: actions/cache@v3
-    # Spark 3.3.3 builds with Scala 2.12 but does not provide download tar file, so we cannot run all tests
-    if: ( ! contains(inputs.spark-version, '-SNAPSHOT') && ! ( startsWith(inputs.scala-version, '2.12') && inputs.scala-version == '3.3.3' ) )
+    if: ( ! contains(inputs.spark-version, '-SNAPSHOT') )
     with:
       path: ~/spark
       key: ${{ runner.os }}-spark-binaries-${{ inputs.spark-version }}-${{ inputs.scala-compat-version }}
 
   - name: Setup Spark Binaries
-    # Spark 3.3.3 builds with Scala 2.12 but does not provide download tar file, so we cannot run all tests
-    if: ( ! contains(inputs.spark-version, '-SNAPSHOT') && ! ( startsWith(inputs.scala-version, '2.12') && inputs.scala-version == '3.3.3' ) )
+    if: ( ! contains(inputs.spark-version, '-SNAPSHOT') )
     env:
       SPARK_PACKAGE: spark-${{ inputs.spark-version }}/spark-${{ inputs.spark-version }}-bin-hadoop${{ inputs.hadoop-version }}${{ inputs.scala-compat-version == '2.13' && '-scala2.13' || '' }}.tgz
     run: |
@@ -74,8 +72,7 @@ runs:
     shell: bash
 
   - name: Diff App test
-    # Spark 3.3.3 builds with Scala 2.12 but does not provide download tar file, so we cannot run all tests
-    if: ( ! contains(inputs.spark-version, '-SNAPSHOT') && ! ( startsWith(inputs.scala-version, '2.12') && inputs.scala-version == '3.3.3' ) )
+    if: ( ! contains(inputs.spark-version, '-SNAPSHOT') )
     run: |
       $SPARK_HOME/bin/spark-submit --packages com.github.scopt:scopt_${{ inputs.scala-compat-version }}:4.1.0 target/spark-extension_*.jar --format parquet --id id src/test/files/test.parquet/file1.parquet src/test/files/test.parquet/file2.parquet diff.parquet
       $SPARK_HOME/bin/spark-shell <<< 'val df = spark.read.parquet("diff.parquet").orderBy($"id").groupBy($"diff").count; df.show; if (df.count != 2) sys.exit(1)'
