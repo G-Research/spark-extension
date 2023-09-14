@@ -22,7 +22,7 @@ import org.apache.spark.sql.catalyst.expressions.{Descending, SortOrder}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
 import org.apache.spark.storage.StorageLevel
-import org.apache.spark.storage.StorageLevel.{DISK_ONLY, MEMORY_AND_DISK, MEMORY_ONLY, NONE}
+import org.apache.spark.storage.StorageLevel.{DISK_ONLY, MEMORY_AND_DISK, MEMORY_ONLY, OFF_HEAP, NONE}
 import org.scalatest.funsuite.AnyFunSuite
 import uk.co.gresearch.ExtendedAny
 import uk.co.gresearch.spark.SparkSuite.{Value, collectJobDescription}
@@ -398,23 +398,35 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
     doTestWithRowNumbers { df => df.repartition(100) }($"id".desc)()
   }
 
-  Seq(MEMORY_AND_DISK, MEMORY_ONLY, DISK_ONLY, NONE).foreach { level =>
+  Seq(MEMORY_AND_DISK, MEMORY_ONLY, DISK_ONLY, OFF_HEAP, NONE).foreach { level =>
     test(s"global row number with $level") {
-      doTestWithRowNumbers(storageLevel = level)($"id")()
+      if (level.equals(StorageLevel.NONE) && (SparkMajorVersion > 3 || SparkMajorVersion == 3 && SparkMinorVersion >= 5)) {
+        assertThrows[IllegalArgumentException] {
+          doTestWithRowNumbers(storageLevel = level)($"id")()
+        }
+      } else {
+        doTestWithRowNumbers(storageLevel = level)($"id")()
+      }
     }
   }
 
-  Seq(MEMORY_AND_DISK, MEMORY_ONLY, DISK_ONLY, NONE).foreach { level =>
+  Seq(MEMORY_AND_DISK, MEMORY_ONLY, DISK_ONLY, OFF_HEAP, NONE).foreach { level =>
     test(s"global row number allows to unpersist with $level") {
-      val cacheManager = spark.sharedState.cacheManager
-      cacheManager.clearCache()
-      assert(cacheManager.isEmpty === true)
+      if (level.equals(StorageLevel.NONE) && (SparkMajorVersion > 3 || SparkMajorVersion == 3 && SparkMinorVersion >= 5)) {
+        assertThrows[IllegalArgumentException] {
+          doTestWithRowNumbers(storageLevel = level)($"id")()
+        }
+      } else {
+        val cacheManager = spark.sharedState.cacheManager
+        cacheManager.clearCache()
+        assert(cacheManager.isEmpty === true)
 
-      val unpersist = UnpersistHandle()
-      doTestWithRowNumbers(storageLevel = level, unpersistHandle = unpersist)($"id")()
-      assert(cacheManager.isEmpty === false)
-      unpersist(true)
-      assert(cacheManager.isEmpty === true)
+        val unpersist = UnpersistHandle()
+        doTestWithRowNumbers(storageLevel = level, unpersistHandle = unpersist)($"id")()
+        assert(cacheManager.isEmpty === false)
+        unpersist(true)
+        assert(cacheManager.isEmpty === true)
+      }
     }
   }
 
