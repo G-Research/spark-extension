@@ -251,7 +251,7 @@ object App {
 
   def write(df: DataFrame, format: Option[String], path: String, options: Map[String, String], saveMode: SaveMode, filter: Set[String], saveStats: Boolean, diffOptions: DiffOptions): Unit =
     df.when(filter.nonEmpty).call(_.where(col(diffOptions.diffColumn).isInCollection(filter)))
-      .when(saveStats).call(_.groupBy(diffOptions.diffColumn).count)
+      .when(saveStats).call(_.groupBy(diffOptions.diffColumn).count.orderBy(diffOptions.diffColumn))
       .write
       .when(format.isDefined).call(_.format(format.get))
       .options(options)
