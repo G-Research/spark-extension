@@ -41,7 +41,6 @@ setup(
         "gresearch.spark",
         "gresearch.spark.diff",
         "gresearch.spark.diff.comparator",
-        "gresearch.spark.parquet",
         "pyspark.jars",
     ],
     include_package_data=False,
