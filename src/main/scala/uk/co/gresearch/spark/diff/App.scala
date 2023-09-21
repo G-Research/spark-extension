@@ -46,6 +46,7 @@ object App {
                      ignore: Seq[String] = Seq.empty,
                      saveMode: SaveMode = SaveMode.ErrorIfExists,
                      filter: Set[String] = Set.empty,
+                     statistics: Boolean = false,
                      diffOptions: DiffOptions = DiffOptions.default)
 
   // read options from args
@@ -179,6 +180,10 @@ object App {
       .valueName("<filter>")
       .action((x, c) => c.copy(filter = c.filter + x))
       .text(s"Filters for rows with these diff actions, with default diffing options use 'N', 'I', 'D', or 'C' (see 'Diffing options' section)")
+    opt[Unit]("statistics")
+      .optional()
+      .action((_, c) => c.copy(statistics = true))
+      .text(s"Only output statistics on how many rows exist per diff action (see 'Diffing options' section)")
 
     note("")
     note("Diffing options")
@@ -244,8 +249,9 @@ object App {
       .when(schema.isDefined).call(_.schema(schema.get))
       .when(format.isDefined).either(_.load(path)).or(_.table(path))
 
-  def write(df: DataFrame, format: Option[String], path: String, options: Map[String, String], saveMode: SaveMode, filter: Set[String], diffOptions: DiffOptions): Unit =
+  def write(df: DataFrame, format: Option[String], path: String, options: Map[String, String], saveMode: SaveMode, filter: Set[String], saveStats: Boolean, diffOptions: DiffOptions): Unit =
     df.when(filter.nonEmpty).call(_.where(col(diffOptions.diffColumn).isInCollection(filter)))
+      .when(saveStats).call(_.groupBy(diffOptions.diffColumn).count.orderBy(diffOptions.diffColumn))
       .write
       .when(format.isDefined).call(_.format(format.get))
       .options(options)
@@ -275,6 +281,6 @@ object App {
     val left = read(spark, options.leftFormat, options.leftPath.get, options.leftSchema, options.leftOptions)
     val right = read(spark, options.rightFormat, options.rightPath.get, options.rightSchema, options.rightOptions)
     val diff = left.diff(right, options.diffOptions, options.ids, options.ignore)
-    write(diff, options.outputFormat, options.outputPath.get, options.outputOptions, options.saveMode, options.filter, options.diffOptions)
+    write(diff, options.outputFormat, options.outputPath.get, options.outputOptions, options.saveMode, options.filter, options.statistics, options.diffOptions)
   }
 }
