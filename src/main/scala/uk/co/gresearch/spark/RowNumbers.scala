@@ -39,6 +39,10 @@ case class RowNumbersFunc(rowNumberColumnName: String = "row_number",
     this.copy(orderColumns = orderColumns)
 
   def of[D](df: Dataset[D]): DataFrame = {
+    if (storageLevel.equals(StorageLevel.NONE) && (SparkMajorVersion > 3 || SparkMajorVersion == 3 && SparkMinorVersion >= 5)) {
+      throw new IllegalArgumentException(s"Storage level $storageLevel not supported with Spark 3.5.0 and above.")
+    }
+
     // define some column names that do not exist in ds
     val prefix = distinctPrefixFor(df.columns)
     val monoIdColumnName = prefix + "mono_id"

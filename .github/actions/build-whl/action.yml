@@ -62,7 +62,7 @@ runs:
   - name: Test whl
     run: |
       twine check python/dist/*
-      pip install python/dist/*.whl
+      pip install python/dist/*.whl --find-links https://archive.apache.org/dist/spark/spark-3.5.0
       python test-release.py
     shell: bash
 
