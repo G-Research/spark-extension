@@ -133,7 +133,7 @@ class AppSuite extends AnyFunSuite with SparkTestSession {
 
       // assert written diff
       val actual = spark.read.parquet(outputPath).as[(String, Long)].collect().toMap
-      val expected = DiffSuite.expectedDiff.groupBy(row => row.getString(0)).view.mapValues(_.length).toMap
+      val expected = DiffSuite.expectedDiff.groupBy(row => row.getString(0)).mapValues(_.length).toMap
       assert(actual === expected)
     }
   }
