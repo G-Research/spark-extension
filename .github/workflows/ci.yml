@@ -61,6 +61,7 @@ jobs:
       - name: Download Reports
         uses: actions/download-artifact@v3
         with:
+          name: Compat-Report
           path: artifacts/
 
       - name: Inspect
@@ -69,7 +70,7 @@ jobs:
       - name: Outcome
         id: outcome
         run: |
-          if [[ -z "$(ls artifacts/Compat-Report-*/fail 2>/dev/null || true)" ]]
+          if [[ -z "$(ls artifacts/fail-* 2>/dev/null || true)" ]]
           then
             echo "state=success" >> "$GITHUB_OUTPUT"
             echo "description=No removed methods have been found." >> $GITHUB_OUTPUT
