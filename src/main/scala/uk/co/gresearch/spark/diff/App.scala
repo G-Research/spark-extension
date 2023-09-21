@@ -258,6 +258,11 @@ object App {
       case Some(options) => options
       case None => sys.exit(1)
     }
+    val unknownFilters = options.filter.filter(filter => !options.diffOptions.diffValues.contains(filter))
+    if (unknownFilters.nonEmpty) {
+      throw new RuntimeException(s"Filter ${unknownFilters.mkString("'", "', '", "'")} not allowed, " +
+        s"these are the configured diff values: ${options.diffOptions.diffValues.mkString("'", "', '", "'")}")
+    }
 
     // create spark session
     val spark = SparkSession.builder()

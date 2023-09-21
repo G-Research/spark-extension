@@ -83,4 +83,29 @@ class AppSuite extends AnyFunSuite with SparkTestSession {
       }
     }
   }
+
+  test(s"run app with unknown filter") {
+    withTempPath { path =>
+      // write left dataframe as parquet
+      val leftPath = new File(path, "left.parquet").getAbsolutePath
+      DiffSuite.left(spark).write.parquet(leftPath)
+
+      // write right dataframe as csv
+      val rightPath = new File(path, "right.parquet").getAbsolutePath
+      DiffSuite.right(spark).write.parquet(rightPath)
+
+      // launch app
+      val outputPath = new File(path, "diff.parquet").getAbsolutePath
+      assertThrows[RuntimeException](
+        App.main(Array(
+          "--format", "parquet",
+          "--id", "id",
+          "--filter", "A",
+          leftPath,
+          rightPath,
+          outputPath
+        ))
+      )
+    }
+  }
 }
