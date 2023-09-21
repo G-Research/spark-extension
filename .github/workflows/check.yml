@@ -79,3 +79,40 @@ jobs:
           spark-compat-version: ${{ matrix.spark-compat-version }}
           scala-compat-version: ${{ matrix.scala-compat-version }}
           package-version: ${{ needs.config.outputs.release-version }}
+
+  check-outcome:
+    name: "Check outcome"
+    needs: check
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Download Reports
+        uses: actions/download-artifact@v3
+        with:
+          name: Compat-Report
+          path: artifacts/
+
+      - name: Inspect
+        run: find artifacts
+
+      - name: Outcome
+        id: outcome
+        run: |
+          if [[ -z "$(ls artifacts/fail-* 2>/dev/null || true)" ]]
+          then
+            echo "state=success" >> "$GITHUB_OUTPUT"
+            echo "description=No removed methods have been found." >> $GITHUB_OUTPUT
+          else
+            echo "state=pending" >> "$GITHUB_OUTPUT"
+            echo "description=Please inspect the check reports whether removed methods are considered breaking changes." >> $GITHUB_OUTPUT
+          fi
+        shell: bash
+
+      - name: Set status
+        uses: Sibz/github-status-action@650dd1a882a76dbbbc4576fb5974b8d22f29847f
+        with:
+          authToken: ${{ secrets.GITHUB_TOKEN }}
+          context: 'Check result'
+          description: ${{ steps.outcome.outputs.description }}
+          state: ${{ steps.outcome.outputs.state }}
+          sha: ${{ github.event.pull_request.head.sha || github.sha }}
