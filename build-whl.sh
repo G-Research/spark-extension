@@ -20,3 +20,14 @@ fi
 pip install build
 python -m build "$base/python/"
 
+# check for missing modules in whl file
+pyversion=${version/SNAPSHOT/dev0}
+pyversion=${pyversion//-/.}
+
+missing="$(diff <(cd $base/python; find gresearch -type f | grep -v ".pyc$" | sort) <(unzip -l $base/python/dist/pyspark_extension-${pyversion}-*.whl | tail -n +4 | head -n -2 | sed -E -e "s/^ +//" -e "s/ +/ /g" | cut -d " " -f 4- | sort) | grep "^<" || true)"
+if [ -n "$missing" ]
+then
+  echo "These files are missing from the whl file:"
+  echo "$missing"
+  exit 1
+fi
