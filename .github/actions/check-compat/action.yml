@@ -70,14 +70,15 @@ runs:
 
   - name: Check
     if: steps.exists.outcome == 'success'
+    continue-on-error: ${{ github.ref == 'refs/heads/master' }}
     run: |
       ls -lah ~/.m2/repository/uk/co/gresearch/spark/spark-extension_${{ inputs.scala-compat-version }}/${{ inputs.package-version }}-${{ inputs.spark-compat-version }}/spark-extension_${{ inputs.scala-compat-version }}-${{ inputs.package-version }}-${{ inputs.spark-compat-version }}.jar target/spark-extension*.jar
-      japi-compliance-checker ~/.m2/repository/uk/co/gresearch/spark/spark-extension_${{ inputs.scala-compat-version }}/${{ inputs.package-version }}-${{ inputs.spark-compat-version }}/spark-extension_${{ inputs.scala-compat-version }}-${{ inputs.package-version }}-${{ inputs.spark-compat-version }}.jar target/spark-extension*.jar || touch compat_reports/spark-extension/fail-${{ inputs.spark-compat-version }}
+      japi-compliance-checker ~/.m2/repository/uk/co/gresearch/spark/spark-extension_${{ inputs.scala-compat-version }}/${{ inputs.package-version }}-${{ inputs.spark-compat-version }}/spark-extension_${{ inputs.scala-compat-version }}-${{ inputs.package-version }}-${{ inputs.spark-compat-version }}.jar target/spark-extension*.jar
     shell: bash
 
   - name: Upload Report
     uses: actions/upload-artifact@v3
-    if: steps.exists.outcome == 'success'
+    if: always() && steps.exists.outcome == 'success'
     with:
       name: Compat-Report
       path: compat_reports/spark-extension/*
