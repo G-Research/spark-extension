@@ -55,22 +55,31 @@ runs:
       sudo apt install japi-compliance-checker
     shell: bash
 
+  - name: Release exists
+    id: exists
+    continue-on-error: true
+    run: |
+      curl --head --fail https://repo1.maven.org/maven2/uk/co/gresearch/spark/spark-extension_${{ inputs.scala-compat-version }}/${{ inputs.package-version }}-${{ inputs.spark-compat-version }}/spark-extension_${{ inputs.scala-compat-version }}-${{ inputs.package-version }}-${{ inputs.spark-compat-version }}.jar
+    shell: bash
+
   - name: Fetch package
+    if: steps.exists.outcome == 'success'
     run: |
       mvn dependency:get -Dtransitive=false -DremoteRepositories -Dartifact=uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:${{ inputs.package-version }}-${{ inputs.spark-compat-version }}
     shell: bash
 
   - name: Check
+    if: steps.exists.outcome == 'success'
     run: |
       ls -lah ~/.m2/repository/uk/co/gresearch/spark/spark-extension_${{ inputs.scala-compat-version }}/${{ inputs.package-version }}-${{ inputs.spark-compat-version }}/spark-extension_${{ inputs.scala-compat-version }}-${{ inputs.package-version }}-${{ inputs.spark-compat-version }}.jar target/spark-extension*.jar
-      japi-compliance-checker ~/.m2/repository/uk/co/gresearch/spark/spark-extension_${{ inputs.scala-compat-version }}/${{ inputs.package-version }}-${{ inputs.spark-compat-version }}/spark-extension_${{ inputs.scala-compat-version }}-${{ inputs.package-version }}-${{ inputs.spark-compat-version }}.jar target/spark-extension*.jar
+      japi-compliance-checker ~/.m2/repository/uk/co/gresearch/spark/spark-extension_${{ inputs.scala-compat-version }}/${{ inputs.package-version }}-${{ inputs.spark-compat-version }}/spark-extension_${{ inputs.scala-compat-version }}-${{ inputs.package-version }}-${{ inputs.spark-compat-version }}.jar target/spark-extension*.jar || touch compat_reports/spark-extension/fail-${{ inputs.spark-compat-version }}
     shell: bash
 
   - name: Upload Report
     uses: actions/upload-artifact@v3
-    if: always()
+    if: steps.exists.outcome == 'success'
     with:
-      name: Compat-Report-${{ inputs.spark-compat-version }}-${{ inputs.scala-compat-version }}
+      name: Compat-Report
       path: compat_reports/spark-extension/*
 
 branding:
