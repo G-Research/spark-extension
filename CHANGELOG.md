@@ -3,6 +3,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [2.10.0] - 2023-09-27
+
+### Fixed
+
+- Update setup.py to include parquet methods in python package (#191)
+
+### Added
+
+- Add --statistics option to diff app (#189)
+- Add --filter option to diff app (#190)
+
 ## [2.9.0] - 2023-08-23
 
 ### Added
