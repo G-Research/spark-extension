@@ -17,7 +17,7 @@ inputs:
     required: true
   java-compat-version:
     description: Java compatibility version, e.g. 8
-    required: false
+    required: true
     default: '8'
 
 runs:
