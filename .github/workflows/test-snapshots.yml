@@ -53,7 +53,7 @@ jobs:
             spark-version: '4.0.0-SNAPSHOT'
             scala-compat-version: '2.13'
             scala-version: '2.13.8'
-            java-version: '17'
+            java-compat-version: '17'
 
     steps:
       - name: Checkout
@@ -68,3 +68,4 @@ jobs:
           scala-version: ${{ matrix.scala-version }}
           spark-compat-version: ${{ matrix.spark-compat-version }}-SNAPSHOT
           scala-compat-version: ${{ matrix.scala-compat-version }}
+          java-compat-version: ${{ matrix.java-compat-version }}

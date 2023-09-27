@@ -20,7 +20,8 @@ inputs:
     required: true
   java-compat-version:
     description: Java compatibility version, e.g. 8
-    required: true
+    required: false
+    default: '8'
 
 runs:
   using: 'composite'
