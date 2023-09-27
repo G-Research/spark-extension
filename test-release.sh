@@ -20,21 +20,21 @@ echo
 
 if [ ! -e "spark-$spark-$scala_compat" ]
 then
-    if [ "$scala_compat" == "2.12" ]
+    if [[ "$scala_compat" == "2.12" ]]
     then
-        if [[ "$spark_compat" == "3.3" || "$spark_compat" > "3.3" ]]
+        if [[ "$spark_compat" < "3.3" ]]
         then
-            hadoop="hadoop2"
-        else
             hadoop="hadoop2.7"
-        fi
-    elif [ "$scala_compat" == "2.13" ]
-    then
-        if [[ "$spark_compat" == "3.3" || "$spark_compat" > "3.3" ]]
-        then
-            hadoop="hadoop3-scala2.13"
         else
+            hadoop="hadoop3"
+        fi
+    elif [[ "$scala_compat" == "2.13" ]]
+    then
+        if [[ "$spark_compat" < "3.3" ]]
+        then
             hadoop="hadoop3.2-scala2.13"
+        else
+            hadoop="hadoop3-scala2.13"
         fi
     else
         hadoop="without-hadoop"
