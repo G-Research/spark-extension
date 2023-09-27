@@ -1,4 +1,3 @@
 py4j
 # keep in-sync with pom.xml
---find-links https://archive.apache.org/dist/spark/spark-3.5.0
 pyspark==3.5.0
