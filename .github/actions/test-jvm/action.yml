@@ -18,10 +18,9 @@ inputs:
   hadoop-version:
     description: Hadoop version, e.g. 2.7 or 2
     required: true
-  java-version:
-    description: Java version, e.g. 8
+  java-compat-version:
+    description: Java compatibility version, e.g. 8
     required: true
-    type: string
 
 runs:
   using: 'composite'
@@ -65,10 +64,10 @@ runs:
       key: ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-${{ hashFiles('pom.xml') }}
       restore-keys: ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-
 
-  - name: Setup JDK ${{ inputs.java-version }}
+  - name: Setup JDK ${{ inputs.java-compat-version }}
     uses: actions/setup-java@v3
     with:
-      java-version: ${{ inputs.java-version }}
+      java-version: ${{ inputs.java-compat-version }}
       distribution: 'zulu'
 
   - name: Scala and Java Tests
