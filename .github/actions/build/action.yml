@@ -42,6 +42,8 @@ runs:
       distribution: 'zulu'
 
   - name: Build
+    env:
+      JDK_JAVA_OPTIONS: --add-exports java.base/sun.nio.ch=ALL-UNNAMED --add-exports java.base/sun.util.calendar=ALL-UNNAMED
     run: |
       mvn --batch-mode --update-snapshots clean compile test-compile
       mvn --batch-mode package -DskipTests -Dmaven.test.skip=true
