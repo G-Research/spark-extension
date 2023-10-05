@@ -105,6 +105,26 @@ withJobDescription("parquet file") {
 |:---:|:---:|
 | ![](without-job-description.png "Spark job without description in UI") | ![](with-job-description.png "Spark job with description in UI") |
 
+Note that setting a description in one thread while calling the action (e.g. `.count`) in a different thread
+does not work, unless the different thread is spawned from the current thread _after_ the description has been set.
+
+Working example with parallel collections:
+
+```scala
+import java.util.concurrent.ForkJoinPool
+import scala.collection.parallel.CollectionConverters.seqIsParallelizable
+import scala.collection.parallel.ForkJoinTaskSupport
+
+val files = Seq("data1.csv", "data2.csv").par
+
+val counts = withJobDescription("Counting rows") {
+  // new thread pool required to spawn new threads from this thread
+  // so that the job description is actually used
+  files.tasksupport = new ForkJoinTaskSupport(new ForkJoinPool())
+  files.map(filename => spark.read.csv(filename).count).sum
+}(spark)
+```
+
 ## Using Spark Extension
 
 The `spark-extension` package is available for all Spark 3.2, 3.3, 3.4 and 3.5 versions. Some earlier Spark versions may also be supported.
