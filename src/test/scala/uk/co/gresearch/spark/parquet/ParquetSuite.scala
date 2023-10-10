@@ -131,6 +131,7 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
           StructField("maxDefinitionLevel", IntegerType, nullable = false),
           StructField("maxRepetitionLevel", IntegerType, nullable = false),
         )),
+        // format: off
         Seq(
           Row("nested.parquet", "a", Seq("a"), "REQUIRED", "INT64", 0, null, null, true, "INT64", "TYPE_DEFINED_ORDER", 0, 0),
           Row("nested.parquet", "x", Seq("b", "x"), "REQUIRED", "INT32", 0, null, null, true, "INT32", "TYPE_DEFINED_ORDER", 1, 0),
@@ -138,6 +139,7 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
           Row("nested.parquet", "z", Seq("b", "z"), "OPTIONAL", "INT64", 0, "TIMESTAMP_MICROS", TIMESTAMP, true, "INT64", "TYPE_DEFINED_ORDER", 2, 0),
           Row("nested.parquet", "element", Seq("c", "list", "element"), "OPTIONAL", "BINARY", 0, "UTF8", STRING, true, "BINARY", "TYPE_DEFINED_ORDER", 3, 1),
         ),
+        // format: on
         parallelism
       )
     }
@@ -195,6 +197,7 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
           StructField("values", LongType, nullable = false),
           StructField("nulls", LongType, nullable = true),
         )),
+        // format: off
         Seq(
           Row("file1.parquet", 1, "[id]", "SNAPPY", "required int64 id", "[BIT_PACKED, PLAIN]", "0", "99", 4, 437, 826, 100, 0),
           Row("file1.parquet", 1, "[val]", "SNAPPY", "required double val", "[BIT_PACKED, PLAIN]", "0.005067503372006343", "0.9973357672164814", 441, 831, 826, 100, 0),
@@ -203,6 +206,7 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
           Row("file2.parquet", 2, "[id]", "SNAPPY", "required int64 id", "[BIT_PACKED, PLAIN]", "200", "299", 1273, 440, 826, 100, 0),
           Row("file2.parquet", 2, "[val]", "SNAPPY", "required double val", "[BIT_PACKED, PLAIN]", "0.011277044401634018", "0.970525681750662", 1713, 830, 825, 100, 0),
         ),
+        // format: on
         parallelism,
         (df: DataFrame) => df
           .withColumn("column", $"column".cast(StringType))
