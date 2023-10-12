@@ -31,19 +31,6 @@ runs:
       name: Binaries-${{ inputs.spark-compat-version }}-${{ inputs.scala-compat-version }}
       path: .
 
-  - name: Cache Maven packages
-    uses: actions/cache@v3
-    with:
-      path: ~/.m2/repository
-      key: ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-${{ hashFiles('pom.xml') }}
-      restore-keys: ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-
-
-  - name: Cache Pip packages
-    uses: actions/cache@v3
-    with:
-      path: ~/.cache/pip
-      key: ${{ runner.os }}-pip-whl-${{ inputs.python-version }}-${{ inputs.spark-version }}
-
   - name: Setup Python
     uses: actions/setup-python@v4
     with:
