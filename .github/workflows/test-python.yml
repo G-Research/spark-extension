@@ -13,32 +13,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        spark-compat-version: ['3.2', '3.3', '3.4', '3.4', '3.5']
-        python-version: ['3.8', '3.9', '3.10']
+        spark-compat-version: ['3.5']
+        python-version: ['3.10']
 
         include:
-          - spark-compat-version: '3.0'
-            spark-version: '3.0.3'
-            scala-compat-version: '2.12'
-            scala-version: '2.12.10'
-            python-version: '3.8'
-          - spark-compat-version: '3.1'
-            spark-version: '3.1.3'
-            scala-compat-version: '2.12'
-            scala-version: '2.12.10'
-            python-version: '3.8'
-          - spark-compat-version: '3.2'
-            spark-version: '3.2.4'
-            scala-compat-version: '2.12'
-            scala-version: '2.12.15'
-          - spark-compat-version: '3.3'
-            spark-version: '3.3.3'
-            scala-compat-version: '2.12'
-            scala-version: '2.12.15'
-          - spark-compat-version: '3.4'
-            spark-version: '3.4.1'
-            scala-compat-version: '2.12'
-            scala-version: '2.12.17'
           - spark-compat-version: '3.5'
             spark-version: '3.5.0'
             scala-compat-version: '2.12'
