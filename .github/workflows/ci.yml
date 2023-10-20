@@ -24,8 +24,13 @@ jobs:
           path: ${{ github.event_path }}
 
   lint:
-    name: "Run linter"
-    uses: "./.github/workflows/linter.yml"
+    name: "Linting"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: jrouly/scalafmt-native-action@v2
+        with:
+          version: '3.7.14'
+          arguments: '--test'
 
   build-jvm:
     name: "Build JVM"
@@ -37,7 +42,7 @@ jobs:
     uses: "./.github/workflows/build-snapshots.yml"
   build-python:
     name: "Build Python"
-    needs: [build-jvm,lint]
+    needs: [build-jvm, lint]
     uses: "./.github/workflows/build-python.yml"
 
   test-jvm:
