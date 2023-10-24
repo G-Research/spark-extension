@@ -297,3 +297,11 @@ pip install build
 ```
 
 Then execute `python -m build python/` to create a whl from the sources. It can be found in `python/dist/`.
+
+## Publications
+
+- ***Guaranteeing in-partition order for partitioned-writing in Apache Spark**, Enrico Minack, 20/01/2023*:<br/>https://www.gresearch.com/blog/article/guaranteeing-in-partition-order-for-partitioned-writing-in-apache-spark/
+- ***Un-pivot, sorted groups and many bug fixes: Celebrating the first Spark 3.4 release**, Enrico Minack, 21/03/2023*:<br/>https://www.gresearch.com/blog/article/un-pivot-sorted-groups-and-many-bug-fixes-celebrating-the-first-spark-3-4-release/
+- ***A PySpark bug makes co-grouping with window function partition-key-order-sensitive**, Enrico Minack, 29/03/2023*:<br/>https://www.gresearch.com/blog/article/a-pyspark-bug-makes-co-grouping-with-window-function-partition-key-order-sensitive/
+- ***Spark’s groupByKey should be avoided – and here’s why**, Enrico Minack, 13/06/2023*:<br/>https://www.gresearch.com/blog/article/sparks-groupbykey-should-be-avoided-and-heres-why/
+- ***Inspecting Parquet files with Spark**, Enrico Minack, 28/07/2023*:<br/>https://www.gresearch.com/blog/article/parquet-files-know-your-scaling-limits/
