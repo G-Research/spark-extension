@@ -25,7 +25,7 @@ jobs:
           echo "major-version: ${version/.*/}"
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "major-version=${version/.*/}" >> "$GITHUB_OUTPUT"
-          release_version=$(git tag | tail -n1 | sed "s/^v//")
+          release_version=$(git tag | grep "^v" | sort --version-sort | tail -n1 | sed "s/^v//")
           echo "release-version: $release_version"
           echo "release-major-version: ${release_version/.*/}"
           echo "release-version=$release_version" >> "$GITHUB_OUTPUT"
