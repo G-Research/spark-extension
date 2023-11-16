@@ -20,7 +20,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.expressions.NamedExpression
-import org.apache.spark.sql.functions.{col, when}
+import org.apache.spark.sql.functions.{col, count, lit, when}
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.{DecimalType, LongType, TimestampType}
 import org.apache.spark.storage.StorageLevel
@@ -862,6 +862,19 @@ package object spark extends Logging with SparkVersion with BuildVersion {
                        unpersistHandle: UnpersistHandle,
                        order: Column*): DataFrame =
       RowNumbers.withRowNumberColumnName(rowNumberColumnName).withStorageLevel(storageLevel).withUnpersistHandle(unpersistHandle).withOrderColumns(order).of(ds)
+
+    def join(right: Dataset[_], joinExprs: Column, joinType: String, observation: Observation): DataFrame = {
+      ds.withColumn("left_exists", lit(true))
+        .join(right.withColumn("right_exists", lit(true)), joinExprs, "outer")
+        .observe(
+          observation,
+          count(when(col("left_exists").isNull, lit(1))).as("left-misses"),
+          count(when(col("right_exists").isNull, lit(1))).as("right-misses")
+        )
+        .when(joinType == "left" || joinType == "inner").call(_.where(col("left_exists")))
+        .when(joinType == "right" || joinType == "inner").call(_.where(col("right_exists")))
+        .drop("left_exists", "right_exists")
+    }
   }
 
   /**

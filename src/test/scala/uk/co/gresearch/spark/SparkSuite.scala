@@ -683,6 +683,16 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
       }
     }
   }
+
+  test("join observation") {
+    val left = Seq(1, 2, 3).toDF("id")
+    val right = Seq(2, 3, 3, 4, 5).toDF("id")
+    val observation = Observation()
+    val result = left.join(right, left("id") <=> right("id"), "inner", observation).as[(Int, Int)].collect()
+    assert(result === Seq((2, 2), (3, 3), (3, 3)))
+    val metrics = observation.get
+    assert(metrics === Map("left-misses" -> 2, "right-misses" -> 1))
+  }
 }
 
 object SparkSuite {
