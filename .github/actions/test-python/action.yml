@@ -89,13 +89,14 @@ runs:
 
   - name: Python Integration Tests
     run: |
-      find python/test -name 'test*.py' | while read test
+      find python/test -name 'test*.py' > tests
+      while read test
       do
         if ! $SPARK_HOME/bin/spark-submit --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION "$test" test-results
         then
           state="fail"
         fi
-      done
+      done < tests
       if [[ "$state" == "fail" ]]; then exit 1; fi
     shell: bash
 
