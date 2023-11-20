@@ -12,10 +12,11 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import datetime
-import unittest
 
+from pyspark.sql import Row
+from pyspark.sql.functions import col, count
 from gresearch.spark import dotnet_ticks_to_timestamp, dotnet_ticks_to_unix_epoch, dotnet_ticks_to_unix_epoch_nanos, \
-    timestamp_to_dotnet_ticks, unix_epoch_to_dotnet_ticks, unix_epoch_nanos_to_dotnet_ticks
+    timestamp_to_dotnet_ticks, unix_epoch_to_dotnet_ticks, unix_epoch_nanos_to_dotnet_ticks, count_null
 from spark_common import SparkTest
 from decimal import Decimal
 
@@ -140,6 +141,15 @@ class PackageTest(SparkTest):
                 timestamps = self.unix_nanos.withColumn("tick", unix_epoch_nanos_to_dotnet_ticks(column)).orderBy('id')
                 expected = self.unix_nanos.join(self.ticks_from_unix_nanos, "id").orderBy('id')
                 self.compare_dfs(expected, timestamps)
+
+    def test_count_null(self):
+        actual = self.unix_nanos.select(
+            count("id").alias("ids"),
+            count(col("unix_nanos")).alias("nanos"),
+            count_null("id").alias("null_ids"),
+            count_null(col("unix_nanos")).alias("null_nanos"),
+        ).collect()
+        self.assertEqual([Row(ids=7, nanos=6, null_ids=0, null_nanos=1)], actual)
 
 
 if __name__ == '__main__':
