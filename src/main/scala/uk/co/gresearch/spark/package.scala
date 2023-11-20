@@ -20,7 +20,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.expressions.NamedExpression
-import org.apache.spark.sql.functions.{col, when}
+import org.apache.spark.sql.functions.{col, count, lit, when}
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.{DecimalType, LongType, TimestampType}
 import org.apache.spark.storage.StorageLevel
