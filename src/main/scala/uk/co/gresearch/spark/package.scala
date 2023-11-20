@@ -75,6 +75,11 @@ package object spark extends Logging with SparkVersion with BuildVersion {
   def backticks(string: String, strings: String*): String =
     Backticks.column_name(string, strings: _*)
 
+  /**
+   * Aggregate function: returns the number of items in a group that are not null.
+   */
+  def count_null(e: Column): Column = count(when(e.isNull, lit(1)))
+
   private val nanoSecondsPerDotNetTick: Long = 100
   private val dotNetTicksPerSecond: Long = 10000000
   private val unixEpochDotNetTicks: Long = 621355968000000000L
