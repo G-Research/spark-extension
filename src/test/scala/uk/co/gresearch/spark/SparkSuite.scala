@@ -142,6 +142,20 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
     assert(backticks("the.alias", "a.column", "a.field") === "`the.alias`.`a.column`.`a.field`")
   }
 
+  test("count_null") {
+    val df = Seq(
+      (1, "some"), (2, "text"), (3, "and"), (4, "some"), (5, "null"), (6, "values"), (7, null), (8, null)
+    ).toDF("id", "str")
+    val actual =
+      df.select(
+        count($"id").as("ids"),
+        count($"str").as("strs"),
+        count_null($"id").as("null ids"),
+        count_null($"str").as("null strs")
+      ).collect().head
+    assert(actual === Row(8, 6, 0, 2))
+  }
+
   def assertJobDescription(expected: Option[String]): Unit = {
     val descriptions = collectJobDescription(spark)
     assert(descriptions === 0.to(2).map(id => (id, id, expected.orNull)))

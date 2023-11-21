@@ -13,16 +13,19 @@
 #  limitations under the License.
 
 from contextlib import contextmanager
-from typing import Any, Union, List, Optional, Mapping
+from typing import Any, Union, List, Optional, Mapping, TYPE_CHECKING
 
 from py4j.java_gateway import JVMView, JavaObject
-from pyspark import SparkContext
+from pyspark.context import SparkContext
 from pyspark.sql import DataFrame
 from pyspark.sql.column import Column, _to_java_column
 from pyspark.sql.context import SQLContext
-from pyspark.context import SparkContext
+from pyspark.sql.functions import col, count, lit, when
 from pyspark.sql.session import SparkSession
 from pyspark.storagelevel import StorageLevel
+
+if TYPE_CHECKING:
+    from pyspark.sql._typing import ColumnOrName
 
 
 def _to_seq(jvm: JVMView, list: List[Any]) -> JavaObject:
@@ -232,6 +235,24 @@ def unix_epoch_nanos_to_dotnet_ticks(unix_column: Union[str, Column]) -> Column:
 
     func = sc._jvm.uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$").unixEpochNanosToDotNetTicks
     return Column(func(_to_java_column(unix_column)))
+
+
+def count_null(e: "ColumnOrName") -> Column:
+    """
+    Aggregate function: returns the number of items in a group that are not null.
+
+    Parameters
+    ----------
+    col : :class:`~pyspark.sql.Column` or str target column to compute on.
+
+    Returns
+    -------
+    :class:`~pyspark.sql.Column`
+        column for computed results.
+    """
+    if isinstance(e, str):
+        e = col(e)
+    return count(when(e.isNull(), lit(1)))
 
 
 def histogram(self: DataFrame,

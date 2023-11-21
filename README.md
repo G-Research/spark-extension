@@ -50,6 +50,9 @@ i.doThis()
 **Backticks:** `backticks(string: String, strings: String*): String)`: Encloses the given column name with backticks (`` ` ``) when needed.
 This is a handy way to ensure column names with special characters like dots (`.`) work with `col()` or `select()`.
 
+**Count null values:** `count_null(e: Column)`: an aggregation function like `count` that counts null values in column `e`.
+This is equivalent to calling `count(when(e.isNull, lit(1)))`.
+
 **.Net DateTime.Ticks:** Convert .Net (C#, F#, Visual Basic) `DateTime.Ticks` into Spark timestamps, seconds and nanoseconds.
 
 <details>
