@@ -180,7 +180,7 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
           StructField("compressedBytes", LongType, nullable = false),
           StructField("uncompressedBytes", LongType, nullable = false),
           StructField("values", LongType, nullable = false),
-          StructField("nulls", LongType, nullable = false),
+          StructField("nulls", LongType, nullable = true),
         )),
         Seq(
           Row("file1.parquet", 1, "[id]", "SNAPPY", "required int64 id", "[BIT_PACKED, PLAIN]", "0", "99", 4, 437, 826, 100, 0),
