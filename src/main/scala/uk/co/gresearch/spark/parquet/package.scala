@@ -21,16 +21,15 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.apache.parquet.hadoop.metadata.BlockMetaData
 import org.apache.parquet.hadoop.{Footer, ParquetFileReader}
-import org.apache.spark.sql.execution.datasources.FilePartition
 import org.apache.spark.sql._
+import org.apache.spark.sql.execution.datasources.FilePartition
 import uk.co.gresearch._
 
 import scala.collection.JavaConverters.collectionAsScalaIterableConverter
 import scala.collection.convert.ImplicitConversions.`iterable AsScalaIterable`
-import scala.reflect.ClassTag
 
 package object parquet {
-  private implicit val intEncoder: Encoder[Int] = Encoders.scalaInt
+  lazy val conf = new Configuration()
 
   /**
    * Implicit class to extend a Spark DataFrameReader.
@@ -81,26 +80,23 @@ package object parquet {
     def parquetMetadata(parallelism: Int, paths: String*): DataFrame = parquetMetadata(Some(parallelism), paths)
 
     private def parquetMetadata(parallelism: Option[Int], paths: Seq[String]): DataFrame = {
-      val files = getFiles(parallelism, paths, (_, file) => file.filePath)(Encoders.STRING)
+      val files = getFiles(parallelism, paths)
+
       import files.sparkSession.implicits._
 
-      files.flatMap { file =>
-          val conf = new Configuration()
-          val inputPath = new Path(file)
-          val inputFileStatus = inputPath.getFileSystem(conf).getFileStatus(inputPath)
-          val footers = ParquetFileReader.readFooters(conf, inputFileStatus, false)
-          footers.asScala.map { footer =>
-            (
-              footer.getFile.toString,
-              footer.getParquetMetadata.getBlocks.size(),
-              footer.getParquetMetadata.getBlocks.asScala.map(_.getCompressedSize).sum,
-              footer.getParquetMetadata.getBlocks.asScala.map(_.getTotalByteSize).sum,
-              footer.getParquetMetadata.getBlocks.asScala.map(_.getRowCount).sum,
-              footer.getParquetMetadata.getFileMetaData.getCreatedBy,
-              footer.getParquetMetadata.getFileMetaData.getSchema.toString,
-            )
-          }
-        }.toDF("filename", "blocks", "compressedBytes", "uncompressedBytes", "rows", "createdBy", "schema")
+      files.flatMap { case (_, file) =>
+        readFooters(file).map { footer =>
+          (
+            footer.getFile.toString,
+            footer.getParquetMetadata.getBlocks.size(),
+            footer.getParquetMetadata.getBlocks.asScala.map(_.getCompressedSize).sum,
+            footer.getParquetMetadata.getBlocks.asScala.map(_.getTotalByteSize).sum,
+            footer.getParquetMetadata.getBlocks.asScala.map(_.getRowCount).sum,
+            footer.getParquetMetadata.getFileMetaData.getCreatedBy,
+            footer.getParquetMetadata.getFileMetaData.getSchema.toString,
+          )
+        }
+      }.toDF("filename", "blocks", "compressedBytes", "uncompressedBytes", "rows", "createdBy", "schema")
     }
 
     /**
@@ -144,15 +140,12 @@ package object parquet {
     def parquetBlocks(parallelism: Int, paths: String*): DataFrame = parquetBlocks(Some(parallelism), paths)
 
     private def parquetBlocks(parallelism: Option[Int], paths: Seq[String]): DataFrame = {
-      val files = getFiles(parallelism, paths, (_, file) => file.filePath)(Encoders.STRING)
+      val files = getFiles(parallelism, paths)
+
       import files.sparkSession.implicits._
 
-      files.flatMap { file =>
-        val conf = new Configuration()
-        val inputPath = new Path(file)
-        val inputFileStatus = inputPath.getFileSystem(conf).getFileStatus(inputPath)
-        val footers = ParquetFileReader.readFooters(conf, inputFileStatus, false)
-        footers.asScala.flatMap { footer =>
+      files.flatMap { case (_, file) =>
+        readFooters(file).flatMap { footer =>
           footer.getParquetMetadata.getBlocks.asScala.zipWithIndex.map { case (block, idx) =>
             (
               footer.getFile.toString,
@@ -220,15 +213,12 @@ package object parquet {
     def parquetBlockColumns(parallelism: Int, paths: String*): DataFrame = parquetBlockColumns(Some(parallelism), paths)
 
     private def parquetBlockColumns(parallelism: Option[Int], paths: Seq[String]): DataFrame = {
-      val files = getFiles(parallelism, paths, (_, file) => file.filePath)(Encoders.STRING)
+      val files = getFiles(parallelism, paths)
+
       import files.sparkSession.implicits._
 
-      files.flatMap { file =>
-        val conf = new Configuration()
-        val inputPath = new Path(file)
-        val inputFileStatus = inputPath.getFileSystem(conf).getFileStatus(inputPath)
-        val footers = ParquetFileReader.readFooters(conf, inputFileStatus, false)
-        footers.asScala.flatMap { footer =>
+      files.flatMap { case (_, file) =>
+        readFooters(file).flatMap { footer =>
           footer.getParquetMetadata.getBlocks.asScala.zipWithIndex.flatMap { case (block, idx) =>
             block.getColumns.asScala.map { column =>
               (
@@ -301,15 +291,12 @@ package object parquet {
     def parquetPartitions(parallelism: Int, paths: String*): DataFrame = parquetPartitions(Some(parallelism), paths)
 
     private def parquetPartitions(parallelism: Option[Int], paths: Seq[String]): DataFrame = {
-      val files = getFiles(parallelism, paths, (part, file) => (part, file))(Encoders.tuple(Encoders.scalaInt, Encoders.product[SplitFile]))
+      val files = getFiles(parallelism, paths)
+
       import files.sparkSession.implicits._
 
       files.flatMap { case (part, file) =>
-        val conf = new Configuration()
-        val inputPath = new Path(file.filePath)
-        val inputFileStatus = inputPath.getFileSystem(conf).getFileStatus(inputPath)
-        val footers = ParquetFileReader.readFooters(conf, inputFileStatus, false)
-        footers.asScala
+        readFooters(file)
           .map(footer => (footer, getBlocks(footer, file.start, file.length)))
           .map { case (footer, blocks) => (
             part,
@@ -326,21 +313,25 @@ package object parquet {
       }.toDF("partition", "start", "end", "length", "blocks", "compressedBytes", "uncompressedBytes", "rows", "filename", "fileLength")
     }
 
-    private def getFiles[T : Encoder](parallelism: Option[Int], paths: Seq[String], fileFunc: (Int, SplitFile) => T): Dataset[T] = {
-      val encoder = implicitly[Encoder[T]]
-      implicit val classTag: ClassTag[T] = encoder.clsTag
-
+    private def getFiles(parallelism: Option[Int], paths: Seq[String]): Dataset[(Int, SplitFile)] = {
       val df = reader.parquet(paths: _*)
-      val files = df.rdd.partitions.flatMap(part =>
+      val parts = df.rdd.partitions.flatMap(part =>
         part.asInstanceOf[FilePartition]
           .files
-          .map(file => fileFunc(part.index, SplitFile(file)))
+          .map(file => (part.index, SplitFile(file)))
       ).toSeq.distinct
-      val spark = df.sparkSession
 
-      spark.createDataset(files)
+      import df.sparkSession.implicits._
+
+      parts.toDS()
         .when(parallelism.isDefined).call(_.repartition(parallelism.get))
     }
+  }
+
+  private def readFooters(file: SplitFile): Iterable[Footer] = {
+    val path = new Path(file.filePath)
+    val status = path.getFileSystem(conf).getFileStatus(path)
+    ParquetFileReader.readFooters(conf, status, false).asScala
   }
 
   private def getBlocks(footer: Footer, start: Long, length: Long): Seq[BlockMetaData] = {
