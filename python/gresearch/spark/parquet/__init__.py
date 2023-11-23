@@ -55,6 +55,41 @@ def parquet_metadata(self: DataFrameReader, *paths: str, parallelism: Optional[i
     return DataFrame(jdf, self._spark)
 
 
+def parquet_schema(self: DataFrameReader, *paths: str, parallelism: Optional[int] = None) -> DataFrame:
+    """
+    Read the schema of Parquet files into a Dataframe.
+
+    The returned DataFrame has as many partitions as specified via `parallelism`.
+    If not specified, there are as many partitions as there are Parquet files,
+    at most `spark.sparkContext.defaultParallelism` partitions.
+
+    This provides the following per-file information:
+    - filename (string): The Parquet file name
+    - columnName (string): The column name (the last element of the column path)
+    - columnPath (string array): The column path
+    - repetition (string): The repetition
+    - type (string): The type
+    - length (int): The length of the type
+    - originalType (string): The original type
+    - isPrimitive (boolean: True if type is primitive
+    - primitiveType (string: The primitive type
+    - primitiveOrder (string: The order of the primitive type
+    - maxDefinitionLevel (int): The max definition level
+    - maxRepetitionLevel (int): The max repetition level
+
+    :param self: a Spark DataFrameReader
+    :param paths: paths one or more paths to Parquet files or directories
+    :param parallelism: number of partitions of returned DataFrame
+    :return: dataframe with Parquet metadata
+    """
+    jvm = self._spark._jvm
+    if parallelism is None:
+        jdf = _jreader(self).parquetSchema(_to_seq(jvm, list(paths)))
+    else:
+        jdf = _jreader(self).parquetSchema(parallelism, _to_seq(jvm, list(paths)))
+    return DataFrame(jdf, self._spark)
+
+
 def parquet_blocks(self: DataFrameReader, *paths: str, parallelism: Optional[int] = None) -> DataFrame:
     """
     Read the metadata of Parquet blocks into a Dataframe.
@@ -154,6 +189,7 @@ def parquet_partitions(self: DataFrameReader, *paths: str, parallelism: Optional
 
 
 DataFrameReader.parquet_metadata = parquet_metadata
+DataFrameReader.parquet_schema = parquet_schema
 DataFrameReader.parquet_blocks = parquet_blocks
 DataFrameReader.parquet_block_columns = parquet_block_columns
 DataFrameReader.parquet_partitions = parquet_partitions

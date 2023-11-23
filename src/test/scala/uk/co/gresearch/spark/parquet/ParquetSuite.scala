@@ -25,6 +25,12 @@ import org.scalatest.tagobjects.Slow
 import uk.co.gresearch._
 import uk.co.gresearch.spark.{SparkTestSession, SparkVersion}
 
+import java.sql.Timestamp
+import org.apache.spark.sql.SaveMode
+
+case class Inner(x: Int, y: Double, z: Timestamp)
+case class Value(a: Long, b: Inner, c: Array[String])
+
 class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
 
   import spark.implicits._
@@ -35,6 +41,7 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
   //   spark.range(100).select($"id", rand().as("val")).repartitionByRange(1, $"id").write.parquet("test.parquet")
   //   spark.range(100, 300, 1).select($"id", rand().as("val")).repartitionByRange(1, $"id").write.mode(SaveMode.Append).parquet("test.parquet")eq((3, "three"), (4, "four"), (5, "five"), (6, "six"), (7, "seven")).toDF("id", "value").repartitionByRange(1, $"id").write.mode(SaveMode.Append).parquet("test.parquet")
   val testFile = "src/test/files/test.parquet"
+  val nestedFile = "src/test/files/nested.parquet"
 
   val parallelisms = Seq(None, Some(1), Some(2), Some(8))
 
@@ -55,7 +62,7 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
     val replaced =
       actual
         .orderBy(order: _*)
-        .withColumn("filename", regexp_replace($"filename", ".*/test.parquet/", ""))
+        .withColumn("filename", regexp_replace(regexp_replace($"filename", ".*/test.parquet/", ""), ".*/nested.parquet", "nested.parquet"))
         .when(actual.columns.contains("schema"))
         .call(_.withColumn("schema", regexp_replace($"schema", "\n", "\\\\n")))
         .call(postProcess)
@@ -85,6 +92,41 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
         Seq(
           Row("file1.parquet", 1, 1268, 1652, 100, createdBy, schema),
           Row("file2.parquet", 2, 2539, 3302, 200, createdBy, schema),
+        ),
+        parallelism
+      )
+    }
+  }
+
+  parallelisms.foreach { parallelism =>
+    test(s"read parquet schema (parallelism=${parallelism.map(_.toString).getOrElse("None")})") {
+      assertDf(
+        spark.read
+          .when(parallelism.isDefined)
+          .either(_.parquetSchema(parallelism.get, nestedFile))
+          .or(_.parquetSchema(nestedFile)),
+        Seq($"filename", $"columnPath"),
+        StructType(Seq(
+          StructField("filename", StringType, nullable = true),
+          StructField("columnName", StringType, nullable = true),
+          StructField("columnPath", ArrayType(StringType, containsNull = true), nullable = true),
+          StructField("repetition", StringType, nullable = true),
+          StructField("type", StringType, nullable = true),
+          StructField("length", IntegerType, nullable = true),
+          StructField("originalType", StringType, nullable = true),
+          StructField("logicalType", StringType, nullable = true),
+          StructField("isPrimitive", BooleanType, nullable = false),
+          StructField("primitiveType", StringType, nullable = true),
+          StructField("primitiveOrder", StringType, nullable = true),
+          StructField("maxDefinitionLevel", IntegerType, nullable = false),
+          StructField("maxRepetitionLevel", IntegerType, nullable = false),
+        )),
+        Seq(
+          Row("nested.parquet", "a", Seq("a"), "REQUIRED", "INT64", 0, null, null, true, "INT64", "TYPE_DEFINED_ORDER", 0, 0),
+          Row("nested.parquet", "x", Seq("b", "x"), "REQUIRED", "INT32", 0, null, null, true, "INT32", "TYPE_DEFINED_ORDER", 1, 0),
+          Row("nested.parquet", "y", Seq("b", "y"), "REQUIRED", "DOUBLE", 0, null, null, true, "DOUBLE", "TYPE_DEFINED_ORDER", 1, 0),
+          Row("nested.parquet", "z", Seq("b", "z"), "OPTIONAL", "INT64", 0, "TIMESTAMP_MICROS", "TIMESTAMP(MICROS,true)", true, "INT64", "TYPE_DEFINED_ORDER", 2, 0),
+          Row("nested.parquet", "element", Seq("c", "list", "element"), "OPTIONAL", "BINARY", 0, "UTF8", "STRING", true, "BINARY", "TYPE_DEFINED_ORDER", 3, 1),
         ),
         parallelism
       )

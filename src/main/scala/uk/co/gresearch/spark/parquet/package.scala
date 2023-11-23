@@ -100,6 +100,100 @@ package object parquet {
     }
 
     /**
+     * Read the schema of Parquet files into a Dataframe.
+     *
+     * The returned DataFrame has as many partitions as there are Parquet files,
+     * at most `spark.sparkContext.defaultParallelism` partitions.
+     *
+     * This provides the following per-file information:
+     * - filename (string): The Parquet file name
+     * - columnName (string): The column name (the last element of the column path)
+     * - columnPath (string array): The column path
+     * - repetition (string): The repetition
+     * - type (string): The type
+     * - length (int): The length of the type
+     * - originalType (string): The original type
+     * - isPrimitive (boolean: True if type is primitive
+     * - primitiveType (string: The primitive type
+     * - primitiveOrder (string: The order of the primitive type
+     * - maxDefinitionLevel (int): The max definition level
+     * - maxRepetitionLevel (int): The max repetition level
+     *
+     * @param paths one or more paths to Parquet files or directories
+     * @return dataframe with Parquet metadata
+     */
+    @scala.annotation.varargs
+    def parquetSchema(paths: String*): DataFrame = parquetSchema(None, paths)
+
+    /**
+     * Read the schema of Parquet files into a Dataframe.
+     *
+     * The returned DataFrame has as many partitions as specified via `parallelism`.
+     *
+     * This provides the following per-file information:
+     * - filename (string): The Parquet file name
+     * - columnName (string): The column name (the last element of the column path)
+     * - columnPath (string array): The column path
+     * - repetition (string): The repetition
+     * - type (string): The type
+     * - length (int): The length of the type
+     * - originalType (string): The original type
+     * - isPrimitive (boolean: True if type is primitive
+     * - primitiveType (string: The primitive type
+     * - primitiveOrder (string: The order of the primitive type
+     * - maxDefinitionLevel (int): The max definition level
+     * - maxRepetitionLevel (int): The max repetition level
+     *
+     * @param parallelism number of partitions of returned DataFrame
+     * @param paths one or more paths to Parquet files or directories
+     * @return dataframe with Parquet metadata
+     */
+    @scala.annotation.varargs
+    def parquetSchema(parallelism: Int, paths: String*): DataFrame = parquetSchema(Some(parallelism), paths)
+
+    private def parquetSchema(parallelism: Option[Int], paths: Seq[String]): DataFrame = {
+      val files = getFiles(parallelism, paths)
+
+      import files.sparkSession.implicits._
+
+      files.flatMap { case (_, file) =>
+        readFooters(file).flatMap { footer =>
+          footer.getParquetMetadata.getFileMetaData.getSchema.getColumns.map { column =>
+            (
+              footer.getFile.toString,
+              Option(column.getPrimitiveType).map(_.getName),
+              column.getPath,
+              Option(column.getPrimitiveType).flatMap(v => Option(v.getRepetition)).map(_.name()),
+              Option(column.getPrimitiveType).flatMap(v => Option(v.getPrimitiveTypeName)).map(_.name()),
+              Option(column.getPrimitiveType).map(_.getTypeLength),
+              Option(column.getPrimitiveType).flatMap(v => Option(v.getOriginalType)).map(_.name()),
+              Option(column.getPrimitiveType).flatMap(v => Option(v.getLogicalTypeAnnotation)).map(_.toString),
+              column.getPrimitiveType.isPrimitive,
+              Option(column.getPrimitiveType).map(_.getPrimitiveTypeName.name()),
+              Option(column.getPrimitiveType).flatMap(v => Option(v.columnOrder())).map(_.getColumnOrderName.name()),
+              column.getMaxDefinitionLevel,
+              column.getMaxRepetitionLevel,
+            )
+          }
+        }
+      }.toDF(
+        "filename",
+        "columnName",
+        "columnPath",
+        "repetition",
+        "type",
+        "length",
+        "originalType",
+        "logicalType",
+        "isPrimitive",
+        "primitiveType",
+        "primitiveOrder",
+        "maxDefinitionLevel",
+        "maxRepetitionLevel",
+      )
+    }
+
+    /**
      * Read the metadata of Parquet blocks into a Dataframe.
      *
      * The returned DataFrame has as many partitions as there are Parquet files,
