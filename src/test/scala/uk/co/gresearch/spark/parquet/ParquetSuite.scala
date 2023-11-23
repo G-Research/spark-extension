@@ -67,6 +67,11 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
     test(s"read parquet metadata (parallelism=${parallelism.map(_.toString).getOrElse("None")})") {
       val createdBy = "parquet-mr version 1.12.2 (build 77e30c8093386ec52c3cfa6c34b7ef3321322c94)"
       val schema = "message spark_schema {\\n  required int64 id;\\n  required double val;\\n}\\n"
+      val encrypted = "UNENCRYPTED"
+      val keyValues = Map(
+        "org.apache.spark.version" -> "3.3.0",
+        "org.apache.spark.sql.parquet.row.metadata" -> """{"type":"struct","fields":[{"name":"id","type":"long","nullable":false,"metadata":{}},{"name":"val","type":"double","nullable":false,"metadata":{}}]}"""
+      )
 
       assertDf(
         spark.read
@@ -82,10 +87,12 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
           StructField("rows", LongType, nullable = false),
           StructField("createdBy", StringType, nullable = true),
           StructField("schema", StringType, nullable = true),
+          StructField("encryption", StringType, nullable = true),
+          StructField("keyValues", MapType(StringType, StringType, valueContainsNull = true), nullable = true),
         )),
         Seq(
-          Row("file1.parquet", 1, 1268, 1652, 100, createdBy, schema),
-          Row("file2.parquet", 2, 2539, 3302, 200, createdBy, schema),
+          Row("file1.parquet", 1, 1268, 1652, 100, createdBy, schema, encrypted, keyValues),
+          Row("file2.parquet", 2, 2539, 3302, 200, createdBy, schema, encrypted, keyValues),
         ),
         parallelism
       )
@@ -146,11 +153,13 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
           StructField("compressedBytes", LongType, nullable = false),
           StructField("uncompressedBytes", LongType, nullable = false),
           StructField("rows", LongType, nullable = false),
+          StructField("columns", IntegerType, nullable = false),
+          StructField("values", LongType, nullable = false),
         )),
         Seq(
-          Row("file1.parquet", 1, 4, 1268, 1652, 100),
-          Row("file2.parquet", 1, 4, 1269, 1651, 100),
-          Row("file2.parquet", 2, 1273, 1270, 1651, 100),
+          Row("file1.parquet", 1, 4, 1268, 1652, 100, 2, 200),
+          Row("file2.parquet", 1, 4, 1269, 1651, 100, 2, 200),
+          Row("file2.parquet", 2, 1273, 1270, 1651, 100, 2, 200),
         ),
         parallelism
       )

@@ -41,6 +41,8 @@ def parquet_metadata(self: DataFrameReader, *paths: str, parallelism: Optional[i
     - rows (long): Number of rows of all blocks
     - createdBy (string): The createdBy string of the Parquet file, e.g. library used to write the file
     - schema (string): The schema
+    - encryption (string): The encryption
+    - keyValues (string-to-string map): Key-value data of the file
 
     :param self: a Spark DataFrameReader
     :param paths: paths one or more paths to Parquet files or directories
@@ -105,6 +107,8 @@ def parquet_blocks(self: DataFrameReader, *paths: str, parallelism: Optional[int
     - compressedBytes (long): Number of compressed bytes in block
     - uncompressedBytes (long): Number of uncompressed bytes in block
     - rows (long): Number of rows in block
+    - columns (int): Number of columns in block
+    - values (long): Number of values in block
 
     :param self: a Spark DataFrameReader
     :param paths: paths one or more paths to Parquet files or directories
