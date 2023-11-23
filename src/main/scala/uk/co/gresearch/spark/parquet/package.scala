@@ -167,7 +167,7 @@ package object parquet {
               Option(column.getPrimitiveType).flatMap(v => Option(v.getPrimitiveTypeName)).map(_.name),
               Option(column.getPrimitiveType).map(_.getTypeLength),
               Option(column.getPrimitiveType).flatMap(v => Option(v.getOriginalType)).map(_.name),
-              Option(column.getPrimitiveType).flatMap(v => Option(v.getLogicalTypeAnnotation)).map(_.toString),
+              Option(column.getPrimitiveType).flatMap(PrimitiveTypeUtil.getLogicalTypeAnnotation),
               column.getPrimitiveType.isPrimitive,
               Option(column.getPrimitiveType).map(_.getPrimitiveTypeName.name),
               Option(column.getPrimitiveType).flatMap(v => Option(v.columnOrder)).map(_.getColumnOrderName.name),
