@@ -5,6 +5,7 @@ or [parquet-cli](https://pypi.org/project/parquet-cli/)
 by reading from a simple Spark data source.
 
 Parquet metadata can be read on [file level](#parquet-file-metadata),
+[schema level](#parquet-file-schema),
 [row group level](#parquet-block--rowgroup-metadata),
 [column chunk level](#parquet-block-column-metadata) and
 [Spark Parquet partition level](#parquet-partition-metadata).
@@ -63,6 +64,47 @@ The Dataframe provides the following per-file information:
 |rows              |long  |Number of rows of all blocks                                                 |
 |createdBy         |string|The createdBy string of the Parquet file, e.g. library used to write the file|
 |schema            |string|The schema                                                                   |
+
+## Parquet file schema
+
+Read the schema of Parquet files into a Dataframe:
+
+```scala
+// Scala
+spark.read.parquetSchema("/path/to/parquet").show()
+```
+```python
+# Python
+spark.read.parquet_schema("/path/to/parquet").show()
+```
+```
++------------+----------+------------------+----------+------+------+----------------+--------------------+-----------+-------------+------------------+------------------+------------------+
+|    filename|columnName|        columnPath|repetition|  type|length|    originalType|         logicalType|isPrimitive|primitiveType|    primitiveOrder|maxDefinitionLevel|maxRepetitionLevel|
++------------+----------+------------------+----------+------+------+----------------+--------------------+-----------+-------------+------------------+------------------+------------------+
+|file.parquet|         a|               [a]|  REQUIRED| INT64|     0|            NULL|                NULL|       true|        INT64|TYPE_DEFINED_ORDER|                 0|                 0|
+|file.parquet|         x|            [b, x]|  REQUIRED| INT32|     0|            NULL|                NULL|       true|        INT32|TYPE_DEFINED_ORDER|                 1|                 0|
+|file.parquet|         y|            [b, y]|  REQUIRED|DOUBLE|     0|            NULL|                NULL|       true|       DOUBLE|TYPE_DEFINED_ORDER|                 1|                 0|
+|file.parquet|         z|            [b, z]|  OPTIONAL| INT64|     0|TIMESTAMP_MICROS|TIMESTAMP(MICROS,...|       true|        INT64|TYPE_DEFINED_ORDER|                 2|                 0|
+|file.parquet|   element|[c, list, element]|  OPTIONAL|BINARY|     0|            UTF8|              STRING|       true|       BINARY|TYPE_DEFINED_ORDER|                 3|                 1|
++------------+----------+------------------+----------+------+------+----------------+--------------------+-----------+-------------+------------------+------------------+------------------+
+```
+
+The Dataframe provides the following per-file information:
+
+|column            |type  |description                           |
+|:-----------------|:----:|:-------------------------------------|
+|filename          |string|The Parquet file name                 |
+|columnName        |string|The column name                       |
+|columnPath        |string array|The column path                 |
+|repetition        |string|The repetition                        |
+|type              |string|The data type                         |
+|length            |int   |The length of the type                |
+|originalType      |string|The original type                     |
+|isPrimitive       |boolean|True if type is primitive            |
+|primitiveType     |string|The primitive type                    |
+|primitiveOrder    |string|The order of the primitive type       |
+|maxDefinitionLevel|int   |The max definition level              |
+|maxRepetitionLevel|int   |The max repetition level              |
 
 ## Parquet block / RowGroup metadata
 
@@ -189,6 +231,7 @@ You can control the number of partitions via the `parallelism` parameter:
 ```scala
 // Scala
 spark.read.parquetMetadata(100, "/path/to/parquet")
+spark.read.parquetSchema(100, "/path/to/parquet")
 spark.read.parquetBlocks(100, "/path/to/parquet")
 spark.read.parquetBlockColumns(100, "/path/to/parquet")
 spark.read.parquetPartitions(100, "/path/to/parquet")
@@ -196,6 +239,7 @@ spark.read.parquetPartitions(100, "/path/to/parquet")
 ```python
 # Python
 spark.read.parquet_metadata("/path/to/parquet", parallelism=100)
+spark.read.parquet_schema("/path/to/parquet", parallelism=100)
 spark.read.parquet_blocks("/path/to/parquet", parallelism=100)
 spark.read.parquet_block_columns("/path/to/parquet", parallelism=100)
 spark.read.parquet_partitions("/path/to/parquet", parallelism=100)

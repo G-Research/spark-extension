@@ -28,6 +28,12 @@ class ParquetTest(SparkTest):
         self.assertEqual(self.spark.read.parquet_metadata(self.test_file, parallelism=100).count(), 2)
         self.assertEqual(self.spark.read.parquet_metadata(self.test_file, self.test_file, parallelism=100).count(), 2)
 
+    def test_parquet_schema(self):
+        self.assertEqual(self.spark.read.parquet_schema(self.test_file).count(), 4)
+        self.assertEqual(self.spark.read.parquet_schema(self.test_file, self.test_file).count(), 4)
+        self.assertEqual(self.spark.read.parquet_schema(self.test_file, parallelism=100).count(), 4)
+        self.assertEqual(self.spark.read.parquet_schema(self.test_file, self.test_file, parallelism=100).count(), 4)
+
     def test_parquet_blocks(self):
         self.assertEqual(self.spark.read.parquet_blocks(self.test_file).count(), 3)
         self.assertEqual(self.spark.read.parquet_blocks(self.test_file, self.test_file).count(), 3)
