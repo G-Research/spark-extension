@@ -98,7 +98,7 @@ package object parquet {
             footer.getParquetMetadata.getBlocks.asScala.map(_.getRowCount).sum,
             footer.getParquetMetadata.getFileMetaData.getCreatedBy,
             footer.getParquetMetadata.getFileMetaData.getSchema.toString,
-            footer.getParquetMetadata.getFileMetaData.getEncryptionType.name(),
+            FileMetaDataUtil.getEncryptionType(footer.getParquetMetadata.getFileMetaData),
             footer.getParquetMetadata.getFileMetaData.getKeyValueMetaData.asScala,
           )
         }
@@ -250,10 +250,10 @@ package object parquet {
 
       files.flatMap { case (_, file) =>
         readFooters(file).flatMap { footer =>
-          footer.getParquetMetadata.getBlocks.asScala.map { block =>
+          footer.getParquetMetadata.getBlocks.asScala.zipWithIndex.map { case (block, idx) =>
             (
               footer.getFile.toString,
-              block.getOrdinal + 1,
+              BlockMetaDataUtil.getOrdinal(block).getOrElse(idx) + 1,
               block.getStartingPos,
               block.getCompressedSize,
               block.getTotalByteSize,
@@ -325,11 +325,11 @@ package object parquet {
 
       files.flatMap { case (_, file) =>
         readFooters(file).flatMap { footer =>
-          footer.getParquetMetadata.getBlocks.asScala.flatMap { block =>
+          footer.getParquetMetadata.getBlocks.asScala.zipWithIndex.flatMap { case (block, idx) =>
             block.getColumns.asScala.map { column =>
               (
                 footer.getFile.toString,
-                block.getOrdinal + 1,
+                BlockMetaDataUtil.getOrdinal(block).getOrElse(idx) + 1,
                 column.getPath.toSeq,
                 column.getCodec.toString,
                 column.getPrimitiveType.toString,
