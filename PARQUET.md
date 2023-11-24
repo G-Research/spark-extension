@@ -45,12 +45,12 @@ spark.read.parquetMetadata("/path/to/parquet").show()
 spark.read.parquet_metadata("/path/to/parquet").show()
 ```
 ```
-+-------------+------+---------------+-----------------+----+--------------------+--------------------+
-|     filename|blocks|compressedBytes|uncompressedBytes|rows|           createdBy|              schema|
-+-------------+------+---------------+-----------------+----+--------------------+--------------------+
-|file1.parquet|     1|           1268|             1652| 100|parquet-mr versio...|message spark_sch...|
-|file2.parquet|     2|           2539|             3302| 200|parquet-mr versio...|message spark_sch...|
-+-------------+------+---------------+-----------------+----+--------------------+--------------------+
++-------------+------+---------------+-----------------+----+--------------------+--------------------+-----------+--------------------+
+|     filename|blocks|compressedBytes|uncompressedBytes|rows|           createdBy|              schema| encryption|           keyValues|
++-------------+------+---------------+-----------------+----+--------------------+--------------------+-----------+--------------------+
+|file1.parquet|     1|           1268|             1652| 100|parquet-mr versio...|message spark_sch...|UNENCRYPTED|{org.apache.spark...|
+|file2.parquet|     2|           2539|             3302| 200|parquet-mr versio...|message spark_sch...|UNENCRYPTED|{org.apache.spark...|
++-------------+------+---------------+-----------------+----+--------------------+--------------------+-----------+--------------------+
 ```
 
 The Dataframe provides the following per-file information:
@@ -64,6 +64,8 @@ The Dataframe provides the following per-file information:
 |rows              |long  |Number of rows of all blocks                                                 |
 |createdBy         |string|The createdBy string of the Parquet file, e.g. library used to write the file|
 |schema            |string|The schema                                                                   |
+|encryption        |string|The encryption                                                               |
+|keyValues         |string-to-string map|Key-value data of the file                                     |
 
 ## Parquet file schema
 
@@ -119,14 +121,13 @@ spark.read.parquetBlocks("/path/to/parquet").show()
 spark.read.parquet_blocks("/path/to/parquet").show()
 ```
 ```
-+-------------+-----+----------+---------------+-----------------+----+
-|     filename|block|blockStart|compressedBytes|uncompressedBytes|rows|
-+-------------+-----+----------+---------------+-----------------+----+
-|file1.parquet|    1|         4|           1269|             1651| 100|
-|file2.parquet|    1|         4|           1268|             1652| 100|
-|file2.parquet|    2|      1273|           1270|             1651| 100|
-+-------------+-----+----------+---------------+-----------------+----+
-
++-------------+-----+----------+---------------+-----------------+----+-------+------+
+|     filename|block|blockStart|compressedBytes|uncompressedBytes|rows|columns|values|
++-------------+-----+----------+---------------+-----------------+----+-------+------+
+|file1.parquet|    1|         4|           1269|             1651| 100|      2|   200|
+|file2.parquet|    1|         4|           1268|             1652| 100|      2|   200|
+|file2.parquet|    2|      1273|           1270|             1651| 100|      2|   200|
++-------------+-----+----------+---------------+-----------------+----+-------+------+
 ```
 
 |column            |type  |description                                    |
@@ -137,6 +138,8 @@ spark.read.parquet_blocks("/path/to/parquet").show()
 |compressedBytes   |long  |Number of compressed bytes in block            |
 |uncompressedBytes |long  |Number of uncompressed bytes in block          |
 |rows              |long  |Number of rows in block                        |
+|columns           |int   |Number of columns in block                     |
+|values            |long  |Number of values in block                      |
 
 ## Parquet block column metadata
 

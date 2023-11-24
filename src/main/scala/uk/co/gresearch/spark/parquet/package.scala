@@ -25,7 +25,7 @@ import org.apache.spark.sql._
 import org.apache.spark.sql.execution.datasources.FilePartition
 import uk.co.gresearch._
 
-import scala.collection.JavaConverters.collectionAsScalaIterableConverter
+import scala.collection.JavaConverters.{collectionAsScalaIterableConverter, mapAsScalaMapConverter}
 import scala.collection.convert.ImplicitConversions.`iterable AsScalaIterable`
 
 package object parquet {
@@ -51,6 +51,8 @@ package object parquet {
      * - rows (long): Number of rows of all blocks
      * - createdBy (string): The createdBy string of the Parquet file, e.g. library used to write the file
      * - schema (string): The schema
+     * - encryption (string): The encryption
+     * - keyValues (string-to-string map): Key-value data of the file
      *
      * @param paths one or more paths to Parquet files or directories
      * @return dataframe with Parquet metadata
@@ -71,6 +73,8 @@ package object parquet {
      * - rows (long): Number of rows of all blocks
      * - createdBy (string): The createdBy string of the Parquet file, e.g. library used to write the file
      * - schema (string): The schema
+     * - encryption (string): The encryption
+     * - keyValues (string-to-string map): Key-value data of the file
      *
      * @param parallelism number of partitions of returned DataFrame
      * @param paths one or more paths to Parquet files or directories
@@ -94,9 +98,11 @@ package object parquet {
             footer.getParquetMetadata.getBlocks.asScala.map(_.getRowCount).sum,
             footer.getParquetMetadata.getFileMetaData.getCreatedBy,
             footer.getParquetMetadata.getFileMetaData.getSchema.toString,
+            FileMetaDataUtil.getEncryptionType(footer.getParquetMetadata.getFileMetaData),
+            footer.getParquetMetadata.getFileMetaData.getKeyValueMetaData.asScala,
           )
         }
-      }.toDF("filename", "blocks", "compressedBytes", "uncompressedBytes", "rows", "createdBy", "schema")
+      }.toDF("filename", "blocks", "compressedBytes", "uncompressedBytes", "rows", "createdBy", "schema", "encryption", "keyValues")
     }
 
     /**
@@ -206,6 +212,8 @@ package object parquet {
      * - compressedBytes (long): Number of compressed bytes in block
      * - uncompressedBytes (long): Number of uncompressed bytes in block
      * - rows (long): Number of rows in block
+     * - columns (int): Number of columns in block
+     * - values (long): Number of values in block
      *
      * @param paths one or more paths to Parquet files or directories
      * @return dataframe with Parquet block metadata
@@ -220,11 +228,13 @@ package object parquet {
      *
      * This provides the following per-block information:
      * - filename (string): The file name
-     * - block (int): Block / RowGroup number starting at 1
+     * - block (int): Block / RowGroup number starting at 1 (block ordinal + 1)
      * - blockStart (long): Start position of the block in the Parquet file
      * - compressedBytes (long): Number of compressed bytes in block
      * - uncompressedBytes (long): Number of uncompressed bytes in block
      * - rows (long): Number of rows in block
+     * - columns (int): Number of columns in block
+     * - values (long): Number of values in block
      *
      * @param parallelism number of partitions of returned DataFrame
      * @param paths one or more paths to Parquet files or directories
@@ -243,15 +253,17 @@ package object parquet {
           footer.getParquetMetadata.getBlocks.asScala.zipWithIndex.map { case (block, idx) =>
             (
               footer.getFile.toString,
-              idx + 1,
+              BlockMetaDataUtil.getOrdinal(block).getOrElse(idx) + 1,
               block.getStartingPos,
               block.getCompressedSize,
               block.getTotalByteSize,
               block.getRowCount,
+              block.getColumns.asScala.size,
+              block.getColumns.asScala.map(_.getValueCount).sum,
             )
           }
         }
-      }.toDF("filename", "block", "blockStart", "compressedBytes", "uncompressedBytes", "rows")
+      }.toDF("filename", "block", "blockStart", "compressedBytes", "uncompressedBytes", "rows", "columns", "values")
     }
 
     /**
@@ -287,7 +299,7 @@ package object parquet {
      *
      * This provides the following per-block-column information:
      * - filename (string): The file name
-     * - block (int): Block / RowGroup number starting at 1
+     * - block (int): Block / RowGroup number starting at 1 (block ordinal + 1)
      * - column (string): Block / RowGroup column name
      * - codec (string): The coded used to compress the block column values
      * - type (string): The data type of the block column
@@ -317,7 +329,7 @@ package object parquet {
             block.getColumns.asScala.map { column =>
               (
                 footer.getFile.toString,
-                idx + 1,
+                BlockMetaDataUtil.getOrdinal(block).getOrElse(idx) + 1,
                 column.getPath.toSeq,
                 column.getCodec.toString,
                 column.getPrimitiveType.toString,
