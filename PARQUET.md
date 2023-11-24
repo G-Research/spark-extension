@@ -91,20 +91,20 @@ spark.read.parquet_schema("/path/to/parquet").show()
 
 The Dataframe provides the following per-file information:
 
-|column            |type  |description                                          |
-|:-----------------|:----:|:----------------------------------------------------|
-|filename          |string|The Parquet file name                                |
-|columnName        |string|The column name (the last element of the column path)|
-|columnPath        |string array|The column path                                |
-|repetition        |string|The repetition                                       |
-|type              |string|The type                                             |
-|length            |int   |The length of the type                               |
-|originalType      |string|The original type                                    |
-|isPrimitive       |boolean|True if type is primitive                           |
-|primitiveType     |string|The primitive type                                   |
-|primitiveOrder    |string|The order of the primitive type                      |
-|maxDefinitionLevel|int   |The max definition level                             |
-|maxRepetitionLevel|int   |The max repetition level                             |
+|column            |type  |description                           |
+|:-----------------|:----:|:-------------------------------------|
+|filename          |string|The Parquet file name                 |
+|columnName        |string|The column name                       |
+|columnPath        |string array|The column path                 |
+|repetition        |string|The repetition                        |
+|type              |string|The data type                         |
+|length            |int   |The length of the type                |
+|originalType      |string|The original type                     |
+|isPrimitive       |boolean|True if type is primitive            |
+|primitiveType     |string|The primitive type                    |
+|primitiveOrder    |string|The order of the primitive type       |
+|maxDefinitionLevel|int   |The max definition level              |
+|maxRepetitionLevel|int   |The max repetition level              |
 
 ## Parquet block / RowGroup metadata
 

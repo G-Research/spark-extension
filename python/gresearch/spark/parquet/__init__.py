@@ -65,10 +65,10 @@ def parquet_schema(self: DataFrameReader, *paths: str, parallelism: Optional[int
 
     This provides the following per-file information:
     - filename (string): The Parquet file name
-    - columnName (string): The column name (the last element of the column path)
+    - columnName (string): The column name
     - columnPath (string array): The column path
     - repetition (string): The repetition
-    - type (string): The type
+    - type (string): The data type
     - length (int): The length of the type
     - originalType (string): The original type
     - isPrimitive (boolean: True if type is primitive

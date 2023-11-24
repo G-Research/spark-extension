@@ -25,11 +25,6 @@ import org.scalatest.tagobjects.Slow
 import uk.co.gresearch._
 import uk.co.gresearch.spark.{SparkTestSession, SparkVersion}
 
-import java.sql.Timestamp
-
-case class Inner(x: Int, y: Double, z: Timestamp)
-case class Value(a: Long, b: Inner, c: Array[String])
-
 class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
 
   import spark.implicits._
