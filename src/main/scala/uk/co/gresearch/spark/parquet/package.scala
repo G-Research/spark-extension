@@ -48,7 +48,10 @@ package object parquet {
      * - blocks (int): Number of blocks / RowGroups in the Parquet file
      * - compressedBytes (long): Number of compressed bytes of all blocks
      * - uncompressedBytes (long): Number of uncompressed bytes of all blocks
-     * - rows (long): Number of rows of all blocks
+     * - rows (long): Number of rows in the file
+     * - columns (int): Number of columns in the file
+     * - values (long): Number of values in the file
+     * - nulls (long): Number of null values in the file
      * - createdBy (string): The createdBy string of the Parquet file, e.g. library used to write the file
      * - schema (string): The schema
      * - encryption (string): The encryption
@@ -70,7 +73,10 @@ package object parquet {
      * - blocks (int): Number of blocks / RowGroups in the Parquet file
      * - compressedBytes (long): Number of compressed bytes of all blocks
      * - uncompressedBytes (long): Number of uncompressed bytes of all blocks
-     * - rows (long): Number of rows of all blocks
+     * - rows (long): Number of rows in the file
+     * - columns (int): Number of columns in the file
+     * - values (long): Number of values in the file
+     * - nulls (long): Number of null values in the file
      * - createdBy (string): The createdBy string of the Parquet file, e.g. library used to write the file
      * - schema (string): The schema
      * - encryption (string): The encryption
@@ -96,13 +102,32 @@ package object parquet {
             footer.getParquetMetadata.getBlocks.asScala.map(_.getCompressedSize).sum,
             footer.getParquetMetadata.getBlocks.asScala.map(_.getTotalByteSize).sum,
             footer.getParquetMetadata.getBlocks.asScala.map(_.getRowCount).sum,
+            footer.getParquetMetadata.getFileMetaData.getSchema.getColumns.size(),
+            footer.getParquetMetadata.getBlocks.asScala.map(_.getColumns.map(_.getValueCount).sum).sum,
+            // when all columns have statistics, count the null values
+            Option(footer.getParquetMetadata.getBlocks.asScala.flatMap(_.getColumns.map(c => Option(c.getStatistics))))
+              .filter(_.forall(_.isDefined))
+              .map(_.map(_.get.getNumNulls).sum),
             footer.getParquetMetadata.getFileMetaData.getCreatedBy,
             footer.getParquetMetadata.getFileMetaData.getSchema.toString,
             FileMetaDataUtil.getEncryptionType(footer.getParquetMetadata.getFileMetaData),
             footer.getParquetMetadata.getFileMetaData.getKeyValueMetaData.asScala,
           )
         }
-      }.toDF("filename", "blocks", "compressedBytes", "uncompressedBytes", "rows", "createdBy", "schema", "encryption", "keyValues")
+      }.toDF(
+        "filename",
+        "blocks",
+        "compressedBytes",
+        "uncompressedBytes",
+        "rows",
+        "columns",
+        "values",
+        "nulls",
+        "createdBy",
+        "schema",
+        "encryption",
+        "keyValues"
+      )
     }
 
     /**
@@ -214,6 +239,7 @@ package object parquet {
      * - rows (long): Number of rows in block
      * - columns (int): Number of columns in block
      * - values (long): Number of values in block
+     * - nulls (long): Number of null values in block
      *
      * @param paths one or more paths to Parquet files or directories
      * @return dataframe with Parquet block metadata
@@ -235,6 +261,7 @@ package object parquet {
      * - rows (long): Number of rows in block
      * - columns (int): Number of columns in block
      * - values (long): Number of values in block
+     * - nulls (long): Number of null values in block
      *
      * @param parallelism number of partitions of returned DataFrame
      * @param paths one or more paths to Parquet files or directories
@@ -260,10 +287,24 @@ package object parquet {
               block.getRowCount,
               block.getColumns.asScala.size,
               block.getColumns.asScala.map(_.getValueCount).sum,
+              // when all columns have statistics, count the null values
+              Option(block.getColumns.asScala.map(c => Option(c.getStatistics)))
+                .filter(_.forall(_.isDefined))
+                .map(_.map(_.get.getNumNulls).sum),
             )
           }
         }
-      }.toDF("filename", "block", "blockStart", "compressedBytes", "uncompressedBytes", "rows", "columns", "values")
+      }.toDF(
+        "filename",
+        "block",
+        "blockStart",
+        "compressedBytes",
+        "uncompressedBytes",
+        "rows",
+        "columns",
+        "values",
+        "nulls"
+      )
     }
 
     /**
@@ -285,6 +326,7 @@ package object parquet {
      * - compressedBytes (long): Number of compressed bytes of this block column
      * - uncompressedBytes (long): Number of uncompressed bytes of this block column
      * - values (long): Number of values in this block column
+     * - nulls (long): Number of null values in block
      *
      * @param paths one or more paths to Parquet files or directories
      * @return dataframe with Parquet block metadata
@@ -310,6 +352,7 @@ package object parquet {
      * - compressedBytes (long): Number of compressed bytes of this block column
      * - uncompressedBytes (long): Number of uncompressed bytes of this block column
      * - values (long): Number of values in this block column
+     * - nulls (long): Number of null values in block
      *
      * @param parallelism number of partitions of returned DataFrame
      * @param paths one or more paths to Parquet files or directories
@@ -345,7 +388,21 @@ package object parquet {
             }
           }
         }
-      }.toDF("filename", "block", "column", "codec", "type", "encodings", "minValue", "maxValue", "columnStart", "compressedBytes", "uncompressedBytes", "values", "nulls")
+      }.toDF(
+        "filename",
+        "block",
+        "column",
+        "codec",
+        "type",
+        "encodings",
+        "minValue",
+        "maxValue",
+        "columnStart",
+        "compressedBytes",
+        "uncompressedBytes",
+        "values",
+        "nulls"
+      )
     }
 
     /**
@@ -356,8 +413,6 @@ package object parquet {
      *
      * This provides the following per-partition information:
      * - partition (int): The Spark partition id
-     * - filename (string): The Parquet file name
-     * - fileLength (long): The length of the Parquet file
      * - start (long): The start position of the partition
      * - end (long): The end position of the partition
      * - length (long): The length of the partition
@@ -365,6 +420,10 @@ package object parquet {
      * - compressedBytes (long): The number of compressed bytes in this partition
      * - uncompressedBytes (long): The number of uncompressed bytes in this partition
      * - rows (long): The number of rows in this partition
+     * - columns (int): Number of columns in the file
+     * - values (long): The number of values in this partition
+     * - filename (string): The Parquet file name
+     * - fileLength (long): The length of the Parquet file
      *
      * @param paths one or more paths to Parquet files or directories
      * @return dataframe with Spark Parquet partition metadata
@@ -379,8 +438,6 @@ package object parquet {
      *
      * This provides the following per-partition information:
      * - partition (int): The Spark partition id
-     * - filename (string): The Parquet file name
-     * - fileLength (long): The length of the Parquet file
      * - start (long): The start position of the partition
      * - end (long): The end position of the partition
      * - length (long): The length of the partition
@@ -388,6 +445,10 @@ package object parquet {
      * - compressedBytes (long): The number of compressed bytes in this partition
      * - uncompressedBytes (long): The number of uncompressed bytes in this partition
      * - rows (long): The number of rows in this partition
+     * - columns (int): Number of columns in the file
+     * - values (long): The number of values in this partition
+     * - filename (string): The Parquet file name
+     * - fileLength (long): The length of the Parquet file
      *
      * @param parallelism number of partitions of returned DataFrame
      * @param paths one or more paths to Parquet files or directories
@@ -413,10 +474,30 @@ package object parquet {
             blocks.map(_.getCompressedSize).sum,
             blocks.map(_.getTotalByteSize).sum,
             blocks.map(_.getRowCount).sum,
+            blocks.map(_.getColumns.map(_.getPath.mkString(".")).toSet).foldLeft(Set.empty[String])((left, right) => left.union(right)).size,
+            blocks.map(_.getColumns.asScala.map(_.getValueCount).sum).sum,
+            // when all columns have statistics, count the null values
+            Option(blocks.flatMap(_.getColumns.asScala.map(c => Option(c.getStatistics))))
+              .filter(_.forall(_.isDefined))
+              .map(_.map(_.get.getNumNulls).sum),
             footer.getFile.toString,
             file.fileSize,
           )}
-      }.toDF("partition", "start", "end", "length", "blocks", "compressedBytes", "uncompressedBytes", "rows", "filename", "fileLength")
+      }.toDF(
+        "partition",
+        "start",
+        "end",
+        "length",
+        "blocks",
+        "compressedBytes",
+        "uncompressedBytes",
+        "rows",
+        "columns",
+        "values",
+        "nulls",
+        "filename",
+        "fileLength"
+      )
     }
 
     private def getFiles(parallelism: Option[Int], paths: Seq[String]): Dataset[(Int, SplitFile)] = {

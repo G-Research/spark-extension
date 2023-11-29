@@ -45,12 +45,12 @@ spark.read.parquetMetadata("/path/to/parquet").show()
 spark.read.parquet_metadata("/path/to/parquet").show()
 ```
 ```
-+-------------+------+---------------+-----------------+----+--------------------+--------------------+-----------+--------------------+
-|     filename|blocks|compressedBytes|uncompressedBytes|rows|           createdBy|              schema| encryption|           keyValues|
-+-------------+------+---------------+-----------------+----+--------------------+--------------------+-----------+--------------------+
-|file1.parquet|     1|           1268|             1652| 100|parquet-mr versio...|message spark_sch...|UNENCRYPTED|{org.apache.spark...|
-|file2.parquet|     2|           2539|             3302| 200|parquet-mr versio...|message spark_sch...|UNENCRYPTED|{org.apache.spark...|
-+-------------+------+---------------+-----------------+----+--------------------+--------------------+-----------+--------------------+
++-------------+------+---------------+-----------------+----+-------+------+-----+--------------------+--------------------+-----------+--------------------+
+|     filename|blocks|compressedBytes|uncompressedBytes|rows|columns|values|nulls|           createdBy|              schema| encryption|           keyValues|
++-------------+------+---------------+-----------------+----+-------+------+-----+--------------------+--------------------+-----------+--------------------+
+|file1.parquet|     1|           1268|             1652| 100|      2|   200|    0|parquet-mr versio...|message spark_sch...|UNENCRYPTED|{org.apache.spark...|
+|file2.parquet|     2|           2539|             3302| 200|      2|   400|    0|parquet-mr versio...|message spark_sch...|UNENCRYPTED|{org.apache.spark...|
++-------------+------+---------------+-----------------+----+-------+------+-----+--------------------+--------------------+-----------+--------------------+
 ```
 
 The Dataframe provides the following per-file information:
@@ -61,7 +61,10 @@ The Dataframe provides the following per-file information:
 |blocks            |int   |Number of blocks / RowGroups in the Parquet file                             |
 |compressedBytes   |long  |Number of compressed bytes of all blocks                                     |
 |uncompressedBytes |long  |Number of uncompressed bytes of all blocks                                   |
-|rows              |long  |Number of rows of all blocks                                                 |
+|rows              |long  |Number of rows in the file                                                   |
+|columns           |int   |Number of columns in the file                                                |
+|values            |long  |Number of values in the file                                                 |
+|nulls             |long  |Number of null values in the file                                            |
 |createdBy         |string|The createdBy string of the Parquet file, e.g. library used to write the file|
 |schema            |string|The schema                                                                   |
 |encryption        |string|The encryption                                                               |
@@ -121,13 +124,13 @@ spark.read.parquetBlocks("/path/to/parquet").show()
 spark.read.parquet_blocks("/path/to/parquet").show()
 ```
 ```
-+-------------+-----+----------+---------------+-----------------+----+-------+------+
-|     filename|block|blockStart|compressedBytes|uncompressedBytes|rows|columns|values|
-+-------------+-----+----------+---------------+-----------------+----+-------+------+
-|file1.parquet|    1|         4|           1269|             1651| 100|      2|   200|
-|file2.parquet|    1|         4|           1268|             1652| 100|      2|   200|
-|file2.parquet|    2|      1273|           1270|             1651| 100|      2|   200|
-+-------------+-----+----------+---------------+-----------------+----+-------+------+
++-------------+-----+----------+---------------+-----------------+----+-------+------+-----+
+|     filename|block|blockStart|compressedBytes|uncompressedBytes|rows|columns|values|nulls|
++-------------+-----+----------+---------------+-----------------+----+-------+------+-----+
+|file1.parquet|    1|         4|           1269|             1651| 100|      2|   200|    0|
+|file2.parquet|    1|         4|           1268|             1652| 100|      2|   200|    0|
+|file2.parquet|    2|      1273|           1270|             1651| 100|      2|   200|    0|
++-------------+-----+----------+---------------+-----------------+----+-------+------+-----+
 ```
 
 |column            |type  |description                                    |
@@ -140,6 +143,7 @@ spark.read.parquet_blocks("/path/to/parquet").show()
 |rows              |long  |Number of rows in block                        |
 |columns           |int   |Number of columns in block                     |
 |values            |long  |Number of values in block                      |
+|nulls             |long  |Number of null values in block                 |
 
 ## Parquet block column metadata
 
@@ -195,16 +199,16 @@ spark.read.parquetPartitions("/path/to/parquet").show()
 spark.read.parquet_partitions("/path/to/parquet").show()
 ```
 ```
-+---------+-----+----+------+------+---------------+-----------------+----+-------------+----------+
-|partition|start| end|length|blocks|compressedBytes|uncompressedBytes|rows|     filename|fileLength|
-+---------+-----+----+------+------+---------------+-----------------+----+-------------+----------+
-|        1|    0|1024|  1024|     1|           1268|             1652| 100|file1.parquet|      1930|
-|        2| 1024|1930|   906|     0|              0|                0|   0|file1.parquet|      1930|
-|        3|    0|1024|  1024|     1|           1269|             1651| 100|file2.parquet|      3493|
-|        4| 1024|2048|  1024|     1|           1270|             1651| 100|file2.parquet|      3493|
-|        5| 2048|3072|  1024|     0|              0|                0|   0|file2.parquet|      3493|
-|        6| 3072|3493|   421|     0|              0|                0|   0|file2.parquet|      3493|
-+---------+-----+----+------+------+---------------+-----------------+----+-------------+----------+
++---------+-----+----+------+------+---------------+-----------------+----+-------+------+-----+-------------+----------+
+|partition|start| end|length|blocks|compressedBytes|uncompressedBytes|rows|columns|values|nulls|     filename|fileLength|
++---------+-----+----+------+------+---------------+-----------------+----+-------+------+-----+-------------+----------+
+|        1|    0|1024|  1024|     1|           1268|             1652| 100|      2|   200|    0|file1.parquet|      1930|
+|        2| 1024|1930|   906|     0|              0|                0|   0|      0|     0|    0|file1.parquet|      1930|
+|        3|    0|1024|  1024|     1|           1269|             1651| 100|      2|   200|    0|file2.parquet|      3493|
+|        4| 1024|2048|  1024|     1|           1270|             1651| 100|      2|   200|    0|file2.parquet|      3493|
+|        5| 2048|3072|  1024|     0|              0|                0|   0|      0|     0|    0|file2.parquet|      3493|
+|        6| 3072|3493|   421|     0|              0|                0|   0|      0|     0|    0|file2.parquet|      3493|
++---------+-----+----+------+------+---------------+-----------------+----+-------+------+-----+-------------+----------+
 ```
 
 |column           |type  |description                                               |
@@ -217,6 +221,9 @@ spark.read.parquet_partitions("/path/to/parquet").show()
 |compressedBytes  |long  |The number of compressed bytes in this partition          |
 |uncompressedBytes|long  |The number of uncompressed bytes in this partition        |
 |rows             |long  |The number of rows in this partition                      |
+|columns          |int   |The number of columns in this partition                   |
+|values           |long  |The number of values in this partition                    |
+|nulls            |long  |The number of null values in this partition               |
 |filename         |string|The Parquet file name                                     |
 |fileLength       |long  |The length of the Parquet file                            |
 
