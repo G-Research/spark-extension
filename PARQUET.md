@@ -48,8 +48,8 @@ spark.read.parquet_metadata("/path/to/parquet").show()
 +-------------+------+---------------+-----------------+----+-------+------+-----+--------------------+--------------------+-----------+--------------------+
 |     filename|blocks|compressedBytes|uncompressedBytes|rows|columns|values|nulls|           createdBy|              schema| encryption|           keyValues|
 +-------------+------+---------------+-----------------+----+-------+------+-----+--------------------+--------------------+-----------+--------------------+
-|file1.parquet|     2|           2539|             3302| 200|      2|   400|    0|parquet-mr versio...|message spark_sch...|UNENCRYPTED|{org.apache.spark...|
-|file2.parquet|     1|           1268|             1652| 100|      2|   200|    0|parquet-mr versio...|message spark_sch...|UNENCRYPTED|{org.apache.spark...|
+|file1.parquet|     1|           1268|             1652| 100|      2|   200|    0|parquet-mr versio...|message spark_sch...|UNENCRYPTED|{org.apache.spark...|
+|file2.parquet|     2|           2539|             3302| 200|      2|   400|    0|parquet-mr versio...|message spark_sch...|UNENCRYPTED|{org.apache.spark...|
 +-------------+------+---------------+-----------------+----+-------+------+-----+--------------------+--------------------+-----------+--------------------+
 ```
 
@@ -62,7 +62,7 @@ The Dataframe provides the following per-file information:
 |compressedBytes   |long  |Number of compressed bytes of all blocks                                     |
 |uncompressedBytes |long  |Number of uncompressed bytes of all blocks                                   |
 |rows              |long  |Number of rows in the file                                                   |
-|columns           |int  |Number of columns in the file                                                 |
+|columns           |int   |Number of columns in the file                                                |
 |values            |long  |Number of values in the file                                                 |
 |nulls             |long  |Number of null values in the file                                            |
 |createdBy         |string|The createdBy string of the Parquet file, e.g. library used to write the file|
