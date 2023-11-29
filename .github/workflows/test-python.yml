@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        spark-compat-version: ['3.2', '3.3', '3.4', '3.4', '3.5']
+        spark-compat-version: ['3.2', '3.3', '3.4', '3.5']
         python-version: ['3.8', '3.9', '3.10']
 
         include:
