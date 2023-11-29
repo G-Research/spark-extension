@@ -45,6 +45,7 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
                expectedRows: Seq[Row],
                expectedParallelism: Option[Int],
                postProcess: DataFrame => DataFrame = identity): Unit = {
+    actual.show()
     assert(actual.schema === expectedSchema)
 
     if (expectedParallelism.isDefined) {
@@ -87,14 +88,17 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
           StructField("compressedBytes", LongType, nullable = false),
           StructField("uncompressedBytes", LongType, nullable = false),
           StructField("rows", LongType, nullable = false),
+          StructField("columns", IntegerType, nullable = false),
+          StructField("values", LongType, nullable = false),
+          StructField("nulls", LongType, nullable = true),
           StructField("createdBy", StringType, nullable = true),
           StructField("schema", StringType, nullable = true),
           StructField("encryption", StringType, nullable = true),
           StructField("keyValues", MapType(StringType, StringType, valueContainsNull = true), nullable = true),
         )),
         Seq(
-          Row("file1.parquet", 1, 1268, 1652, 100, createdBy, schema, UNENCRYPTED, keyValues),
-          Row("file2.parquet", 2, 2539, 3302, 200, createdBy, schema, UNENCRYPTED, keyValues),
+          Row("file1.parquet", 1, 1268, 1652, 100, 2, 200, 0, createdBy, schema, UNENCRYPTED, keyValues),
+          Row("file2.parquet", 2, 2539, 3302, 200, 2, 400, 0, createdBy, schema, UNENCRYPTED, keyValues),
         ),
         parallelism
       )
@@ -157,11 +161,12 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
           StructField("rows", LongType, nullable = false),
           StructField("columns", IntegerType, nullable = false),
           StructField("values", LongType, nullable = false),
+          StructField("nulls", LongType, nullable = true),
         )),
         Seq(
-          Row("file1.parquet", 1, 4, 1268, 1652, 100, 2, 200),
-          Row("file2.parquet", 1, 4, 1269, 1651, 100, 2, 200),
-          Row("file2.parquet", 2, 1273, 1270, 1651, 100, 2, 200),
+          Row("file1.parquet", 1, 4, 1268, 1652, 100, 2, 200, 0),
+          Row("file2.parquet", 1, 4, 1269, 1651, 100, 2, 200, 0),
+          Row("file2.parquet", 2, 1273, 1270, 1651, 100, 2, 200, 0),
         ),
         parallelism
       )
@@ -238,33 +243,33 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
 
   Map(
     None -> Seq(
-      Row(0, 1930, 1930, 1, 1268, 1652, 100, "file1.parquet", 1930),
-      Row(0, 3493, 3493, 2, 2539, 3302, 200, "file2.parquet", 3493),
+      Row(0, 1930, 1930, 1, 1268, 1652, 100, 2, 200, 0, "file1.parquet", 1930),
+      Row(0, 3493, 3493, 2, 2539, 3302, 200, 2, 400, 0, "file2.parquet", 3493),
     ),
     Some(8192) -> Seq(
-      Row(0, 1930, 1930, 1, 1268, 1652, 100, "file1.parquet", 1930),
-      Row(0, 3493, 3493, 2, 2539, 3302, 200, "file2.parquet", 3493),
+      Row(0, 1930, 1930, 1, 1268, 1652, 100, 2, 200, 0, "file1.parquet", 1930),
+      Row(0, 3493, 3493, 2, 2539, 3302, 200, 2, 400, 0, "file2.parquet", 3493),
     ),
     Some(1024) -> Seq(
-      Row(0, 1024, 1024, 1, 1268, 1652, 100, "file1.parquet", 1930),
-      Row(1024, 1930, 906, 0, 0, 0, 0, "file1.parquet", 1930),
-      Row(0, 1024, 1024, 1, 1269, 1651, 100, "file2.parquet", 3493),
-      Row(1024, 2048, 1024, 1, 1270, 1651, 100, "file2.parquet", 3493),
-      Row(2048, 3072, 1024, 0, 0, 0, 0, "file2.parquet", 3493),
-      Row(3072, 3493, 421, 0, 0, 0, 0, "file2.parquet", 3493),
+      Row(0, 1024, 1024, 1, 1268, 1652, 100, 2, 200, 0, "file1.parquet", 1930),
+      Row(1024, 1930, 906, 0, 0, 0, 0, 0, 0, 0, "file1.parquet", 1930),
+      Row(0, 1024, 1024, 1, 1269, 1651, 100, 2, 200, 0, "file2.parquet", 3493),
+      Row(1024, 2048, 1024, 1, 1270, 1651, 100, 2, 200, 0, "file2.parquet", 3493),
+      Row(2048, 3072, 1024, 0, 0, 0, 0, 0, 0, 0, "file2.parquet", 3493),
+      Row(3072, 3493, 421, 0, 0, 0, 0, 0, 0, 0, "file2.parquet", 3493),
     ),
     Some(512) -> Seq(
-      Row(0, 512, 512, 0, 0, 0, 0, "file1.parquet", 1930),
-      Row(512, 1024, 512, 1, 1268, 1652, 100, "file1.parquet", 1930),
-      Row(1024, 1536, 512, 0, 0, 0, 0, "file1.parquet", 1930),
-      Row(1536, 1930, 394, 0, 0, 0, 0, "file1.parquet", 1930),
-      Row(0, 512, 512, 0, 0, 0, 0, "file2.parquet", 3493),
-      Row(512, 1024, 512, 1, 1269, 1651, 100, "file2.parquet", 3493),
-      Row(1024, 1536, 512, 0, 0, 0, 0, "file2.parquet", 3493),
-      Row(1536, 2048, 512, 1, 1270, 1651, 100, "file2.parquet", 3493),
-      Row(2048, 2560, 512, 0, 0, 0, 0, "file2.parquet", 3493),
-      Row(2560, 3072, 512, 0, 0, 0, 0, "file2.parquet", 3493),
-      Row(3072, 3493, 421, 0, 0, 0, 0, "file2.parquet", 3493),
+      Row(0, 512, 512, 0, 0, 0, 0, 0, 0, 0, "file1.parquet", 1930),
+      Row(512, 1024, 512, 1, 1268, 1652, 100, 2, 200, 0, "file1.parquet", 1930),
+      Row(1024, 1536, 512, 0, 0, 0, 0, 0, 0, 0, "file1.parquet", 1930),
+      Row(1536, 1930, 394, 0, 0, 0, 0, 0, 0, 0, "file1.parquet", 1930),
+      Row(0, 512, 512, 0, 0, 0, 0, 0, 0, 0, "file2.parquet", 3493),
+      Row(512, 1024, 512, 1, 1269, 1651, 100, 2, 200, 0, "file2.parquet", 3493),
+      Row(1024, 1536, 512, 0, 0, 0, 0, 0, 0, 0, "file2.parquet", 3493),
+      Row(1536, 2048, 512, 1, 1270, 1651, 100, 2, 200, 0, "file2.parquet", 3493),
+      Row(2048, 2560, 512, 0, 0, 0, 0, 0, 0, 0, "file2.parquet", 3493),
+      Row(2560, 3072, 512, 0, 0, 0, 0, 0, 0, 0, "file2.parquet", 3493),
+      Row(3072, 3493, 421, 0, 0, 0, 0, 0, 0, 0, "file2.parquet", 3493),
     ),
   ).foreach { case (partitionSize, expectedRows) =>
     parallelisms.foreach { parallelism =>
@@ -297,6 +302,9 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
             StructField("compressedBytes", LongType, nullable = false),
             StructField("uncompressedBytes", LongType, nullable = false),
             StructField("rows", LongType, nullable = false),
+            StructField("columns", IntegerType, nullable = false),
+            StructField("values", LongType, nullable = false),
+            StructField("nulls", LongType, nullable = true),
             StructField("filename", StringType, nullable = true),
             StructField("fileLength", LongType, nullable = true),
           ))

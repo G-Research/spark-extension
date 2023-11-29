@@ -38,7 +38,10 @@ def parquet_metadata(self: DataFrameReader, *paths: str, parallelism: Optional[i
     - blocks (int): Number of blocks / RowGroups in the Parquet file
     - compressedBytes (long): Number of compressed bytes of all blocks
     - uncompressedBytes (long): Number of uncompressed bytes of all blocks
-    - rows (long): Number of rows of all blocks
+    - rows (long): Number of rows in the file
+    - columns (int): Number of rows in the file
+    - values (long): Number of values in the file
+    - nulls (long): Number of null values in the file
     - createdBy (string): The createdBy string of the Parquet file, e.g. library used to write the file
     - schema (string): The schema
     - encryption (string): The encryption
@@ -109,6 +112,7 @@ def parquet_blocks(self: DataFrameReader, *paths: str, parallelism: Optional[int
     - rows (long): Number of rows in block
     - columns (int): Number of columns in block
     - values (long): Number of values in block
+    - nulls (long): Number of null values in block
 
     :param self: a Spark DataFrameReader
     :param paths: paths one or more paths to Parquet files or directories
@@ -169,8 +173,6 @@ def parquet_partitions(self: DataFrameReader, *paths: str, parallelism: Optional
 
     This provides the following per-partition information:
     - partition (int): The Spark partition id
-    - filename (string): The Parquet file name
-    - fileLength (long): The length of the Parquet file
     - partitionStart (long): The start position of the partition
     - partitionEnd (long): The end position of the partition
     - partitionLength (long): The length of the partition
@@ -178,6 +180,11 @@ def parquet_partitions(self: DataFrameReader, *paths: str, parallelism: Optional
     - compressedBytes (long): The number of compressed bytes in this partition
     - uncompressedBytes (long): The number of uncompressed bytes in this partition
     - rows (long): The number of rows in this partition
+    - columns (int): The number of columns in this partition
+    - values (long): The number of values in this partition
+    - nulls (long): The number of null values in this partition
+    - filename (string): The Parquet file name
+    - fileLength (long): The length of the Parquet file
 
     :param self: a Spark DataFrameReader
     :param paths: paths one or more paths to Parquet files or directories
