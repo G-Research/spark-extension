@@ -45,7 +45,6 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
                expectedRows: Seq[Row],
                expectedParallelism: Option[Int],
                postProcess: DataFrame => DataFrame = identity): Unit = {
-    actual.show()
     assert(actual.schema === expectedSchema)
 
     if (expectedParallelism.isDefined) {
@@ -277,7 +276,7 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
         withSQLConf(partitionSize.map(size => Seq("spark.sql.files.maxPartitionBytes" -> size.toString)).getOrElse(Seq.empty): _*) {
           val expected = expectedRows.map {
             case row if SparkMajorVersion > 3 || SparkMinorVersion >= 3 => row
-            case row => Row(unapplySeq(row).get.updated(8, null): _*)
+            case row => Row(unapplySeq(row).get.updated(11, null): _*)
           }
 
           val actual = spark.read
