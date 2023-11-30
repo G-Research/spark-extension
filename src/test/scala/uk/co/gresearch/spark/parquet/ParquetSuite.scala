@@ -39,12 +39,14 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
 
   val parallelisms = Seq(None, Some(1), Some(2), Some(8))
 
-  def assertDf(actual: DataFrame,
-               order: Seq[Column],
-               expectedSchema: StructType,
-               expectedRows: Seq[Row],
-               expectedParallelism: Option[Int],
-               postProcess: DataFrame => DataFrame = identity): Unit = {
+  def assertDf(
+      actual: DataFrame,
+      order: Seq[Column],
+      expectedSchema: StructType,
+      expectedRows: Seq[Row],
+      expectedParallelism: Option[Int],
+      postProcess: DataFrame => DataFrame = identity
+  ): Unit = {
     assert(actual.schema === expectedSchema)
 
     if (expectedParallelism.isDefined) {
@@ -56,7 +58,10 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
     val replaced =
       actual
         .orderBy(order: _*)
-        .withColumn("filename", regexp_replace(regexp_replace($"filename", ".*/test.parquet/", ""), ".*/nested.parquet", "nested.parquet"))
+        .withColumn(
+          "filename",
+          regexp_replace(regexp_replace($"filename", ".*/test.parquet/", ""), ".*/nested.parquet", "nested.parquet")
+        )
         .when(actual.columns.contains("schema"))
         .call(_.withColumn("schema", regexp_replace($"schema", "\n", "\\\\n")))
         .call(postProcess)
@@ -81,20 +86,22 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
           .either(_.parquetMetadata(parallelism.get, testFile))
           .or(_.parquetMetadata(testFile)),
         Seq($"filename"),
-        StructType(Seq(
-          StructField("filename", StringType, nullable = true),
-          StructField("blocks", IntegerType, nullable = false),
-          StructField("compressedBytes", LongType, nullable = false),
-          StructField("uncompressedBytes", LongType, nullable = false),
-          StructField("rows", LongType, nullable = false),
-          StructField("columns", IntegerType, nullable = false),
-          StructField("values", LongType, nullable = false),
-          StructField("nulls", LongType, nullable = true),
-          StructField("createdBy", StringType, nullable = true),
-          StructField("schema", StringType, nullable = true),
-          StructField("encryption", StringType, nullable = true),
-          StructField("keyValues", MapType(StringType, StringType, valueContainsNull = true), nullable = true),
-        )),
+        StructType(
+          Seq(
+            StructField("filename", StringType, nullable = true),
+            StructField("blocks", IntegerType, nullable = false),
+            StructField("compressedBytes", LongType, nullable = false),
+            StructField("uncompressedBytes", LongType, nullable = false),
+            StructField("rows", LongType, nullable = false),
+            StructField("columns", IntegerType, nullable = false),
+            StructField("values", LongType, nullable = false),
+            StructField("nulls", LongType, nullable = true),
+            StructField("createdBy", StringType, nullable = true),
+            StructField("schema", StringType, nullable = true),
+            StructField("encryption", StringType, nullable = true),
+            StructField("keyValues", MapType(StringType, StringType, valueContainsNull = true), nullable = true),
+          )
+        ),
         Seq(
           Row("file1.parquet", 1, 1268, 1652, 100, 2, 200, 0, createdBy, schema, UNENCRYPTED, keyValues),
           Row("file2.parquet", 2, 2539, 3302, 200, 2, 400, 0, createdBy, schema, UNENCRYPTED, keyValues),
@@ -116,21 +123,23 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
           .either(_.parquetSchema(parallelism.get, nestedFile))
           .or(_.parquetSchema(nestedFile)),
         Seq($"filename", $"columnPath"),
-        StructType(Seq(
-          StructField("filename", StringType, nullable = true),
-          StructField("columnName", StringType, nullable = true),
-          StructField("columnPath", ArrayType(StringType, containsNull = true), nullable = true),
-          StructField("repetition", StringType, nullable = true),
-          StructField("type", StringType, nullable = true),
-          StructField("length", IntegerType, nullable = true),
-          StructField("originalType", StringType, nullable = true),
-          StructField("logicalType", StringType, nullable = true),
-          StructField("isPrimitive", BooleanType, nullable = false),
-          StructField("primitiveType", StringType, nullable = true),
-          StructField("primitiveOrder", StringType, nullable = true),
-          StructField("maxDefinitionLevel", IntegerType, nullable = false),
-          StructField("maxRepetitionLevel", IntegerType, nullable = false),
-        )),
+        StructType(
+          Seq(
+            StructField("filename", StringType, nullable = true),
+            StructField("columnName", StringType, nullable = true),
+            StructField("columnPath", ArrayType(StringType, containsNull = true), nullable = true),
+            StructField("repetition", StringType, nullable = true),
+            StructField("type", StringType, nullable = true),
+            StructField("length", IntegerType, nullable = true),
+            StructField("originalType", StringType, nullable = true),
+            StructField("logicalType", StringType, nullable = true),
+            StructField("isPrimitive", BooleanType, nullable = false),
+            StructField("primitiveType", StringType, nullable = true),
+            StructField("primitiveOrder", StringType, nullable = true),
+            StructField("maxDefinitionLevel", IntegerType, nullable = false),
+            StructField("maxRepetitionLevel", IntegerType, nullable = false),
+          )
+        ),
         // format: off
         Seq(
           Row("nested.parquet", "a", Seq("a"), "REQUIRED", "INT64", 0, null, null, true, "INT64", "TYPE_DEFINED_ORDER", 0, 0),
@@ -153,17 +162,19 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
           .either(_.parquetBlocks(parallelism.get, testFile))
           .or(_.parquetBlocks(testFile)),
         Seq($"filename", $"block"),
-        StructType(Seq(
-          StructField("filename", StringType, nullable = true),
-          StructField("block", IntegerType, nullable = false),
-          StructField("blockStart", LongType, nullable = false),
-          StructField("compressedBytes", LongType, nullable = false),
-          StructField("uncompressedBytes", LongType, nullable = false),
-          StructField("rows", LongType, nullable = false),
-          StructField("columns", IntegerType, nullable = false),
-          StructField("values", LongType, nullable = false),
-          StructField("nulls", LongType, nullable = true),
-        )),
+        StructType(
+          Seq(
+            StructField("filename", StringType, nullable = true),
+            StructField("block", IntegerType, nullable = false),
+            StructField("blockStart", LongType, nullable = false),
+            StructField("compressedBytes", LongType, nullable = false),
+            StructField("uncompressedBytes", LongType, nullable = false),
+            StructField("rows", LongType, nullable = false),
+            StructField("columns", IntegerType, nullable = false),
+            StructField("values", LongType, nullable = false),
+            StructField("nulls", LongType, nullable = true),
+          )
+        ),
         Seq(
           Row("file1.parquet", 1, 4, 1268, 1652, 100, 2, 200, 0),
           Row("file2.parquet", 1, 4, 1269, 1651, 100, 2, 200, 0),
@@ -182,21 +193,23 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
           .either(_.parquetBlockColumns(parallelism.get, testFile))
           .or(_.parquetBlockColumns(testFile)),
         Seq($"filename", $"block", $"column"),
-        StructType(Seq(
-          StructField("filename", StringType, nullable = true),
-          StructField("block", IntegerType, nullable = false),
-          StructField("column", ArrayType(StringType), nullable = true),
-          StructField("codec", StringType, nullable = true),
-          StructField("type", StringType, nullable = true),
-          StructField("encodings", ArrayType(StringType), nullable = true),
-          StructField("minValue", StringType, nullable = true),
-          StructField("maxValue", StringType, nullable = true),
-          StructField("columnStart", LongType, nullable = false),
-          StructField("compressedBytes", LongType, nullable = false),
-          StructField("uncompressedBytes", LongType, nullable = false),
-          StructField("values", LongType, nullable = false),
-          StructField("nulls", LongType, nullable = true),
-        )),
+        StructType(
+          Seq(
+            StructField("filename", StringType, nullable = true),
+            StructField("block", IntegerType, nullable = false),
+            StructField("column", ArrayType(StringType), nullable = true),
+            StructField("codec", StringType, nullable = true),
+            StructField("type", StringType, nullable = true),
+            StructField("encodings", ArrayType(StringType), nullable = true),
+            StructField("minValue", StringType, nullable = true),
+            StructField("maxValue", StringType, nullable = true),
+            StructField("columnStart", LongType, nullable = false),
+            StructField("compressedBytes", LongType, nullable = false),
+            StructField("uncompressedBytes", LongType, nullable = false),
+            StructField("values", LongType, nullable = false),
+            StructField("nulls", LongType, nullable = true),
+          )
+        ),
         // format: off
         Seq(
           Row("file1.parquet", 1, "[id]", "SNAPPY", "required int64 id", "[BIT_PACKED, PLAIN]", "0", "99", 4, 437, 826, 100, 0),
@@ -208,9 +221,10 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
         ),
         // format: on
         parallelism,
-        (df: DataFrame) => df
-          .withColumn("column", $"column".cast(StringType))
-          .withColumn("encodings", $"encodings".cast(StringType))
+        (df: DataFrame) =>
+          df
+            .withColumn("column", $"column".cast(StringType))
+            .withColumn("encodings", $"encodings".cast(StringType))
       )
     }
   }
@@ -230,7 +244,14 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
             .join(rows, Seq("partition"), "left")
             .select($"partition", $"start", $"end", $"length", $"rows", $"actual_rows", $"filename")
 
-          if (partitions.where($"rows" =!= $"actual_rows" || ($"rows" =!= 0 || $"actual_rows" =!= 0) && $"length" =!= partitionSize).head(1).nonEmpty) {
+          if (
+            partitions
+              .where(
+                $"rows" =!= $"actual_rows" || ($"rows" =!= 0 || $"actual_rows" =!= 0) && $"length" =!= partitionSize
+              )
+              .head(1)
+              .nonEmpty
+          ) {
             partitions
               .orderBy($"start")
               .where($"rows" =!= 0 || $"actual_rows" =!= 0)
@@ -276,8 +297,11 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
     ),
   ).foreach { case (partitionSize, expectedRows) =>
     parallelisms.foreach { parallelism =>
-      test(s"read parquet partitions (${partitionSize.getOrElse("default")} bytes) (parallelism=${parallelism.map(_.toString).getOrElse("None")})") {
-        withSQLConf(partitionSize.map(size => Seq("spark.sql.files.maxPartitionBytes" -> size.toString)).getOrElse(Seq.empty): _*) {
+      test(s"read parquet partitions (${partitionSize
+          .getOrElse("default")} bytes) (parallelism=${parallelism.map(_.toString).getOrElse("None")})") {
+        withSQLConf(
+          partitionSize.map(size => Seq("spark.sql.files.maxPartitionBytes" -> size.toString)).getOrElse(Seq.empty): _*
+        ) {
           val expected = expectedRows.map {
             case row if SparkMajorVersion > 3 || SparkMinorVersion >= 3 => row
             case row => Row(unapplySeq(row).get.updated(11, null): _*)
@@ -296,21 +320,23 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
             assert(Seq(0, 0) === partitions)
           }
 
-          val schema = StructType(Seq(
-            StructField("partition", IntegerType, nullable = false),
-            StructField("start", LongType, nullable = false),
-            StructField("end", LongType, nullable = false),
-            StructField("length", LongType, nullable = false),
-            StructField("blocks", IntegerType, nullable = false),
-            StructField("compressedBytes", LongType, nullable = false),
-            StructField("uncompressedBytes", LongType, nullable = false),
-            StructField("rows", LongType, nullable = false),
-            StructField("columns", IntegerType, nullable = false),
-            StructField("values", LongType, nullable = false),
-            StructField("nulls", LongType, nullable = true),
-            StructField("filename", StringType, nullable = true),
-            StructField("fileLength", LongType, nullable = true),
-          ))
+          val schema = StructType(
+            Seq(
+              StructField("partition", IntegerType, nullable = false),
+              StructField("start", LongType, nullable = false),
+              StructField("end", LongType, nullable = false),
+              StructField("length", LongType, nullable = false),
+              StructField("blocks", IntegerType, nullable = false),
+              StructField("compressedBytes", LongType, nullable = false),
+              StructField("uncompressedBytes", LongType, nullable = false),
+              StructField("rows", LongType, nullable = false),
+              StructField("columns", IntegerType, nullable = false),
+              StructField("values", LongType, nullable = false),
+              StructField("nulls", LongType, nullable = true),
+              StructField("filename", StringType, nullable = true),
+              StructField("fileLength", LongType, nullable = true),
+            )
+          )
 
           assertDf(actual, Seq($"filename", $"start"), schema, expected, parallelism, df => df.drop("partition"))
           actual.unpersist()

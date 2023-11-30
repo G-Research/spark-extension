@@ -50,7 +50,7 @@ runs:
   - name: Setup JDK 1.8
     uses: actions/setup-java@v4
     with:
-      java-version: '8'
+      java-version: '11'
       distribution: 'zulu'
 
   - name: Cache Pip packages

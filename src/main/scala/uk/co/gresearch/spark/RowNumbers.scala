@@ -21,10 +21,12 @@ import org.apache.spark.sql.{Column, DataFrame, Dataset, functions}
 import org.apache.spark.sql.functions.{coalesce, col, lit, max, monotonically_increasing_id, spark_partition_id, sum}
 import org.apache.spark.storage.StorageLevel
 
-case class RowNumbersFunc(rowNumberColumnName: String = "row_number",
-                          storageLevel: StorageLevel = StorageLevel.MEMORY_AND_DISK,
-                          unpersistHandle: UnpersistHandle = UnpersistHandle.Noop,
-                          orderColumns: Seq[Column] = Seq.empty) {
+case class RowNumbersFunc(
+    rowNumberColumnName: String = "row_number",
+    storageLevel: StorageLevel = StorageLevel.MEMORY_AND_DISK,
+    unpersistHandle: UnpersistHandle = UnpersistHandle.Noop,
+    orderColumns: Seq[Column] = Seq.empty
+) {
 
   def withRowNumberColumnName(rowNumberColumnName: String): RowNumbersFunc =
     this.copy(rowNumberColumnName = rowNumberColumnName)
@@ -39,7 +41,11 @@ case class RowNumbersFunc(rowNumberColumnName: String = "row_number",
     this.copy(orderColumns = orderColumns)
 
   def of[D](df: Dataset[D]): DataFrame = {
-    if (storageLevel.equals(StorageLevel.NONE) && (SparkMajorVersion > 3 || SparkMajorVersion == 3 && SparkMinorVersion >= 5)) {
+    if (
+      storageLevel.equals(
+        StorageLevel.NONE
+      ) && (SparkMajorVersion > 3 || SparkMajorVersion == 3 && SparkMinorVersion >= 5)
+    ) {
       throw new IllegalArgumentException(s"Storage level $storageLevel not supported with Spark 3.5.0 and above.")
     }
 
@@ -53,7 +59,9 @@ case class RowNumbersFunc(rowNumberColumnName: String = "row_number",
     val partitionOffsetColumnName = prefix + "partition_offset"
 
     // if no order is given, we preserve existing order
-    val dfOrdered = if (orderColumns.isEmpty) df.withColumn(monoIdColumnName, monotonically_increasing_id()) else df.orderBy(orderColumns: _*)
+    val dfOrdered =
+      if (orderColumns.isEmpty) df.withColumn(monoIdColumnName, monotonically_increasing_id())
+      else df.orderBy(orderColumns: _*)
     val order = if (orderColumns.isEmpty) Seq(col(monoIdColumnName)) else orderColumns
 
     // add partition ids and local row numbers
@@ -66,17 +74,22 @@ case class RowNumbersFunc(rowNumberColumnName: String = "row_number",
       .withColumn(localRowNumberColumnName, functions.row_number().over(localRowNumberWindow))
 
     // compute row offset for the partitions
-    val cumRowNumbersWindow = Window.orderBy(partitionIdColumnName)
+    val cumRowNumbersWindow = Window
+      .orderBy(partitionIdColumnName)
       .rowsBetween(Window.unboundedPreceding, Window.currentRow)
     val partitionOffsets = dfWithLocalRowNumbers
       .groupBy(partitionIdColumnName)
       .agg(max(localRowNumberColumnName).alias(maxLocalRowNumberColumnName))
       .withColumn(cumRowNumbersColumnName, sum(maxLocalRowNumberColumnName).over(cumRowNumbersWindow))
-      .select(col(partitionIdColumnName) + 1 as partitionIdColumnName, col(cumRowNumbersColumnName).as(partitionOffsetColumnName))
+      .select(
+        col(partitionIdColumnName) + 1 as partitionIdColumnName,
+        col(cumRowNumbersColumnName).as(partitionOffsetColumnName)
+      )
 
     // compute global row number by adding local row number with partition offset
     val partitionOffsetColumn = coalesce(col(partitionOffsetColumnName), lit(0))
-    dfWithLocalRowNumbers.join(partitionOffsets, Seq(partitionIdColumnName), "left")
+    dfWithLocalRowNumbers
+      .join(partitionOffsets, Seq(partitionIdColumnName), "left")
       .withColumn(rowNumberColumnName, col(localRowNumberColumnName) + partitionOffsetColumn)
       .drop(monoIdColumnName, partitionIdColumnName, localRowNumberColumnName, partitionOffsetColumnName)
   }

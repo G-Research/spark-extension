@@ -23,6 +23,7 @@ import uk.co.gresearch.spark.diff.comparator._
 import java.time.Duration
 
 object DiffComparators {
+
   /**
    * The default comparator used in [[DiffOptions.default.defaultComparator]].
    */
@@ -34,17 +35,17 @@ object DiffComparators {
   def nullSafeEqual(): DiffComparator = NullSafeEqualDiffComparator
 
   /**
-   * Return a comparator that uses the given [[math.Equiv]] to compare values of type [[T]].
-   * The implicit [[Encoder]] of type [[T]] determines the input data type of the comparator.
-   * Only columns of that type can be compared.
+   * Return a comparator that uses the given [[math.Equiv]] to compare values of type [[T]]. The implicit [[Encoder]] of
+   * type [[T]] determines the input data type of the comparator. Only columns of that type can be compared.
    */
-  def equiv[T : Encoder](equiv: math.Equiv[T]): EquivDiffComparator[T] = EquivDiffComparator(equiv)
+  def equiv[T: Encoder](equiv: math.Equiv[T]): EquivDiffComparator[T] = EquivDiffComparator(equiv)
 
   /**
-   * Return a comparator that uses the given [[math.Equiv]] to compare values of type [[T]].
-   * Only columns of the given data type `inputType` can be compared.
+   * Return a comparator that uses the given [[math.Equiv]] to compare values of type [[T]]. Only columns of the given
+   * data type `inputType` can be compared.
    */
-  def equiv[T](equiv: math.Equiv[T], inputType: DataType): EquivDiffComparator[T] = EquivDiffComparator(equiv, inputType)
+  def equiv[T](equiv: math.Equiv[T], inputType: DataType): EquivDiffComparator[T] =
+    EquivDiffComparator(equiv, inputType)
 
   /**
    * Return a comparator that uses the given [[math.Equiv]] to compare values of any type.
@@ -52,17 +53,15 @@ object DiffComparators {
   def equiv(equiv: math.Equiv[Any]): EquivDiffComparator[Any] = EquivDiffComparator(equiv)
 
   /**
-   * This comparator considers values equal when they are less than `epsilon` apart.
-   * It can be configured to use `epsilon` as an absolute (`.asAbsolute()`) threshold,
-   * or as relative (`.asRelative()`) to the larger value. Further, the threshold itself can be
-   * considered equal (`.asInclusive()`) or not equal (`.asExclusive()`):
+   * This comparator considers values equal when they are less than `epsilon` apart. It can be configured to use
+   * `epsilon` as an absolute (`.asAbsolute()`) threshold, or as relative (`.asRelative()`) to the larger value.
+   * Further, the threshold itself can be considered equal (`.asInclusive()`) or not equal (`.asExclusive()`):
    *
-   * <ul>
-   *   <li>`DiffComparator.epsilon(epsilon).asAbsolute().asInclusive()`: `abs(left - right) ≤ epsilon`</li>
-   *   <li>`DiffComparator.epsilon(epsilon).asAbsolute().asExclusive()`: `abs(left - right) < epsilon`</li>
-   *   <li>`DiffComparator.epsilon(epsilon).asRelative().asInclusive()`: `abs(left - right) ≤ epsilon * max(abs(left), abs(right))`</li>
-   *   <li>`DiffComparator.epsilon(epsilon).asRelative().asExclusive()`: `abs(left - right) < epsilon * max(abs(left), abs(right))`</li>
-   * </ul>
+   * <ul> <li>`DiffComparator.epsilon(epsilon).asAbsolute().asInclusive()`: `abs(left - right) ≤ epsilon`</li>
+   * <li>`DiffComparator.epsilon(epsilon).asAbsolute().asExclusive()`: `abs(left - right) < epsilon`</li>
+   * <li>`DiffComparator.epsilon(epsilon).asRelative().asInclusive()`: `abs(left - right) ≤ epsilon * max(abs(left),
+   * abs(right))`</li> <li>`DiffComparator.epsilon(epsilon).asRelative().asExclusive()`: `abs(left - right) < epsilon *
+   * max(abs(left), abs(right))`</li> </ul>
    *
    * Requires compared column types to implement `-`, `*`, `<`, `==`, and `abs`.
    */
@@ -71,8 +70,9 @@ object DiffComparators {
   /**
    * A comparator for string values.
    *
-   * With `whitespaceAgnostic` set `true`, differences in white spaces are ignored. This ignores leading and trailing whitespaces as well.
-   * With `whitespaceAgnostic` set `false`, this is equal to the default string comparison (see [[default()]]).
+   * With `whitespaceAgnostic` set `true`, differences in white spaces are ignored. This ignores leading and trailing
+   * whitespaces as well. With `whitespaceAgnostic` set `false`, this is equal to the default string comparison (see
+   * [[default()]]).
    */
   def string(whitespaceAgnostic: Boolean = true): StringDiffComparator =
     if (whitespaceAgnostic) {
@@ -85,11 +85,9 @@ object DiffComparators {
    * This comparator considers two `DateType` or `TimestampType` values equal when they are at most `duration` apart.
    * Duration is an instance of `java.time.Duration`.
    *
-   * The comparator can be configured to consider `duration` as equal (`.asInclusive()`) or not equal (`.asExclusive()`):
-   * <ul>
-   *   <li>`DiffComparator.duration(duration).asInclusive()`: `left - right ≤ duration`</li>
-   *   <li>`DiffComparator.duration(duration).asExclusive()`: `left - right < duration`</li>
-   * </lu>
+   * The comparator can be configured to consider `duration` as equal (`.asInclusive()`) or not equal
+   * (`.asExclusive()`): <ul> <li>`DiffComparator.duration(duration).asInclusive()`: `left - right ≤ duration`</li>
+   * <li>`DiffComparator.duration(duration).asExclusive()`: `left - right < duration`</li> </lu>
    */
   def duration(duration: Duration): DurationDiffComparator = DurationDiffComparator(duration)
 
@@ -103,7 +101,9 @@ object DiffComparators {
   /**
    * This comparator compares two `Map[K,V]` values. They are equal when they match in all their keys and values.
    *
-   * @param keyOrderSensitive comparator compares key order if true
+   * @param keyOrderSensitive
+   *   comparator compares key order if true
    */
-  def map[K: Encoder, V: Encoder](keyOrderSensitive: Boolean): DiffComparator = MapDiffComparator[K, V](keyOrderSensitive)
+  def map[K: Encoder, V: Encoder](keyOrderSensitive: Boolean): DiffComparator =
+    MapDiffComparator[K, V](keyOrderSensitive)
 }

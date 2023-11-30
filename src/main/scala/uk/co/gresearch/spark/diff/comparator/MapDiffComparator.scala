@@ -27,7 +27,8 @@ case class MapDiffComparator[K, V](private val comparator: EquivDiffComparator[U
   override def equiv(left: Column, right: Column): Column = comparator.equiv(left, right)
 }
 
-private case class MapDiffEquiv[K: ClassTag, V](keyType: DataType, valueType: DataType, keyOrderSensitive: Boolean) extends math.Equiv[UnsafeMapData] {
+private case class MapDiffEquiv[K: ClassTag, V](keyType: DataType, valueType: DataType, keyOrderSensitive: Boolean)
+    extends math.Equiv[UnsafeMapData] {
   override def equiv(left: UnsafeMapData, right: UnsafeMapData): Boolean = {
 
     val leftKeys: Array[K] = left.keyArray().toArray(keyType)
@@ -42,15 +43,20 @@ private case class MapDiffEquiv[K: ClassTag, V](keyType: DataType, valueType: Da
     // can only be evaluated when right has same keys as left
     lazy val valuesAreEqual = leftKeysIndices
       .map { case (key, index) => index -> rightKeysIndices(key) }
-      .map { case (leftIndex, rightIndex) => (leftIndex, rightIndex, leftValues.isNullAt(leftIndex), rightValues.isNullAt(rightIndex)) }
+      .map { case (leftIndex, rightIndex) =>
+        (leftIndex, rightIndex, leftValues.isNullAt(leftIndex), rightValues.isNullAt(rightIndex))
+      }
       .map { case (leftIndex, rightIndex, leftIsNull, rightIsNull) =>
         leftIsNull && rightIsNull ||
-          !leftIsNull && !rightIsNull && leftValues.get(leftIndex, valueType).equals(rightValues.get(rightIndex, valueType))
+        !leftIsNull && !rightIsNull && leftValues
+          .get(leftIndex, valueType)
+          .equals(rightValues.get(rightIndex, valueType))
       }
 
     left.numElements() == right.numElements() &&
-      (keyOrderSensitive && leftKeys.sameElements(rightKeys) || !keyOrderSensitive && leftKeys.toSet.diff(rightKeys.toSet).isEmpty) &&
-      valuesAreEqual.forall(identity)
+    (keyOrderSensitive && leftKeys
+      .sameElements(rightKeys) || !keyOrderSensitive && leftKeys.toSet.diff(rightKeys.toSet).isEmpty) &&
+    valuesAreEqual.forall(identity)
   }
 }
 

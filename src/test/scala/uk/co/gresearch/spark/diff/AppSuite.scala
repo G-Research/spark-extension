@@ -22,7 +22,6 @@ import uk.co.gresearch.spark.SparkTestSession
 
 import java.io.File
 
-
 class AppSuite extends AnyFunSuite with SparkTestSession {
 
   import spark.implicits._
@@ -38,15 +37,21 @@ class AppSuite extends AnyFunSuite with SparkTestSession {
 
       // launch app
       val jsonPath = new File(path, "diff.json").getAbsolutePath
-      App.main(Array(
-        "--left-format", "csv",
-        "--left-schema", "id int, value string",
-        "--output-format", "json",
-        "--id", "id",
-        leftPath,
-        "right_parquet",
-        jsonPath
-      ))
+      App.main(
+        Array(
+          "--left-format",
+          "csv",
+          "--left-schema",
+          "id int, value string",
+          "--output-format",
+          "json",
+          "--id",
+          "id",
+          leftPath,
+          "right_parquet",
+          jsonPath
+        )
+      )
 
       // assert written diff
       val actual = spark.read.json(jsonPath)
@@ -67,14 +72,18 @@ class AppSuite extends AnyFunSuite with SparkTestSession {
 
         // launch app
         val outputPath = new File(path, "diff.parquet").getAbsolutePath
-        App.main(Array(
-          "--format", "parquet",
-          "--id", "id",
-        ) ++ filter.toSeq.flatMap(f => Array("--filter", f)) ++ Array(
-          leftPath,
-          rightPath,
-          outputPath
-        ))
+        App.main(
+          Array(
+            "--format",
+            "parquet",
+            "--id",
+            "id",
+          ) ++ filter.toSeq.flatMap(f => Array("--filter", f)) ++ Array(
+            leftPath,
+            rightPath,
+            outputPath
+          )
+        )
 
         // assert written diff
         val actual = spark.read.parquet(outputPath).orderBy($"id").collect()
@@ -98,14 +107,19 @@ class AppSuite extends AnyFunSuite with SparkTestSession {
       // launch app
       val outputPath = new File(path, "diff.parquet").getAbsolutePath
       assertThrows[RuntimeException](
-        App.main(Array(
-          "--format", "parquet",
-          "--id", "id",
-          "--filter", "A",
-          leftPath,
-          rightPath,
-          outputPath
-        ))
+        App.main(
+          Array(
+            "--format",
+            "parquet",
+            "--id",
+            "id",
+            "--filter",
+            "A",
+            leftPath,
+            rightPath,
+            outputPath
+          )
+        )
       )
     }
   }
@@ -122,14 +136,18 @@ class AppSuite extends AnyFunSuite with SparkTestSession {
 
       // launch app
       val outputPath = new File(path, "diff.parquet").getAbsolutePath
-      App.main(Array(
-        "--format", "parquet",
-        "--statistics",
-        "--id", "id",
-        leftPath,
-        rightPath,
-        outputPath
-      ))
+      App.main(
+        Array(
+          "--format",
+          "parquet",
+          "--statistics",
+          "--id",
+          "id",
+          leftPath,
+          rightPath,
+          outputPath
+        )
+      )
 
       // assert written diff
       val actual = spark.read.parquet(outputPath).as[(String, Long)].collect().toMap

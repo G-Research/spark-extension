@@ -23,31 +23,28 @@ import uk.co.gresearch._
 
 object App {
   // define available options
-  case class Options(master: Option[String] = None,
-                     appName: Option[String] = None,
-                     hive: Boolean = false,
-
-                     leftPath: Option[String] = None,
-                     rightPath: Option[String] = None,
-                     outputPath: Option[String] = None,
-
-                     leftFormat: Option[String] = None,
-                     rightFormat: Option[String] = None,
-                     outputFormat: Option[String] = None,
-
-                     leftSchema: Option[String] = None,
-                     rightSchema: Option[String] = None,
-
-                     leftOptions: Map[String, String] = Map.empty,
-                     rightOptions: Map[String, String] = Map.empty,
-                     outputOptions: Map[String, String] = Map.empty,
-
-                     ids: Seq[String] = Seq.empty,
-                     ignore: Seq[String] = Seq.empty,
-                     saveMode: SaveMode = SaveMode.ErrorIfExists,
-                     filter: Set[String] = Set.empty,
-                     statistics: Boolean = false,
-                     diffOptions: DiffOptions = DiffOptions.default)
+  case class Options(
+      master: Option[String] = None,
+      appName: Option[String] = None,
+      hive: Boolean = false,
+      leftPath: Option[String] = None,
+      rightPath: Option[String] = None,
+      outputPath: Option[String] = None,
+      leftFormat: Option[String] = None,
+      rightFormat: Option[String] = None,
+      outputFormat: Option[String] = None,
+      leftSchema: Option[String] = None,
+      rightSchema: Option[String] = None,
+      leftOptions: Map[String, String] = Map.empty,
+      rightOptions: Map[String, String] = Map.empty,
+      outputOptions: Map[String, String] = Map.empty,
+      ids: Seq[String] = Seq.empty,
+      ignore: Seq[String] = Seq.empty,
+      saveMode: SaveMode = SaveMode.ErrorIfExists,
+      filter: Set[String] = Set.empty,
+      statistics: Boolean = false,
+      diffOptions: DiffOptions = DiffOptions.default
+  )
 
   // read options from args
   val programName = s"spark-extension_${spark.BuildScalaCompatVersionString}-${spark.VersionString}.jar"
@@ -105,11 +102,13 @@ object App {
     note("Input and output")
     opt[String]('f', "format")
       .valueName("<format>")
-      .action((x, c) => c.copy(
-        leftFormat = c.leftFormat.orElse(Some(x)),
-        rightFormat = c.rightFormat.orElse(Some(x)),
-        outputFormat = c.outputFormat.orElse(Some(x))
-      ))
+      .action((x, c) =>
+        c.copy(
+          leftFormat = c.leftFormat.orElse(Some(x)),
+          rightFormat = c.rightFormat.orElse(Some(x)),
+          outputFormat = c.outputFormat.orElse(Some(x))
+        )
+      )
       .text("input and output file format (csv, json, parquet, ...)")
     opt[String]("left-format")
       .valueName("<format>")
@@ -127,10 +126,12 @@ object App {
     note("")
     opt[String]('s', "schema")
       .valueName("<schema>")
-      .action((x, c) => c.copy(
-        leftSchema = c.leftSchema.orElse(Some(x)),
-        rightSchema = c.rightSchema.orElse(Some(x))
-      ))
+      .action((x, c) =>
+        c.copy(
+          leftSchema = c.leftSchema.orElse(Some(x)),
+          rightSchema = c.rightSchema.orElse(Some(x))
+        )
+      )
       .text("input schema")
     opt[String]("left-schema")
       .valueName("<schema>")
@@ -182,7 +183,9 @@ object App {
       .optional()
       .valueName("<filter>")
       .action((x, c) => c.copy(filter = c.filter + x))
-      .text(s"Filters for rows with these diff actions, with default diffing options use 'N', 'I', 'D', or 'C' (see 'Diffing options' section)")
+      .text(
+        s"Filters for rows with these diff actions, with default diffing options use 'N', 'I', 'D', or 'C' (see 'Diffing options' section)"
+      )
     opt[Unit]("statistics")
       .optional()
       .action((_, c) => c.copy(statistics = true))
@@ -245,45 +248,83 @@ object App {
     help("help").text("prints this usage text")
   }
 
-  def read(spark: SparkSession, format: Option[String], path: String, schema: Option[String], options: Map[String, String]): DataFrame =
+  def read(
+      spark: SparkSession,
+      format: Option[String],
+      path: String,
+      schema: Option[String],
+      options: Map[String, String]
+  ): DataFrame =
     spark.read
-      .when(format.isDefined).call(_.format(format.get))
+      .when(format.isDefined)
+      .call(_.format(format.get))
       .options(options)
-      .when(schema.isDefined).call(_.schema(schema.get))
-      .when(format.isDefined).either(_.load(path)).or(_.table(path))
+      .when(schema.isDefined)
+      .call(_.schema(schema.get))
+      .when(format.isDefined)
+      .either(_.load(path))
+      .or(_.table(path))
 
-  def write(df: DataFrame, format: Option[String], path: String, options: Map[String, String], saveMode: SaveMode, filter: Set[String], saveStats: Boolean, diffOptions: DiffOptions): Unit =
-    df.when(filter.nonEmpty).call(_.where(col(diffOptions.diffColumn).isInCollection(filter)))
-      .when(saveStats).call(_.groupBy(diffOptions.diffColumn).count.orderBy(diffOptions.diffColumn))
+  def write(
+      df: DataFrame,
+      format: Option[String],
+      path: String,
+      options: Map[String, String],
+      saveMode: SaveMode,
+      filter: Set[String],
+      saveStats: Boolean,
+      diffOptions: DiffOptions
+  ): Unit =
+    df.when(filter.nonEmpty)
+      .call(_.where(col(diffOptions.diffColumn).isInCollection(filter)))
+      .when(saveStats)
+      .call(_.groupBy(diffOptions.diffColumn).count.orderBy(diffOptions.diffColumn))
       .write
-      .when(format.isDefined).call(_.format(format.get))
+      .when(format.isDefined)
+      .call(_.format(format.get))
       .options(options)
       .mode(saveMode)
-      .when(format.isDefined).either(_.save(path)).or(_.saveAsTable(path))
+      .when(format.isDefined)
+      .either(_.save(path))
+      .or(_.saveAsTable(path))
 
   def main(args: Array[String]): Unit = {
     // parse options
     val options = parser.parse(args, Options()) match {
       case Some(options) => options
-      case None => sys.exit(1)
+      case None          => sys.exit(1)
     }
     val unknownFilters = options.filter.filter(filter => !options.diffOptions.diffValues.contains(filter))
     if (unknownFilters.nonEmpty) {
-      throw new RuntimeException(s"Filter ${unknownFilters.mkString("'", "', '", "'")} not allowed, " +
-        s"these are the configured diff values: ${options.diffOptions.diffValues.mkString("'", "', '", "'")}")
+      throw new RuntimeException(
+        s"Filter ${unknownFilters.mkString("'", "', '", "'")} not allowed, " +
+          s"these are the configured diff values: ${options.diffOptions.diffValues.mkString("'", "', '", "'")}"
+      )
     }
 
     // create spark session
-    val spark = SparkSession.builder()
+    val spark = SparkSession
+      .builder()
       .appName(options.appName.get)
-      .when(options.hive).call(_.enableHiveSupport())
-      .when(options.master.isDefined).call(_.master(options.master.get))
+      .when(options.hive)
+      .call(_.enableHiveSupport())
+      .when(options.master.isDefined)
+      .call(_.master(options.master.get))
       .getOrCreate()
 
     // read and write
     val left = read(spark, options.leftFormat, options.leftPath.get, options.leftSchema, options.leftOptions)
     val right = read(spark, options.rightFormat, options.rightPath.get, options.rightSchema, options.rightOptions)
     val diff = left.diff(right, options.diffOptions, options.ids, options.ignore)
-    write(diff, options.outputFormat, options.outputPath.get, options.outputOptions, options.saveMode, options.filter, options.statistics, options.diffOptions)
+    write(
+      diff,
+      options.outputFormat,
+      options.outputPath.get,
+      options.outputOptions,
+      options.saveMode,
+      options.filter,
+      options.statistics,
+      options.diffOptions
+    )
   }
 }

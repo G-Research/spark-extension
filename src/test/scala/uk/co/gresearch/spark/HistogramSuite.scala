@@ -63,34 +63,40 @@ class HistogramSuite extends AnyFunSuite with SparkTestSession {
     Seq(3, 0, 1, 0, 1, 0, 1),
     Seq(4, 0, 0, 1, 0, 0, 0)
   )
-  val expectedSchema: StructType = StructType(Seq(
-    StructField("id", IntegerType, nullable = false),
-    StructField("≤-200", LongType, nullable = true),
-    StructField("≤-100", LongType, nullable = true),
-    StructField("≤0", LongType, nullable = true),
-    StructField("≤100", LongType, nullable = true),
-    StructField("≤200", LongType, nullable = true),
-    StructField(">200", LongType, nullable = true)
-  ))
-  val expectedSchema2: StructType = StructType(Seq(
-    StructField("id", IntegerType, nullable = false),
-    StructField("title", StringType, nullable = true),
-    StructField("≤-200", LongType, nullable = true),
-    StructField("≤-100", LongType, nullable = true),
-    StructField("≤0", LongType, nullable = true),
-    StructField("≤100", LongType, nullable = true),
-    StructField("≤200", LongType, nullable = true),
-    StructField(">200", LongType, nullable = true)
-  ))
-  val expectedDoubleSchema: StructType = StructType(Seq(
-    StructField("id", IntegerType, nullable = false),
-    StructField("≤-200.0", LongType, nullable = true),
-    StructField("≤-100.0", LongType, nullable = true),
-    StructField("≤0.0", LongType, nullable = true),
-    StructField("≤100.0", LongType, nullable = true),
-    StructField("≤200.0", LongType, nullable = true),
-    StructField(">200.0", LongType, nullable = true)
-  ))
+  val expectedSchema: StructType = StructType(
+    Seq(
+      StructField("id", IntegerType, nullable = false),
+      StructField("≤-200", LongType, nullable = true),
+      StructField("≤-100", LongType, nullable = true),
+      StructField("≤0", LongType, nullable = true),
+      StructField("≤100", LongType, nullable = true),
+      StructField("≤200", LongType, nullable = true),
+      StructField(">200", LongType, nullable = true)
+    )
+  )
+  val expectedSchema2: StructType = StructType(
+    Seq(
+      StructField("id", IntegerType, nullable = false),
+      StructField("title", StringType, nullable = true),
+      StructField("≤-200", LongType, nullable = true),
+      StructField("≤-100", LongType, nullable = true),
+      StructField("≤0", LongType, nullable = true),
+      StructField("≤100", LongType, nullable = true),
+      StructField("≤200", LongType, nullable = true),
+      StructField(">200", LongType, nullable = true)
+    )
+  )
+  val expectedDoubleSchema: StructType = StructType(
+    Seq(
+      StructField("id", IntegerType, nullable = false),
+      StructField("≤-200.0", LongType, nullable = true),
+      StructField("≤-100.0", LongType, nullable = true),
+      StructField("≤0.0", LongType, nullable = true),
+      StructField("≤100.0", LongType, nullable = true),
+      StructField("≤200.0", LongType, nullable = true),
+      StructField(">200.0", LongType, nullable = true)
+    )
+  )
 
   test("histogram with no aggregate columns") {
     val histogram = ints.histogram(intThresholds, $"value")
@@ -110,12 +116,14 @@ class HistogramSuite extends AnyFunSuite with SparkTestSession {
     val histogram = ints.histogram(intThresholds, $"value", $"id", $"title")
     val actual = histogram.orderBy($"id").collect().toSeq.map(_.toSeq)
     assert(histogram.schema === expectedSchema2)
-    assert(actual === Seq(
-      Seq(1, "one", 0, 0, 0, 3, 0, 0),
-      Seq(2, "two", 0, 0, 0, 4, 0, 0),
-      Seq(3, "three", 0, 1, 0, 1, 0, 1),
-      Seq(4, "four", 0, 0, 1, 0, 0, 0)
-    ))
+    assert(
+      actual === Seq(
+        Seq(1, "one", 0, 0, 0, 3, 0, 0),
+        Seq(2, "two", 0, 0, 0, 4, 0, 0),
+        Seq(3, "three", 0, 1, 0, 1, 0, 1),
+        Seq(4, "four", 0, 0, 1, 0, 0, 0)
+      )
+    )
   }
 
   test("histogram with int values") {
@@ -156,18 +164,23 @@ class HistogramSuite extends AnyFunSuite with SparkTestSession {
   test("histogram with one threshold") {
     val histogram = ints.histogram(Seq(0), $"value", $"id")
     val actual = histogram.orderBy($"id").collect().toSeq.map(_.toSeq)
-    assert(histogram.schema === StructType(Seq(
-      StructField("id", IntegerType, nullable = false),
-      StructField("≤0", LongType, nullable = true),
-      StructField(">0", LongType, nullable = true)
-    ))
+    assert(
+      histogram.schema === StructType(
+        Seq(
+          StructField("id", IntegerType, nullable = false),
+          StructField("≤0", LongType, nullable = true),
+          StructField(">0", LongType, nullable = true)
+        )
+      )
     )
-    assert(actual === Seq(
-      Seq(1, 0, 3),
-      Seq(2, 0, 4),
-      Seq(3, 1, 2),
-      Seq(4, 1, 0)
-    ))
+    assert(
+      actual === Seq(
+        Seq(1, 0, 3),
+        Seq(2, 0, 4),
+        Seq(3, 1, 2),
+        Seq(4, 1, 0)
+      )
+    )
   }
 
   test("histogram with duplicate thresholds") {

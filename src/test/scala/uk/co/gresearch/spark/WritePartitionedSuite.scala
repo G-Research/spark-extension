@@ -44,7 +44,6 @@ class WritePartitionedSuite extends AnyFunSuite with SparkTestSession {
     Value(4, Date.valueOf("2020-07-01"), "four")
   ).toDS()
 
-
   test("write partitionedBy requires caching with AQE enabled") {
     withSQLConf(SQLConf.ADAPTIVE_EXECUTION_ENABLED.key -> "true") {
       Some(spark.version)
@@ -108,7 +107,9 @@ class WritePartitionedSuite extends AnyFunSuite with SparkTestSession {
   test("write with one partition") {
     withTempPath { dir =>
       withUnpersist() { handle =>
-        values.writePartitionedBy(Seq($"id"), Seq($"date"), partitions = Some(1), unpersistHandle = Some(handle)).csv(dir.getAbsolutePath)
+        values
+          .writePartitionedBy(Seq($"id"), Seq($"date"), partitions = Some(1), unpersistHandle = Some(handle))
+          .csv(dir.getAbsolutePath)
       }
 
       val partitions = dir.list().filter(_.startsWith("id=")).sorted
@@ -123,7 +124,9 @@ class WritePartitionedSuite extends AnyFunSuite with SparkTestSession {
   test("write with partition order") {
     withTempPath { dir =>
       withUnpersist() { handle =>
-        values.writePartitionedBy(Seq($"id"), Seq.empty, Seq($"date"), unpersistHandle = Some(handle)).csv(dir.getAbsolutePath)
+        values
+          .writePartitionedBy(Seq($"id"), Seq.empty, Seq($"date"), unpersistHandle = Some(handle))
+          .csv(dir.getAbsolutePath)
       }
 
       val partitions = dir.list().filter(_.startsWith("id=")).sorted
@@ -134,26 +137,40 @@ class WritePartitionedSuite extends AnyFunSuite with SparkTestSession {
         assert(files.length === 1)
 
         val source = Source.fromFile(new File(file, files(0)))
-        val lines = try source.getLines().toList finally source.close()
+        val lines =
+          try source.getLines().toList
+          finally source.close()
         partition match {
-          case "id=1" => assert(lines === Seq(
-            "2020-07-01,one",
-            "2020-07-02,One",
-            "2020-07-03,ONE",
-            "2020-07-04,one"
-          ))
-          case "id=2" => assert(lines === Seq(
-            "2020-07-01,two",
-            "2020-07-02,Two",
-            "2020-07-03,TWO",
-            "2020-07-04,two"
-          ))
-          case "id=3" => assert(lines === Seq(
-            "2020-07-01,three"
-          ))
-          case "id=4" => assert(lines === Seq(
-            "2020-07-01,four"
-          ))
+          case "id=1" =>
+            assert(
+              lines === Seq(
+                "2020-07-01,one",
+                "2020-07-02,One",
+                "2020-07-03,ONE",
+                "2020-07-04,one"
+              )
+            )
+          case "id=2" =>
+            assert(
+              lines === Seq(
+                "2020-07-01,two",
+                "2020-07-02,Two",
+                "2020-07-03,TWO",
+                "2020-07-04,two"
+              )
+            )
+          case "id=3" =>
+            assert(
+              lines === Seq(
+                "2020-07-01,three"
+              )
+            )
+          case "id=4" =>
+            assert(
+              lines === Seq(
+                "2020-07-01,four"
+              )
+            )
         }
       }
     }
@@ -162,7 +179,9 @@ class WritePartitionedSuite extends AnyFunSuite with SparkTestSession {
   test("write with desc partition order") {
     withTempPath { dir =>
       withUnpersist() { handle =>
-        values.writePartitionedBy(Seq($"id"), Seq.empty, Seq($"date".desc), unpersistHandle = Some(handle)).csv(dir.getAbsolutePath)
+        values
+          .writePartitionedBy(Seq($"id"), Seq.empty, Seq($"date".desc), unpersistHandle = Some(handle))
+          .csv(dir.getAbsolutePath)
       }
 
       val partitions = dir.list().filter(_.startsWith("id=")).sorted
@@ -173,26 +192,40 @@ class WritePartitionedSuite extends AnyFunSuite with SparkTestSession {
         assert(files.length === 1)
 
         val source = Source.fromFile(new File(file, files(0)))
-        val lines = try source.getLines().toList finally source.close()
+        val lines =
+          try source.getLines().toList
+          finally source.close()
         partition match {
-          case "id=1" => assert(lines === Seq(
-            "2020-07-04,one",
-            "2020-07-03,ONE",
-            "2020-07-02,One",
-            "2020-07-01,one"
-          ))
-          case "id=2" => assert(lines === Seq(
-            "2020-07-04,two",
-            "2020-07-03,TWO",
-            "2020-07-02,Two",
-            "2020-07-01,two"
-          ))
-          case "id=3" => assert(lines === Seq(
-            "2020-07-01,three"
-          ))
-          case "id=4" => assert(lines === Seq(
-            "2020-07-01,four"
-          ))
+          case "id=1" =>
+            assert(
+              lines === Seq(
+                "2020-07-04,one",
+                "2020-07-03,ONE",
+                "2020-07-02,One",
+                "2020-07-01,one"
+              )
+            )
+          case "id=2" =>
+            assert(
+              lines === Seq(
+                "2020-07-04,two",
+                "2020-07-03,TWO",
+                "2020-07-02,Two",
+                "2020-07-01,two"
+              )
+            )
+          case "id=3" =>
+            assert(
+              lines === Seq(
+                "2020-07-01,three"
+              )
+            )
+          case "id=4" =>
+            assert(
+              lines === Seq(
+                "2020-07-01,four"
+              )
+            )
         }
       }
     }
@@ -202,7 +235,15 @@ class WritePartitionedSuite extends AnyFunSuite with SparkTestSession {
     val projection = Some(Seq(col("id"), reverse(col("value"))))
     withTempPath { path =>
       withUnpersist() { handle =>
-        values.writePartitionedBy(Seq($"id"), Seq.empty, Seq($"date"), writtenProjection = projection, unpersistHandle = Some(handle)).csv(path.getAbsolutePath)
+        values
+          .writePartitionedBy(
+            Seq($"id"),
+            Seq.empty,
+            Seq($"date"),
+            writtenProjection = projection,
+            unpersistHandle = Some(handle)
+          )
+          .csv(path.getAbsolutePath)
       }
 
       val partitions = path.list().filter(_.startsWith("id=")).sorted
@@ -214,7 +255,8 @@ class WritePartitionedSuite extends AnyFunSuite with SparkTestSession {
 
         val lines = files.flatMap { file =>
           val source = Source.fromFile(new File(dir, file))
-          try source.getLines().toList finally source.close()
+          try source.getLines().toList
+          finally source.close()
         }
 
         partition match {

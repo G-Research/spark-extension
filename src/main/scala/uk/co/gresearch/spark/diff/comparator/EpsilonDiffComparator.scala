@@ -20,17 +20,19 @@ import org.apache.spark.sql.Column
 import org.apache.spark.sql.functions.{abs, greatest}
 
 case class EpsilonDiffComparator(epsilon: Double, relative: Boolean = true, inclusive: Boolean = true)
-  extends DiffComparator {
+    extends DiffComparator {
   override def equiv(left: Column, right: Column): Column = {
-    val threshold = if (relative)
-      greatest(abs(left), abs(right)) * epsilon
-    else
-      epsilon
+    val threshold =
+      if (relative)
+        greatest(abs(left), abs(right)) * epsilon
+      else
+        epsilon
 
-    val inEpsilon = if (inclusive)
-      (diff: Column) => diff <= threshold
-    else
-      (diff: Column) => diff < threshold
+    val inEpsilon =
+      if (inclusive)
+        (diff: Column) => diff <= threshold
+      else
+        (diff: Column) => diff < threshold
 
     left.isNull && right.isNull || left.isNotNull && right.isNotNull && inEpsilon(abs(left - right))
   }
