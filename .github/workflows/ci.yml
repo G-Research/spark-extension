@@ -27,6 +27,9 @@ jobs:
     name: "Linting"
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - uses: jrouly/scalafmt-native-action@v2
         with:
           version: '3.7.14'
