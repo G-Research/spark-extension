@@ -13,7 +13,7 @@ updates:
 
   # Additional configuration for Python using pip
   - package-ecosystem: "pip"
-    directory: "/"
+    directory: "/python"
     schedule:
       interval: "daily"
     open-pull-requests-limit: 10
