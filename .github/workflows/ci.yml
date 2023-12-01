@@ -49,7 +49,6 @@ jobs:
 
   check:
     name: "Check"
-    needs: build-jvm
     uses: "./.github/workflows/check.yml"
 
   test_success:
