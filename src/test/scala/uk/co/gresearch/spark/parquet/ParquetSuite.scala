@@ -157,10 +157,7 @@ class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
   parallelisms.foreach { parallelism =>
     test(s"read parquet blocks (parallelism=${parallelism.map(_.toString).getOrElse("None")})") {
       assertDf(
-        spark.read
-          .when(parallelism.isDefined)
-          .either(_.parquetBlocks(parallelism.get, testFile))
-          .or(_.parquetBlocks(testFile)),
+        spark.read.when(parallelism.isDefined).either(_.parquetBlocks(parallelism.get, testFile)).or(_.parquetBlocks(testFile)),
         Seq($"filename", $"block"),
         StructType(
           Seq(
