@@ -40,7 +40,7 @@ jobs:
         shell: bash
 
   config:
-    name: Configure compatibility check
+    name: Configure compat
     runs-on: ubuntu-latest
     outputs:
       major-version: ${{ steps.versions.outputs.major-version }}
@@ -69,7 +69,7 @@ jobs:
         shell: bash
 
   compat:
-    name: Compatibility (Spark ${{ matrix.spark-compat-version }} Scala ${{ matrix.scala-compat-version }})
+    name: Compat (Spark ${{ matrix.spark-compat-version }} Scala ${{ matrix.scala-compat-version }})
     needs: config
     runs-on: ubuntu-latest
     if: needs.config.outputs.major-version == needs.config.outputs.release-major-version
