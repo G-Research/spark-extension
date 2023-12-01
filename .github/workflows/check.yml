@@ -33,7 +33,7 @@ jobs:
         shell: bash
 
       - name: Changes
-        if: steps.check.outcome == 'failure'
+        if: failure() && steps.check.outcome == 'failure'
         run: |
           mvn --batch-mode spotless:apply
           git diff
