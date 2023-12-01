@@ -65,4 +65,4 @@ jobs:
           scala-version: ${{ matrix.scala-version }}
           spark-compat-version: ${{ matrix.spark-compat-version }}
           scala-compat-version: ${{ matrix.scala-compat-version }}
-          java-compat-version: '11'
+          java-compat-version: '8'
