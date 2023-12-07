@@ -151,6 +151,13 @@ class PackageTest(SparkTest):
         ).collect()
         self.assertEqual([Row(ids=7, nanos=6, null_ids=0, null_nanos=1)], actual)
 
+    def test_install_pip_dependencies(self):
+        from gresearch.spark import install_pip_dependency
+
+        self.spark.sparkContext.setLogLevel("INFO")
+        self.spark.sparkContext.install_pip_dependency("wrapt<2,>=1.10")
+        install_pip_dependency(self.spark.sparkContext, "wrapt<2,>=1.10")
+
 
 if __name__ == '__main__':
     SparkTest.main()

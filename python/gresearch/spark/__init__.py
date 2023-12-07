@@ -12,6 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import os
 from contextlib import contextmanager
 from typing import Any, Union, List, Optional, Mapping, TYPE_CHECKING
 
@@ -405,3 +406,23 @@ def append_job_description(extra_description: str, separator: str = " - "):
         yield
     finally:
         set_description(earlier)
+
+
+def install_pip_dependency(spark: Union[SparkSession, SparkContext], *package: str) -> None:
+    if isinstance(spark, SparkSession):
+        spark = spark.sparkContext
+
+    from pip._internal import main as pipmain
+
+    import tempfile
+    with tempfile.TemporaryDirectory() as dir:
+        pipmain(['wheel'] + list(package) + ['-w', dir])
+        for whl in os.listdir(dir):
+            print(f"Adding dependency {whl}")
+            zip = whl + '.zip'
+            os.rename(os.path.join(dir, whl), os.path.join(dir, zip))
+            spark.addArchive(os.path.join(dir, zip))
+
+
+SparkSession.install_pip_dependency = install_pip_dependency
+SparkContext.install_pip_dependency = install_pip_dependency
