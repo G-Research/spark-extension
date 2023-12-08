@@ -37,13 +37,4 @@ trait SparkTestSession extends SQLHelper {
 
   lazy val sql: SQLContext = spark.sqlContext
 
-  /**
-   * Sets all SQL configurations specified in `pairs`, calls `f`, and then restores all SQL
-   * configurations.
-   */
-  protected override def withSQLConf(pairs: (String, String)*)(f: => Unit): Unit = {
-    SparkSession.setActiveSession(spark)
-    super.withSQLConf(pairs: _*)(f)
-  }
-
 }
