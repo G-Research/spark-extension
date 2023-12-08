@@ -570,6 +570,8 @@ package object spark extends Logging with SparkVersion with BuildVersion {
    * @tparam V inner type of dataset
    */
   implicit class ExtendedDatasetV2[V](ds: Dataset[V]) {
+    private implicit val encoder: Encoder[V] = ds.encoder
+
     /**
      * Compute the histogram of a column when aggregated by aggregate columns.
      * Thresholds are expected to be provided in ascending order.
@@ -674,6 +676,42 @@ package object spark extends Logging with SparkVersion with BuildVersion {
         .write
         .partitionBy(partitionColumnsMap.keys.toSeq: _*)
     }
+
+    /**
+     * (Scala-specific)
+     * Returns a [[KeyValueGroupedDataset]] where the data is grouped by the given key columns.
+     *
+     * @see `org.apache.spark.sql.Dataset.groupByKey(T => K)`
+     *
+     * @note Calling this method should be preferred to `groupByKey(T => K)` because the
+     *       Catalyst query planner cannot exploit existing partitioning and ordering of
+     *       this Dataset with that function.
+     *
+     * {{{
+     *   ds.groupByKey[Int]($"age").flatMapGroups(...)
+     *   ds.groupByKey[(String, String)]($"department", $"gender").flatMapGroups(...)
+     * }}}
+     */
+    def groupByKey[K: Encoder](column: Column, columns: Column*): KeyValueGroupedDataset[K, V] =
+      ds.groupBy(column +: columns: _*).as[K, V]
+
+    /**
+     * (Scala-specific)
+     * Returns a [[KeyValueGroupedDataset]] where the data is grouped by the given key columns.
+     *
+     * @see `org.apache.spark.sql.Dataset.groupByKey(T => K)`
+     *
+     * @note Calling this method should be preferred to `groupByKey(T => K)` because the
+     *       Catalyst query planner cannot exploit existing partitioning and ordering of
+     *       this Dataset with that function.
+     *
+     * {{{
+     *   ds.groupByKey[Int]($"age").flatMapGroups(...)
+     *   ds.groupByKey[(String, String)]($"department", $"gender").flatMapGroups(...)
+     * }}}
+     */
+    def groupByKey[K: Encoder](column: String, columns: String*): KeyValueGroupedDataset[K, V] =
+      ds.groupBy(column, columns: _*).as[K, V]
 
     /**
      * Groups the Dataset and sorts the groups using the specified columns, so we can run
