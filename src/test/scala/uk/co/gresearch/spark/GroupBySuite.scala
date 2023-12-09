@@ -16,7 +16,7 @@
 
 package uk.co.gresearch.spark
 
-import org.apache.spark.sql.{DataFrame, Dataset, Row}
+import org.apache.spark.sql.{DataFrame, Dataset, KeyValueGroupedDataset, Row}
 import org.scalatest.funspec.AnyFunSpec
 import uk.co.gresearch.spark.GroupBySortedSuite.{valueRowToTuple, valueToTuple}
 import uk.co.gresearch.spark.group.SortedGroupByDataset
@@ -33,7 +33,7 @@ case class State(init: Int) {
   }
 }
 
-class GroupBySortedSuite extends AnyFunSpec with SparkTestSession {
+class GroupBySuite extends AnyFunSpec with SparkTestSession {
 
   import spark.implicits._
 
@@ -50,6 +50,34 @@ class GroupBySortedSuite extends AnyFunSpec with SparkTestSession {
     Val(3, 1, 3.1),
   ).reverse.toDS().repartition(3).cache()
 
+  val df: DataFrame = ds.toDF()
+
+  it("should ds.groupByKey") {
+    testGroupBy(ds.groupByKey($"id"))
+    testGroupBy(ds.groupByKey("id"))
+  }
+
+  it("should df.groupByKey") {
+    testGroupBy(df.groupByKey($"id"))
+    testGroupBy(df.groupByKey("id"))
+  }
+
+  def testGroupBy[T](ds: KeyValueGroupedDataset[Int, T]): Unit = {
+    val actual = ds
+      .mapGroups { (key, it) => (key, it.length) }
+      .collect()
+      .sortBy(v => v._1)
+
+    val expected = Seq(
+      // (key, group length)
+      (1, 4),
+      (2, 3),
+      (3, 1),
+    )
+
+    assert(actual === expected)
+  }
+
   describe("ds.groupBySorted") {
     testGroupByIdSortBySeq(ds.groupBySorted($"id")($"seq", $"value"))
     testGroupByIdSortBySeqDesc(ds.groupBySorted($"id")($"seq".desc, $"value".desc))
@@ -65,8 +93,6 @@ class GroupBySortedSuite extends AnyFunSpec with SparkTestSession {
     testGroupByIdSortBySeqDescWithPartitionNum(ds.groupByKeySorted(v => v.id, partitions = Some(10))(v => (v.seq, v.value), reverse = true))
     testGroupByIdSeqSortByValue(ds.groupByKeySorted(v => (v.id, v.seq))(v => v.value))
   }
-
-  val df: DataFrame = ds.toDF()
 
   describe("df.groupBySorted") {
     testGroupByIdSortBySeq(df.groupBySorted($"id")($"seq", $"value"))
