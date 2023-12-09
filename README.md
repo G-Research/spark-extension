@@ -47,6 +47,19 @@ i.doThis()
  .doMore()
 ```
 
+**[Shortcut for groupBy.as](https://github.com/G-Research/spark-extension/pull/213#issue-2032837105)**: Calling `Dataset.groupBy(...).as[K, T]`
+should be preferred over calling `Dataset.groupByKey(...)` whenever possible. The former allows Catalyst to exploit
+existing partitioning and ordering of the Dataset, while the latter hides from Catalyst which columns are used to create the keys.
+This can have a significant performance penalty.
+
+The new column-expression-based `groupByKey` methods make it easier to group by a column expression key. Instead of
+
+    ds.groupBy($"id").as[Int, V]
+
+use:
+
+    ds.groupByKey[Int]($"id")
+
 **Backticks:** `backticks(string: String, strings: String*): String)`: Encloses the given column name with backticks (`` ` ``) when needed.
 This is a handy way to ensure column names with special characters like dots (`.`) work with `col()` or `select()`.
 
