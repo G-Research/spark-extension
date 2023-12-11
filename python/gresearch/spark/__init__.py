@@ -428,6 +428,10 @@ SparkContext.create_temporary_dir = create_temporary_dir
 
 
 def install_pip_dependency(spark: Union[SparkSession, SparkContext], *package_or_pip_option: str) -> None:
+    from pyspark import __version__
+    if __version__.startswith('2.') or __version__.startswith('3.0.'):
+        raise NotImplementedError(f'Not supported for PySpark __version__')
+
     if isinstance(spark, SparkSession):
         spark = spark.sparkContext
 
@@ -448,7 +452,8 @@ def install_pip_dependency(spark: Union[SparkSession, SparkContext], *package_or
     # register zip file as archive, and add as python source
     import sys
     from pyspark.files import SparkFiles
-    spark.addArchive(zip + "#" + id)
+    # once support for Spark 3.0 is dropped, replace with spark.addArchive()
+    spark._jsc.sc().addArchive(zip + "#" + id)
     spark._python_includes.append(id)
     sys.path.insert(1, os.path.join(SparkFiles.getRootDirectory(), id))
 

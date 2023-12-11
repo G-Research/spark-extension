@@ -13,6 +13,9 @@
 #  limitations under the License.
 import datetime
 
+from unittest import skipUnless, skipIf
+
+from pyspark import __version__
 from pyspark.sql import Row
 from pyspark.sql.functions import col, count
 from gresearch.spark import dotnet_ticks_to_timestamp, dotnet_ticks_to_unix_epoch, dotnet_ticks_to_unix_epoch_nanos, \
@@ -157,6 +160,7 @@ class PackageTest(SparkTest):
         dir = self.spark.create_temporary_dir("prefix")
         self.assertTrue(dir.startswith(SparkFiles.getRootDirectory()))
 
+    @skipIf(__version__.startswith('3.0.'), 'install_pip_dependencies not supported for Spark 3.0')
     def test_install_pip_dependencies(self):
         from gresearch.spark import install_pip_dependency
 
@@ -180,6 +184,11 @@ class PackageTest(SparkTest):
             .collect()
         expected = [Row("👍")] * 10
         self.assertEqual(expected, actual)
+
+    @skipUnless(__version__.startswith('3.0.'), 'install_pip_dependencies not supported for Spark 3.0')
+    def test_install_pip_dependencies_not_supported(self):
+        with self.assertRaises(NotImplementedError):
+            self.spark.install_pip_dependency("emoji")
 
 
 if __name__ == '__main__':
