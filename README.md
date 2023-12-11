@@ -99,6 +99,24 @@ unix_epoch_nanos_to_dotnet_ticks(column_or_name)
 ```
 </details>
 
+**Spark temporary directory**: Create a temporary directory that will be removed on Spark application shutdown:
+
+<details>
+<summary>Examples:</summary>
+
+```scala
+import uk.co.gresearch.spark.createTemporaryDir
+
+val dir = createTemporaryDir("prefix")
+```
+
+```python
+from gresearch.spark import *
+
+dir = spark.create_temporary_dir("prefix")
+```
+</details>
+
 **Spark job description:** Set Spark job description for all Spark jobs within a context:
 
 ```scala

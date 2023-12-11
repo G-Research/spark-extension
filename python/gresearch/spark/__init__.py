@@ -408,6 +408,25 @@ def append_job_description(extra_description: str, separator: str = " - "):
         set_description(earlier)
 
 
+def create_temporary_dir(spark: Union[SparkSession, SparkContext], prefix: str) -> str:
+    """
+    Create a temporary directory in a location (driver temp dir) that will be deleted on Spark application shutdown.
+    :param spark: spark session or context
+    :param prefix: prefix string of temporary directory name
+    :return: absolute path of temporary directory
+    """
+    if isinstance(spark, SparkSession):
+        spark = spark.sparkContext
+
+    package = spark._jvm.uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$")
+    mktempdir = package.createTemporaryDir
+    return mktempdir(prefix)
+
+
+SparkSession.create_temporary_dir = create_temporary_dir
+SparkContext.create_temporary_dir = create_temporary_dir
+
+
 def install_pip_dependency(spark: Union[SparkSession, SparkContext], *package_or_pip_option: str) -> None:
     if isinstance(spark, SparkSession):
         spark = spark.sparkContext
@@ -415,8 +434,7 @@ def install_pip_dependency(spark: Union[SparkSession, SparkContext], *package_or
     # create temporary directory for packages, inside a directory, which will be deleted on spark application shutdown
     import time
     id = f"spark-extension-pip-pkgs-{time.time()}"
-    mktempdir = spark._jvm.uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$").createTemporaryDir
-    dir = mktempdir(f"{id}-")
+    spark.create_temporary_dir(f"{id}-")
 
     # install packages via pip install
     from pip._internal import main as pipmain

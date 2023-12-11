@@ -40,8 +40,8 @@ package object spark extends Logging with SparkVersion with BuildVersion {
   }
 
   /**
-   * Create a temporary directory in a location that will be deleted on Spark application shutdown.
-   * @param prefix prefix string of temporary directory
+   * Create a temporary directory in a location (driver temp dir) that will be deleted on Spark application shutdown.
+   * @param prefix prefix string of temporary directory name
    * @return absolute path of temporary directory
    */
   def createTemporaryDir(prefix: String): String = {

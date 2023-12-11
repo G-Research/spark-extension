@@ -151,6 +151,12 @@ class PackageTest(SparkTest):
         ).collect()
         self.assertEqual([Row(ids=7, nanos=6, null_ids=0, null_nanos=1)], actual)
 
+    def test_create_temp_dir(self):
+        from pyspark import SparkFiles
+
+        dir = self.spark.create_temporary_dir("prefix")
+        self.assertTrue(dir.startswith(SparkFiles.getRootDirectory()))
+
     def test_install_pip_dependencies(self):
         from gresearch.spark import install_pip_dependency
 
