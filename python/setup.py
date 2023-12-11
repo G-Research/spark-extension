@@ -17,8 +17,8 @@
 from pathlib import Path
 from setuptools import setup
 
-jar_version = '2.11.0-3.5-SNAPSHOT'
-scala_version = '2.13.8'
+jar_version = '2.11.0-3.1-SNAPSHOT'
+scala_version = '2.12.10'
 scala_compat_version = '.'.join(scala_version.split('.')[:2])
 spark_compat_version = jar_version.split('-')[1]
 version = jar_version.replace('SNAPSHOT', 'dev0').replace('-', '.')
