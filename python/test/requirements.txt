@@ -1,4 +1,3 @@
 pandas
-pyarrow
 pytest
 unittest-xml-reporting

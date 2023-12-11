@@ -178,9 +178,9 @@ class PackageTest(SparkTest):
         expected = "this test is 👍"
         self.assertEqual(expected, actual)
 
-        import pyarrow as pa
+        import pandas as pd
         actual = self.spark.range(0, 10, 1, 10) \
-            .mapInArrow(lambda it: [pa.RecordBatch.from_pydict({"val": emoji.emojize(":thumbs_up:")})], "val string") \
+            .mapInPandas(lambda it: [pd.DataFrame.from_dict({"val": [emoji.emojize(":thumbs_up:")]})], "val string") \
             .collect()
         expected = [Row("👍")] * 10
         self.assertEqual(expected, actual)
