@@ -408,20 +408,31 @@ def append_job_description(extra_description: str, separator: str = " - "):
         set_description(earlier)
 
 
-def install_pip_dependency(spark: Union[SparkSession, SparkContext], *package: str) -> None:
+def install_pip_dependency(spark: Union[SparkSession, SparkContext], *package_or_pip_option: str) -> None:
     if isinstance(spark, SparkSession):
         spark = spark.sparkContext
 
-    from pip._internal import main as pipmain
+    # create temporary directory for packages, inside a directory, which will be deleted on spark application shutdown
+    import time
+    id = f"spark-extension-pip-pkgs-{time.time()}"
+    mktempdir = spark._jvm.uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$").createTemporaryDir
+    dir = mktempdir(f"{id}-")
 
-    import tempfile
-    with tempfile.TemporaryDirectory() as dir:
-        pipmain(['wheel'] + list(package) + ['-w', dir])
-        for whl in os.listdir(dir):
-            print(f"Adding dependency {whl}")
-            zip = whl + '.zip'
-            os.rename(os.path.join(dir, whl), os.path.join(dir, zip))
-            spark.addArchive(os.path.join(dir, zip))
+    # install packages via pip install
+    from pip._internal import main as pipmain
+    pipmain(["install"] + list(package_or_pip_option) + ["--target", dir])
+
+    # zip packages and remove directory
+    import shutil
+    zip = shutil.make_archive(dir, "zip", dir)
+    shutil.rmtree(dir)
+
+    # register zip file as archive, and add as python source
+    import sys
+    from pyspark.files import SparkFiles
+    spark.addArchive(zip + "#" + id)
+    spark._python_includes.append(id)
+    sys.path.insert(1, os.path.join(SparkFiles.getRootDirectory(), id))
 
 
 SparkSession.install_pip_dependency = install_pip_dependency

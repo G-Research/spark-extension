@@ -155,8 +155,25 @@ class PackageTest(SparkTest):
         from gresearch.spark import install_pip_dependency
 
         self.spark.sparkContext.setLogLevel("INFO")
-        self.spark.sparkContext.install_pip_dependency("wrapt<2,>=1.10")
-        install_pip_dependency(self.spark.sparkContext, "wrapt<2,>=1.10")
+        with self.assertRaises(ImportError):
+            # noinspection PyPackageRequirements
+            import emoji
+            emoji.emojize("this test is :thumbs_up:")
+
+        self.spark.install_pip_dependency("emoji")
+
+        # noinspection PyPackageRequirements
+        import emoji
+        actual = emoji.emojize("this test is :thumbs_up:")
+        expected = "this test is 👍"
+        self.assertEqual(expected, actual)
+
+        import pyarrow as pa
+        actual = self.spark.range(0, 10, 1, 10) \
+            .mapInArrow(lambda it: [pa.RecordBatch.from_pydict({"val": emoji.emojize(":thumbs_up:")})], "val string") \
+            .collect()
+        expected = [Row("👍")] * 10
+        self.assertEqual(expected, actual)
 
 
 if __name__ == '__main__':
