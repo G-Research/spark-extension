@@ -22,6 +22,16 @@ efficiently laid out with a single operation.
 or [parquet-cli](https://pypi.org/project/parquet-cli/) by reading from a simple Spark data source.
 This simplifies identifying why some Parquet files cannot be split by Spark into scalable partitions.
 
+**Install PIP packages into PySpark job:** Install your Python dependencies via PIP directly into your running PySpark job:
+
+```python
+# noinspection PyUnresolvedReferences
+from gresearch.spark.diff import *
+
+spark.install_pip_dependency("pandas", "pyarrow")
+spark.install_pip_dependency("-r", "requirements.txt")
+```
+
 **[Fluent method call](CONDITIONAL.md):** `T.call(transformation: T => R): R`: Turns a transformation `T => R`,
 that is not part of `T` into a fluent method call on `T`. This allows writing fluent code like:
 
@@ -104,12 +114,14 @@ unix_epoch_nanos_to_dotnet_ticks(column_or_name)
 <details>
 <summary>Examples:</summary>
 
+Scala:
 ```scala
 import uk.co.gresearch.spark.createTemporaryDir
 
 val dir = createTemporaryDir("prefix")
 ```
 
+Python:
 ```python
 from gresearch.spark import *
 
@@ -118,6 +130,9 @@ dir = spark.create_temporary_dir("prefix")
 </details>
 
 **Spark job description:** Set Spark job description for all Spark jobs within a context:
+
+<details>
+<summary>Examples:</summary>
 
 ```scala
 import uk.co.gresearch.spark._
@@ -158,6 +173,7 @@ val counts = withJobDescription("Counting rows") {
   files.map(filename => spark.read.csv(filename).count).sum
 }(spark)
 ```
+</details>
 
 ## Using Spark Extension
 
