@@ -434,7 +434,7 @@ def install_pip_dependency(spark: Union[SparkSession, SparkContext], *package_or
     # create temporary directory for packages, inside a directory, which will be deleted on spark application shutdown
     import time
     id = f"spark-extension-pip-pkgs-{time.time()}"
-    spark.create_temporary_dir(f"{id}-")
+    dir = spark.create_temporary_dir(f"{id}-")
 
     # install packages via pip install
     from pip._internal import main as pipmain
