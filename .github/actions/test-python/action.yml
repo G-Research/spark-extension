@@ -70,7 +70,7 @@ runs:
       python -m pip install --upgrade pip
       pip install pypandoc
       pip install -r python/requirements-${{ inputs.spark-compat-version }}_${{ inputs.scala-compat-version }}.txt
-      pip install pytest unittest-xml-reporting
+      pip install -r python/test/requirements.txt
 
       SPARK_HOME=$(python -c "import pyspark; import os; print(os.path.dirname(pyspark.__file__))")
       echo "SPARK_HOME=$SPARK_HOME" | tee -a "$GITHUB_ENV"

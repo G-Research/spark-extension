@@ -1,0 +1,3 @@
+pyarrow
+pytest
+unittest-xml-reporting
