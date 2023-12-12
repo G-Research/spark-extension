@@ -13,6 +13,7 @@
 #  limitations under the License.
 
 import os
+import sys
 from contextlib import contextmanager
 from typing import Any, Union, List, Optional, Mapping, TYPE_CHECKING
 
@@ -427,6 +428,22 @@ SparkSession.create_temporary_dir = create_temporary_dir
 SparkContext.create_temporary_dir = create_temporary_dir
 
 
+def __run_pip(args: List[str]):
+    from pip._internal import main as pipmain
+
+    def raise_not_exit(status: int):
+        raise RuntimeError(f"Failed to run pip command, exit code {status}")
+
+    exit = sys.exit
+    try:
+        sys.exit = raise_not_exit
+        err = pipmain(args)
+        if err:
+            raise RuntimeError("Failed to run pip command")
+    finally:
+        sys.exit = exit
+
+
 def install_pip_dependency(spark: Union[SparkSession, SparkContext], *package_or_pip_option: str) -> None:
     from pyspark import __version__
     if __version__.startswith('2.') or __version__.startswith('3.0.'):
@@ -435,14 +452,13 @@ def install_pip_dependency(spark: Union[SparkSession, SparkContext], *package_or
     if isinstance(spark, SparkSession):
         spark = spark.sparkContext
 
-    # create temporary directory for packages, inside a directory, which will be deleted on spark application shutdown
+    # create temporary directory for packages, inside a directory which will be deleted on spark application shutdown
     import time
     id = f"spark-extension-pip-pkgs-{time.time()}"
     dir = spark.create_temporary_dir(f"{id}-")
 
     # install packages via pip install
-    from pip._internal import main as pipmain
-    pipmain(["install"] + list(package_or_pip_option) + ["--target", dir])
+    __run_pip(["install"] + list(package_or_pip_option) + ["--target", dir])
 
     # zip packages and remove directory
     import shutil

@@ -162,8 +162,6 @@ class PackageTest(SparkTest):
 
     @skipIf(__version__.startswith('3.0.'), 'install_pip_dependencies not supported for Spark 3.0')
     def test_install_pip_dependencies(self):
-        from gresearch.spark import install_pip_dependency
-
         self.spark.sparkContext.setLogLevel("INFO")
         with self.assertRaises(ImportError):
             # noinspection PyPackageRequirements
@@ -184,6 +182,16 @@ class PackageTest(SparkTest):
             .collect()
         expected = [Row("👍")] * 10
         self.assertEqual(expected, actual)
+
+    @skipIf(__version__.startswith('3.0.'), 'install_pip_dependencies not supported for Spark 3.0')
+    def test_install_pip_dependencies_unknown_argument(self):
+        with self.assertRaises(RuntimeError):
+            self.spark.install_pip_dependency("--unknown", "argument")
+
+    @skipIf(__version__.startswith('3.0.'), 'install_pip_dependencies not supported for Spark 3.0')
+    def test_install_pip_dependencies_package_not_found(self):
+        with self.assertRaises(RuntimeError):
+            self.spark.install_pip_dependency("pyspark-extension==abc")
 
     @skipUnless(__version__.startswith('3.0.'), 'install_pip_dependencies not supported for Spark 3.0')
     def test_install_pip_dependencies_not_supported(self):
