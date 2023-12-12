@@ -13,12 +13,17 @@
 #  limitations under the License.
 
 import os
+import shutil
 import sys
+import time
 from contextlib import contextmanager
 from typing import Any, Union, List, Optional, Mapping, TYPE_CHECKING
+import subprocess
 
 from py4j.java_gateway import JVMView, JavaObject
+from pyspark import __version__
 from pyspark.context import SparkContext
+from pyspark.files import SparkFiles
 from pyspark.sql import DataFrame
 from pyspark.sql.column import Column, _to_java_column
 from pyspark.sql.context import SQLContext
@@ -428,24 +433,15 @@ SparkSession.create_temporary_dir = create_temporary_dir
 SparkContext.create_temporary_dir = create_temporary_dir
 
 
-def __run_pip(args: List[str]):
-    from pip._internal import main as pipmain
-
-    def raise_not_exit(status: int):
-        raise RuntimeError(f"Failed to run pip command, exit code {status}")
-
-    exit = sys.exit
-    try:
-        sys.exit = raise_not_exit
-        err = pipmain(args)
-        if err:
-            raise RuntimeError("Failed to run pip command")
-    finally:
-        sys.exit = exit
+def __run_pip(args: List[str]) -> None:
+    # it is best to run pip as a separate process and not calling into module pip
+    # https://pip.pypa.io/en/stable/user_guide/#using-pip-from-your-program
+    retcode = subprocess.call([sys.executable, '-m', 'pip'] + args)
+    if retcode != 0:
+        raise RuntimeError(f'Pip process terminated with exit code {retcode}')
 
 
 def install_pip_dependency(spark: Union[SparkSession, SparkContext], *package_or_pip_option: str) -> None:
-    from pyspark import __version__
     if __version__.startswith('2.') or __version__.startswith('3.0.'):
         raise NotImplementedError(f'Not supported for PySpark __version__')
 
@@ -453,7 +449,6 @@ def install_pip_dependency(spark: Union[SparkSession, SparkContext], *package_or
         spark = spark.sparkContext
 
     # create temporary directory for packages, inside a directory which will be deleted on spark application shutdown
-    import time
     id = f"spark-extension-pip-pkgs-{time.time()}"
     dir = spark.create_temporary_dir(f"{id}-")
 
@@ -461,13 +456,10 @@ def install_pip_dependency(spark: Union[SparkSession, SparkContext], *package_or
     __run_pip(["install"] + list(package_or_pip_option) + ["--target", dir])
 
     # zip packages and remove directory
-    import shutil
     zip = shutil.make_archive(dir, "zip", dir)
     shutil.rmtree(dir)
 
     # register zip file as archive, and add as python source
-    import sys
-    from pyspark.files import SparkFiles
     # once support for Spark 3.0 is dropped, replace with spark.addArchive()
     spark._jsc.sc().addArchive(zip + "#" + id)
     spark._python_includes.append(id)

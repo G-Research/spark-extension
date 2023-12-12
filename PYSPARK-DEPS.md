@@ -23,7 +23,7 @@ spark.install_pip_dependency("pandas==1.4.3", "pyarrow~=8.0.0")
 spark.install_pip_dependency("pandas", "pyarrow", "--cache-dir", "/home/user/.cache/pip")
 
 # use an alternative index url (other than https://pypi.org/simple)
-spark.install_pip_dependency("pandas", "pyarrow", "--index-url", "https://artifacts.company.com/pip")
+spark.install_pip_dependency("pandas", "pyarrow", "--index-url", "https://artifacts.company.com/pypi/simple")
 
 # install pip packages quietly (only disables output of PIP)
 spark.install_pip_dependency("pandas", "pyarrow", "--quiet")
