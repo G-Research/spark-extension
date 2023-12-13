@@ -441,7 +441,7 @@ def __run_pip(args: List[str]) -> None:
         raise RuntimeError(f'Pip process terminated with exit code {retcode}')
 
 
-def install_pip_dependency(spark: Union[SparkSession, SparkContext], *package_or_pip_option: str) -> None:
+def install_pip_package(spark: Union[SparkSession, SparkContext], *package_or_pip_option: str) -> None:
     if __version__.startswith('2.') or __version__.startswith('3.0.'):
         raise NotImplementedError(f'Not supported for PySpark __version__')
 
@@ -466,5 +466,5 @@ def install_pip_dependency(spark: Union[SparkSession, SparkContext], *package_or
     sys.path.insert(1, os.path.join(SparkFiles.getRootDirectory(), id))
 
 
-SparkSession.install_pip_dependency = install_pip_dependency
-SparkContext.install_pip_dependency = install_pip_dependency
+SparkSession.install_pip_package = install_pip_package
+SparkContext.install_pip_package = install_pip_package

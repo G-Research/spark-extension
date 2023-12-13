@@ -160,15 +160,15 @@ class PackageTest(SparkTest):
         dir = self.spark.create_temporary_dir("prefix")
         self.assertTrue(dir.startswith(SparkFiles.getRootDirectory()))
 
-    @skipIf(__version__.startswith('3.0.'), 'install_pip_dependencies not supported for Spark 3.0')
-    def test_install_pip_dependencies(self):
+    @skipIf(__version__.startswith('3.0.'), 'install_pip_package not supported for Spark 3.0')
+    def test_install_pip_package(self):
         self.spark.sparkContext.setLogLevel("INFO")
         with self.assertRaises(ImportError):
             # noinspection PyPackageRequirements
             import emoji
             emoji.emojize("this test is :thumbs_up:")
 
-        self.spark.install_pip_dependency("emoji")
+        self.spark.install_pip_package("emoji")
 
         # noinspection PyPackageRequirements
         import emoji
@@ -183,20 +183,20 @@ class PackageTest(SparkTest):
         expected = [Row("👍")] * 10
         self.assertEqual(expected, actual)
 
-    @skipIf(__version__.startswith('3.0.'), 'install_pip_dependencies not supported for Spark 3.0')
-    def test_install_pip_dependencies_unknown_argument(self):
+    @skipIf(__version__.startswith('3.0.'), 'install_pip_package not supported for Spark 3.0')
+    def test_install_pip_package_unknown_argument(self):
         with self.assertRaises(RuntimeError):
-            self.spark.install_pip_dependency("--unknown", "argument")
+            self.spark.install_pip_package("--unknown", "argument")
 
-    @skipIf(__version__.startswith('3.0.'), 'install_pip_dependencies not supported for Spark 3.0')
-    def test_install_pip_dependencies_package_not_found(self):
+    @skipIf(__version__.startswith('3.0.'), 'install_pip_package not supported for Spark 3.0')
+    def test_install_pip_package_package_not_found(self):
         with self.assertRaises(RuntimeError):
-            self.spark.install_pip_dependency("pyspark-extension==abc")
+            self.spark.install_pip_package("pyspark-extension==abc")
 
-    @skipUnless(__version__.startswith('3.0.'), 'install_pip_dependencies not supported for Spark 3.0')
-    def test_install_pip_dependencies_not_supported(self):
+    @skipUnless(__version__.startswith('3.0.'), 'install_pip_package not supported for Spark 3.0')
+    def test_install_pip_package_not_supported(self):
         with self.assertRaises(NotImplementedError):
-            self.spark.install_pip_dependency("emoji")
+            self.spark.install_pip_package("emoji")
 
 
 if __name__ == '__main__':

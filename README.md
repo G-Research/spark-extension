@@ -22,14 +22,14 @@ efficiently laid out with a single operation.
 or [parquet-cli](https://pypi.org/project/parquet-cli/) by reading from a simple Spark data source.
 This simplifies identifying why some Parquet files cannot be split by Spark into scalable partitions.
 
-**[Install PIP packages into PySpark job](PYSPARK-DEPS.md):** Install your Python dependencies via PIP directly into your running PySpark job (PySpark ≥ 3.1.0):
+**[Install PIP packages into PySpark job](PYSPARK-DEPS.md):** Install Python dependencies via PIP directly into your running PySpark job (PySpark ≥ 3.1.0):
 
 ```python
 # noinspection PyUnresolvedReferences
 from gresearch.spark.diff import *
 
-spark.install_pip_dependency("pandas", "pyarrow")
-spark.install_pip_dependency("-r", "requirements.txt")
+spark.install_pip_package("pandas", "pyarrow")
+spark.install_pip_package("-r", "requirements.txt")
 ```
 
 **[Fluent method call](CONDITIONAL.md):** `T.call(transformation: T => R): R`: Turns a transformation `T => R`,
