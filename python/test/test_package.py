@@ -203,7 +203,7 @@ class PackageTest(SparkTest):
         with self.assertRaises(NotImplementedError):
             self.spark.install_pip_package("emoji")
 
-    @skipIf(__version__.startswith('3.0.'), 'install_poetry_package not supported for Spark 3.0')
+    @skipIf(__version__.startswith('3.0.'), 'install_poetry_project not supported for Spark 3.0')
     # provide an environment variable with path to the python binary of a virtual env that has poetry installed
     @skipIf(POETRY_PYTHON_ENV not in os.environ, f'Environment variable {POETRY_PYTHON_ENV} pointing to '
                                                  f'virtual env python with poetry required')
@@ -253,10 +253,10 @@ class PackageTest(SparkTest):
         with self.assertRaises(FileNotFoundError):
             self.spark.install_poetry_project(rich_path, poetry_python="non-existing-python")
 
-    @skipUnless(__version__.startswith('3.0.'), 'install_poetry_package not supported for Spark 3.0')
-    def test_install_poetry_package_not_supported(self):
+    @skipUnless(__version__.startswith('3.0.'), 'install_poetry_project not supported for Spark 3.0')
+    def test_install_poetry_project_not_supported(self):
         with self.assertRaises(NotImplementedError):
-            self.spark.install_poetry_package("./rich")
+            self.spark.install_poetry_project("./rich")
 
 
 if __name__ == '__main__':
