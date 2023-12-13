@@ -12,16 +12,17 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import datetime
-
+from decimal import Decimal
+from subprocess import CalledProcessError
 from unittest import skipUnless, skipIf
 
 from pyspark import __version__
 from pyspark.sql import Row
 from pyspark.sql.functions import col, count
+
 from gresearch.spark import dotnet_ticks_to_timestamp, dotnet_ticks_to_unix_epoch, dotnet_ticks_to_unix_epoch_nanos, \
     timestamp_to_dotnet_ticks, unix_epoch_to_dotnet_ticks, unix_epoch_nanos_to_dotnet_ticks, count_null
 from spark_common import SparkTest
-from decimal import Decimal
 
 
 class PackageTest(SparkTest):
@@ -185,12 +186,12 @@ class PackageTest(SparkTest):
 
     @skipIf(__version__.startswith('3.0.'), 'install_pip_package not supported for Spark 3.0')
     def test_install_pip_package_unknown_argument(self):
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(CalledProcessError):
             self.spark.install_pip_package("--unknown", "argument")
 
     @skipIf(__version__.startswith('3.0.'), 'install_pip_package not supported for Spark 3.0')
     def test_install_pip_package_package_not_found(self):
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(CalledProcessError):
             self.spark.install_pip_package("pyspark-extension==abc")
 
     @skipUnless(__version__.startswith('3.0.'), 'install_pip_package not supported for Spark 3.0')

@@ -433,14 +433,6 @@ SparkSession.create_temporary_dir = create_temporary_dir
 SparkContext.create_temporary_dir = create_temporary_dir
 
 
-def __run_pip(args: List[str]) -> None:
-    # it is best to run pip as a separate process and not calling into module pip
-    # https://pip.pypa.io/en/stable/user_guide/#using-pip-from-your-program
-    retcode = subprocess.call([sys.executable, '-m', 'pip'] + args)
-    if retcode != 0:
-        raise RuntimeError(f'Pip process terminated with exit code {retcode}')
-
-
 def install_pip_package(spark: Union[SparkSession, SparkContext], *package_or_pip_option: str) -> None:
     if __version__.startswith('2.') or __version__.startswith('3.0.'):
         raise NotImplementedError(f'Not supported for PySpark __version__')
@@ -453,7 +445,9 @@ def install_pip_package(spark: Union[SparkSession, SparkContext], *package_or_pi
     dir = spark.create_temporary_dir(f"{id}-")
 
     # install packages via pip install
-    __run_pip(["install"] + list(package_or_pip_option) + ["--target", dir])
+    # it is best to run pip as a separate process and not calling into module pip
+    # https://pip.pypa.io/en/stable/user_guide/#using-pip-from-your-program
+    subprocess.check_call([sys.executable, '-m', 'pip', "install"] + list(package_or_pip_option) + ["--target", dir])
 
     # zip packages and remove directory
     zip = shutil.make_archive(dir, "zip", dir)
