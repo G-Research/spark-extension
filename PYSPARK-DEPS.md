@@ -8,29 +8,29 @@ These packages are only accessible by that PySpark application, and they are rem
 
 ```python
 # noinspection PyUnresolvedReferences
-from gresearch.spark.diff import *
+from gresearch.spark import *
 
-spark.install_pip_dependency("pandas", "pyarrow")
+spark.install_pip_package("pandas", "pyarrow")
 ```
 
-Above example installs PIP packages `pandas` and `pyarrow` via `pip`. Method `install_pip_dependency` takes any `pip` command line argument:
+Above example installs PIP packages `pandas` and `pyarrow` via `pip`. Method `install_pip_package` takes any `pip` command line argument:
 
 ```python
 # install packages with version specs
-spark.install_pip_dependency("pandas==1.4.3", "pyarrow~=8.0.0")
+spark.install_pip_package("pandas==1.4.3", "pyarrow~=8.0.0")
 
 # install packages from package sources (e.g. git clone https://github.com/pandas-dev/pandas.git)
-spark.install_pip_dependency("./pandas/")
+spark.install_pip_package("./pandas/")
 
 # install packages from git repo
-spark.install_pip_dependency("git+https://github.com/pandas-dev/pandas.git@main")
+spark.install_pip_package("git+https://github.com/pandas-dev/pandas.git@main")
 
 # use a pip cache directory to cache downloaded whl files
-spark.install_pip_dependency("pandas", "pyarrow", "--cache-dir", "/home/user/.cache/pip")
+spark.install_pip_package("pandas", "pyarrow", "--cache-dir", "/home/user/.cache/pip")
 
 # use an alternative index url (other than https://pypi.org/simple)
-spark.install_pip_dependency("pandas", "pyarrow", "--index-url", "https://artifacts.company.com/pypi/simple")
+spark.install_pip_package("pandas", "pyarrow", "--index-url", "https://artifacts.company.com/pypi/simple")
 
 # install pip packages quietly (only disables output of PIP)
-spark.install_pip_dependency("pandas", "pyarrow", "--quiet")
+spark.install_pip_package("pandas", "pyarrow", "--quiet")
 ```
