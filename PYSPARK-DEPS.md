@@ -19,6 +19,12 @@ Above example installs PIP packages `pandas` and `pyarrow` via `pip`. Method `in
 # install packages with version specs
 spark.install_pip_dependency("pandas==1.4.3", "pyarrow~=8.0.0")
 
+# install packages from package sources (e.g. git clone https://github.com/pandas-dev/pandas.git)
+spark.install_pip_dependency("./pandas/")
+
+# install packages from git repo
+spark.install_pip_dependency("git+https://github.com/pandas-dev/pandas.git@main")
+
 # use a pip cache directory to cache downloaded whl files
 spark.install_pip_dependency("pandas", "pyarrow", "--cache-dir", "/home/user/.cache/pip")
 
