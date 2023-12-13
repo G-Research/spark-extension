@@ -209,7 +209,7 @@ class PackageTest(SparkTest):
                                                  f'virtual env python with poetry required')
     @skipIf(RICH_SOURCES_ENV not in os.environ, f'Environment variable {RICH_SOURCES_ENV} pointing to '
                                                 f'rich project sources required')
-    def test_install_poetry_package(self):
+    def test_install_poetry_project(self):
         self.spark.sparkContext.setLogLevel("INFO")
         with self.assertRaises(ImportError):
             # noinspection PyPackageRequirements
@@ -233,6 +233,21 @@ class PackageTest(SparkTest):
             .collect()
         expected = [Row("👍")] * 10
         self.assertEqual(expected, actual)
+
+    @skipIf(__version__.startswith('3.0.'), 'install_pip_package not supported for Spark 3.0')
+    # provide an environment variable with path to the python binary of a virtual env that has poetry installed
+    @skipIf(POETRY_PYTHON_ENV not in os.environ, f'Environment variable {POETRY_PYTHON_ENV} pointing to '
+                                                 f'virtual env python with poetry required')
+    @skipIf(RICH_SOURCES_ENV not in os.environ, f'Environment variable {RICH_SOURCES_ENV} pointing to '
+                                                f'rich project sources required')
+    def test_install_poetry_project_unknown_argument(self):
+        rich_path = os.environ[RICH_SOURCES_ENV]
+        poetry_python = os.environ[POETRY_PYTHON_ENV]
+
+        with self.assertRaises(RuntimeError):
+            self.spark.install_poetry_project("non-existing-project", poetry_python=poetry_python)
+        with self.assertRaises(FileNotFoundError):
+            self.spark.install_poetry_project(rich_path, poetry_python="non-existing-python")
 
     @skipUnless(__version__.startswith('3.0.'), 'install_poetry_package not supported for Spark 3.0')
     def test_install_poetry_package_not_supported(self):
