@@ -26,7 +26,7 @@ This simplifies identifying why some Parquet files cannot be split by Spark into
 
 ```python
 # noinspection PyUnresolvedReferences
-from gresearch.spark.diff import *
+from gresearch.spark import *
 
 spark.install_pip_package("pandas==1.4.3", "pyarrow")
 spark.install_pip_package("-r", "requirements.txt")
