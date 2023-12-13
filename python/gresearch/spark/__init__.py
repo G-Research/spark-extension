@@ -467,6 +467,9 @@ SparkContext.install_pip_package = install_pip_package
 
 
 def install_poetry_project(spark: Union[SparkSession, SparkContext], *path: str, poetry_python: Optional[str] = None) -> None:
+    import logging
+    logger = logging.getLogger()
+
     # spark.install_pip_dependency has this limitation, and it is used by this method
     # and we want to fail quickly here
     if __version__.startswith('2.') or __version__.startswith('3.0.'):
@@ -478,19 +481,7 @@ def install_poetry_project(spark: Union[SparkSession, SparkContext], *path: str,
     if poetry_python is None:
         poetry_python = sys.executable
 
-    def build_wheel(path: Path) -> Path:
-        import logging
-        logger = logging.getLogger()
-        logger.info(f"Running poetry using {poetry_python}")
-
-        proc = subprocess.run([
-            poetry_python, '-m', 'poetry',
-            'build',
-            '--no-interaction',
-            '--format', 'wheel',
-            '--directory', str(path.absolute())
-        ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
+    def log_poetry(proc: subprocess.CompletedProcess) -> List[str]:
         stdout = proc.stdout.decode('utf-8').splitlines(keepends=False)
         for line in stdout:
             logger.info(f"poetry: {line}")
@@ -498,6 +489,31 @@ def install_poetry_project(spark: Union[SparkSession, SparkContext], *path: str,
         stderr = proc.stderr.decode('utf-8').splitlines(keepends=False)
         for line in stderr:
             logger.error(f"poetry: {line}")
+
+        return stdout
+
+    def build_wheel(path: Path) -> Path:
+        logger.info(f"Running poetry using {poetry_python}")
+
+        # make sure the virtual env for this project exists, otherwise we won't get to see the build whl file in stdout
+        proc = subprocess.run([
+            poetry_python, '-m', 'poetry',
+            'env', 'use',
+            '--directory', str(path.absolute()),
+            sys.executable
+        ], capture_output=True)
+        log_poetry(proc)
+
+        # build the whl file
+        proc = subprocess.run([
+            poetry_python, '-m', 'poetry',
+            'build',
+            '--verbose',
+            '--no-interaction',
+            '--format', 'wheel',
+            '--directory', str(path.absolute())
+        ], capture_output=True)
+        stdout = log_poetry(proc)
 
         if proc.returncode != 0:
             raise RuntimeError(f'Poetry process terminated with exit code {proc.returncode}')

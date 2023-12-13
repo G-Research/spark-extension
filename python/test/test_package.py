@@ -240,11 +240,11 @@ class PackageTest(SparkTest):
                                                  f'virtual env python with poetry required')
     @skipIf(RICH_SOURCES_ENV not in os.environ, f'Environment variable {RICH_SOURCES_ENV} pointing to '
                                                 f'rich project sources required')
-    def test_install_poetry_project_unknown_argument(self):
+    def test_install_poetry_project_wrong_arguments(self):
         rich_path = os.environ[RICH_SOURCES_ENV]
         poetry_python = os.environ[POETRY_PYTHON_ENV]
 
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(CalledProcessError):
             self.spark.install_poetry_project("non-existing-project", poetry_python=poetry_python)
         with self.assertRaises(FileNotFoundError):
             self.spark.install_poetry_project(rich_path, poetry_python="non-existing-python")
