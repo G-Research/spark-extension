@@ -14,11 +14,12 @@
 
 import os
 import shutil
+import subprocess
 import sys
 import time
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Any, Union, List, Optional, Mapping, TYPE_CHECKING
-import subprocess
 
 from py4j.java_gateway import JVMView, JavaObject
 from pyspark import __version__
@@ -462,3 +463,39 @@ def install_pip_package(spark: Union[SparkSession, SparkContext], *package_or_pi
 
 SparkSession.install_pip_package = install_pip_package
 SparkContext.install_pip_package = install_pip_package
+
+
+def install_poetry_project(spark: Union[SparkSession, SparkContext], *path: str, poetry_python: Optional[str]) -> None:
+    # spark.install_pip_dependency has this limitation, and it is used by this method
+    # and we want to fail quickly here
+    if __version__.startswith('2.') or __version__.startswith('3.0.'):
+        raise NotImplementedError(f'Not supported for PySpark __version__')
+
+    if isinstance(spark, SparkSession):
+        spark = spark.sparkContext
+
+    def build_wheel(path: Path) -> Path:
+        proc = subprocess.run([
+            poetry_python, '-m', 'poetry', 'build', '--no-interaction', '--format', 'wheel', '--directory', str(path.absolute())
+        ], stdout=subprocess.PIPE)
+
+        if proc.returncode != 0:
+            raise RuntimeError(f'Poetry process terminated with exit code {proc.returncode}')
+
+        output = proc.stdout.decode('utf-8')
+        print(output)
+
+        for line in output.splitlines(keepends=False):
+            if line.startswith('  - Built '):
+                return path.joinpath('dist', line[10:])
+
+        raise RuntimeError('Could not find wheel file name in poetry output')
+
+    wheels = [build_wheel(Path(p)) for p in path]
+
+    # install wheels via pip
+    spark.install_pip_dependency(*[str(whl.absolute()) for whl in wheels])
+
+
+SparkSession.install_poetry_project = install_poetry_project
+SparkContext.install_poetry_project = install_poetry_project
