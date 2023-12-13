@@ -13,6 +13,7 @@
 #  limitations under the License.
 
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -465,7 +466,7 @@ SparkSession.install_pip_package = install_pip_package
 SparkContext.install_pip_package = install_pip_package
 
 
-def install_poetry_project(spark: Union[SparkSession, SparkContext], *path: str, poetry_python: Optional[str]) -> None:
+def install_poetry_project(spark: Union[SparkSession, SparkContext], *path: str, poetry_python: Optional[str] = None) -> None:
     # spark.install_pip_dependency has this limitation, and it is used by this method
     # and we want to fail quickly here
     if __version__.startswith('2.') or __version__.startswith('3.0.'):
@@ -474,27 +475,45 @@ def install_poetry_project(spark: Union[SparkSession, SparkContext], *path: str,
     if isinstance(spark, SparkSession):
         spark = spark.sparkContext
 
+    if poetry_python is None:
+        poetry_python = sys.executable
+
     def build_wheel(path: Path) -> Path:
+        import logging
+        logger = logging.getLogger()
+        logger.info(f"Running poetry using {poetry_python}")
+
         proc = subprocess.run([
-            poetry_python, '-m', 'poetry', 'build', '--no-interaction', '--format', 'wheel', '--directory', str(path.absolute())
-        ], stdout=subprocess.PIPE)
+            poetry_python, '-m', 'poetry',
+            'build',
+            '--no-interaction',
+            '--format', 'wheel',
+            '--directory', str(path.absolute())
+        ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        stdout = proc.stdout.decode('utf-8').splitlines(keepends=False)
+        for line in stdout:
+            logger.info(f"poetry: {line}")
+
+        stderr = proc.stderr.decode('utf-8').splitlines(keepends=False)
+        for line in stderr:
+            logger.error(f"poetry: {line}")
 
         if proc.returncode != 0:
             raise RuntimeError(f'Poetry process terminated with exit code {proc.returncode}')
 
-        output = proc.stdout.decode('utf-8')
-        print(output)
+        # first matching line is taken to extract whl file name
+        whl_pattern = "^  - Built (.*.whl)$"
+        for line in stdout:
+            if match := re.match(whl_pattern, line):
+                return path.joinpath('dist', match.group(1))
 
-        for line in output.splitlines(keepends=False):
-            if line.startswith('  - Built '):
-                return path.joinpath('dist', line[10:])
-
-        raise RuntimeError('Could not find wheel file name in poetry output')
+        raise RuntimeError(f'Could not find wheel file name in poetry output, was looking for "{whl_pattern}"')
 
     wheels = [build_wheel(Path(p)) for p in path]
 
     # install wheels via pip
-    spark.install_pip_dependency(*[str(whl.absolute()) for whl in wheels])
+    spark.install_pip_package(*[str(whl.absolute()) for whl in wheels])
 
 
 SparkSession.install_poetry_project = install_poetry_project
