@@ -25,10 +25,6 @@ jobs:
           name_is_regexp: true
           path: artifacts
 
-      - name: artifacts
-        run: find artifacts
-        shell: bash
-
       - name: Publish Test Results
         uses: EnricoMi/publish-unit-test-result-action@v2
         with:
@@ -36,4 +32,3 @@ jobs:
           event_file: artifacts/Event File/event.json
           event_name: ${{ github.event.workflow_run.event }}
           junit_files: "artifacts/* Test Results*/**/*.xml"
-          log_level: DEBUG

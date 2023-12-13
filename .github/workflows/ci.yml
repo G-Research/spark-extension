@@ -61,3 +61,24 @@ jobs:
       - name: Noop
         run: true
         shell: bash
+
+  test_debug:
+    name: "Test debug"
+    runs-on: ubuntu-latest
+    needs: [test_success]
+
+    steps:
+      - name: Fetch Binaries Artifact
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+
+      - name: artifacts
+        run: find artifacts
+        shell: bash
+
+      - name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          junit_files: "artifacts/* Test Results*/**/*.xml"
+          log_level: DEBUG
