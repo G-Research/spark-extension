@@ -25,6 +25,10 @@ jobs:
           name_is_regexp: true
           path: artifacts
 
+      - name: artifacts
+        run: find artifacts
+        shell: bash
+
       - name: Publish Test Results
         uses: EnricoMi/publish-unit-test-result-action@v2
         with:
