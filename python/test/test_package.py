@@ -173,7 +173,7 @@ class PackageTest(SparkTest):
             import emoji
             emoji.emojize("this test is :thumbs_up:")
 
-        self.spark.install_pip_package("emoji")
+        self.spark.install_pip_package("emoji", '--cache', '.cache/pypi')
 
         # noinspection PyPackageRequirements
         import emoji
@@ -218,7 +218,11 @@ class PackageTest(SparkTest):
 
         rich_path = os.environ[RICH_SOURCES_ENV]
         poetry_python = os.environ[POETRY_PYTHON_ENV]
-        self.spark.install_poetry_project(rich_path, poetry_python=poetry_python)
+        self.spark.install_poetry_project(
+            rich_path,
+            poetry_python=poetry_python,
+            pip_args=['--cache', '.cache/pypi']
+        )
 
         # noinspection PyPackageRequirements
         from rich.emoji import Emoji
@@ -244,7 +248,7 @@ class PackageTest(SparkTest):
         rich_path = os.environ[RICH_SOURCES_ENV]
         poetry_python = os.environ[POETRY_PYTHON_ENV]
 
-        with self.assertRaises(CalledProcessError):
+        with self.assertRaises(RuntimeError):
             self.spark.install_poetry_project("non-existing-project", poetry_python=poetry_python)
         with self.assertRaises(FileNotFoundError):
             self.spark.install_poetry_project(rich_path, poetry_python="non-existing-python")

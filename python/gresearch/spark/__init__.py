@@ -466,7 +466,10 @@ SparkSession.install_pip_package = install_pip_package
 SparkContext.install_pip_package = install_pip_package
 
 
-def install_poetry_project(spark: Union[SparkSession, SparkContext], *path: str, poetry_python: Optional[str] = None) -> None:
+def install_poetry_project(spark: Union[SparkSession, SparkContext],
+                           *project: str,
+                           poetry_python: Optional[str] = None,
+                           pip_args: Optional[List[str]] = None) -> None:
     import logging
     logger = logging.getLogger()
 
@@ -477,11 +480,12 @@ def install_poetry_project(spark: Union[SparkSession, SparkContext], *path: str,
 
     if isinstance(spark, SparkSession):
         spark = spark.sparkContext
-
     if poetry_python is None:
         poetry_python = sys.executable
+    if pip_args is None:
+        pip_args = []
 
-    def log_poetry(proc: subprocess.CompletedProcess) -> List[str]:
+    def check_and_log_poetry(proc: subprocess.CompletedProcess) -> List[str]:
         stdout = proc.stdout.decode('utf-8').splitlines(keepends=False)
         for line in stdout:
             logger.info(f"poetry: {line}")
@@ -490,19 +494,22 @@ def install_poetry_project(spark: Union[SparkSession, SparkContext], *path: str,
         for line in stderr:
             logger.error(f"poetry: {line}")
 
+        if proc.returncode != 0:
+            raise RuntimeError(f'Poetry process terminated with exit code {proc.returncode}')
+
         return stdout
 
-    def build_wheel(path: Path) -> Path:
+    def build_wheel(project: Path) -> Path:
         logger.info(f"Running poetry using {poetry_python}")
 
         # make sure the virtual env for this project exists, otherwise we won't get to see the build whl file in stdout
         proc = subprocess.run([
             poetry_python, '-m', 'poetry',
             'env', 'use',
-            '--directory', str(path.absolute()),
+            '--directory', str(project.absolute()),
             sys.executable
         ], capture_output=True)
-        log_poetry(proc)
+        check_and_log_poetry(proc)
 
         # build the whl file
         proc = subprocess.run([
@@ -511,25 +518,22 @@ def install_poetry_project(spark: Union[SparkSession, SparkContext], *path: str,
             '--verbose',
             '--no-interaction',
             '--format', 'wheel',
-            '--directory', str(path.absolute())
+            '--directory', str(project.absolute())
         ], capture_output=True)
-        stdout = log_poetry(proc)
-
-        if proc.returncode != 0:
-            raise RuntimeError(f'Poetry process terminated with exit code {proc.returncode}')
+        stdout = check_and_log_poetry(proc)
 
         # first matching line is taken to extract whl file name
         whl_pattern = "^  - Built (.*.whl)$"
         for line in stdout:
             if match := re.match(whl_pattern, line):
-                return path.joinpath('dist', match.group(1))
+                return project.joinpath('dist', match.group(1))
 
         raise RuntimeError(f'Could not find wheel file name in poetry output, was looking for "{whl_pattern}"')
 
-    wheels = [build_wheel(Path(p)) for p in path]
+    wheels = [build_wheel(Path(path)) for path in project]
 
     # install wheels via pip
-    spark.install_pip_package(*[str(whl.absolute()) for whl in wheels])
+    spark.install_pip_package(*[str(whl.absolute()) for whl in wheels] + pip_args)
 
 
 SparkSession.install_poetry_project = install_poetry_project
