@@ -22,6 +22,16 @@ efficiently laid out with a single operation.
 or [parquet-cli](https://pypi.org/project/parquet-cli/) by reading from a simple Spark data source.
 This simplifies identifying why some Parquet files cannot be split by Spark into scalable partitions.
 
+**[Install PIP packages into PySpark job](PYSPARK-DEPS.md):** Install Python dependencies via PIP directly into your running PySpark job (PySpark ≥ 3.1.0):
+
+```python
+# noinspection PyUnresolvedReferences
+from gresearch.spark import *
+
+spark.install_pip_package("pandas==1.4.3", "pyarrow")
+spark.install_pip_package("-r", "requirements.txt")
+```
+
 **[Fluent method call](CONDITIONAL.md):** `T.call(transformation: T => R): R`: Turns a transformation `T => R`,
 that is not part of `T` into a fluent method call on `T`. This allows writing fluent code like:
 
@@ -52,6 +62,9 @@ should be preferred over calling `Dataset.groupByKey(V => K)` whenever possible.
 existing partitioning and ordering of the Dataset, while the latter hides from Catalyst which columns are used to create the keys.
 This can have a significant performance penalty.
 
+<details>
+<summary>Details:</summary>
+
 The new column-expression-based `groupByKey[K](Column*)` method makes it easier to group by a column expression key. Instead of
 
     ds.groupBy($"id").as[Int, V]
@@ -59,6 +72,7 @@ The new column-expression-based `groupByKey[K](Column*)` method makes it easier 
 use:
 
     ds.groupByKey[Int]($"id")
+</details>
 
 **Backticks:** `backticks(string: String, strings: String*): String)`: Encloses the given column name with backticks (`` ` ``) when needed.
 This is a handy way to ensure column names with special characters like dots (`.`) work with `col()` or `select()`.
@@ -99,7 +113,31 @@ unix_epoch_nanos_to_dotnet_ticks(column_or_name)
 ```
 </details>
 
-**Spark job description:** Set Spark job description for all Spark jobs within a context:
+**Spark temporary directory**: Create a temporary directory that will be removed on Spark application shutdown.
+
+<details>
+<summary>Examples:</summary>
+
+Scala:
+```scala
+import uk.co.gresearch.spark.createTemporaryDir
+
+val dir = createTemporaryDir("prefix")
+```
+
+Python:
+```python
+# noinspection PyUnresolvedReferences
+from gresearch.spark import *
+
+dir = spark.create_temporary_dir("prefix")
+```
+</details>
+
+**Spark job description:** Set Spark job description for all Spark jobs within a context.
+
+<details>
+<summary>Examples:</summary>
 
 ```scala
 import uk.co.gresearch.spark._
@@ -140,6 +178,7 @@ val counts = withJobDescription("Counting rows") {
   files.map(filename => spark.read.csv(filename).count).sum
 }(spark)
 ```
+</details>
 
 ## Using Spark Extension
 

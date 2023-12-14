@@ -16,7 +16,6 @@
 
 package uk.co.gresearch
 
-import org.apache.spark.SparkContext
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.expressions.NamedExpression
@@ -24,7 +23,10 @@ import org.apache.spark.sql.functions.{col, count, lit, when}
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.{DecimalType, LongType, TimestampType}
 import org.apache.spark.storage.StorageLevel
+import org.apache.spark.{SparkContext, SparkFiles}
 import uk.co.gresearch.spark.group.SortedGroupByDataset
+
+import java.nio.file.{Files, Paths}
 
 package object spark extends Logging with SparkVersion with BuildVersion {
 
@@ -35,6 +37,16 @@ package object spark extends Logging with SparkVersion with BuildVersion {
    */
   private[spark] def distinctPrefixFor(existing: Seq[String]): String = {
     "_" * (existing.map(_.takeWhile(_ == '_').length).reduceOption(_ max _).getOrElse(0) + 1)
+  }
+
+  /**
+   * Create a temporary directory in a location (driver temp dir) that will be deleted on Spark application shutdown.
+   * @param prefix prefix string of temporary directory name
+   * @return absolute path of temporary directory
+   */
+  def createTemporaryDir(prefix: String): String = {
+    // SparkFiles.getRootDirectory() will be deleted on spark application shutdown
+    Files.createTempDirectory(Paths.get(SparkFiles.getRootDirectory()), prefix).toAbsolutePath.toString
   }
 
   // https://issues.apache.org/jira/browse/SPARK-40588

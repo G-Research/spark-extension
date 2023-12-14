@@ -12,11 +12,18 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import os
+import shutil
+import sys
+import time
 from contextlib import contextmanager
 from typing import Any, Union, List, Optional, Mapping, TYPE_CHECKING
+import subprocess
 
 from py4j.java_gateway import JVMView, JavaObject
+from pyspark import __version__
 from pyspark.context import SparkContext
+from pyspark.files import SparkFiles
 from pyspark.sql import DataFrame
 from pyspark.sql.column import Column, _to_java_column
 from pyspark.sql.context import SQLContext
@@ -405,3 +412,53 @@ def append_job_description(extra_description: str, separator: str = " - "):
         yield
     finally:
         set_description(earlier)
+
+
+def create_temporary_dir(spark: Union[SparkSession, SparkContext], prefix: str) -> str:
+    """
+    Create a temporary directory in a location (driver temp dir) that will be deleted on Spark application shutdown.
+    :param spark: spark session or context
+    :param prefix: prefix string of temporary directory name
+    :return: absolute path of temporary directory
+    """
+    if isinstance(spark, SparkSession):
+        spark = spark.sparkContext
+
+    package = spark._jvm.uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$")
+    mktempdir = package.createTemporaryDir
+    return mktempdir(prefix)
+
+
+SparkSession.create_temporary_dir = create_temporary_dir
+SparkContext.create_temporary_dir = create_temporary_dir
+
+
+def install_pip_package(spark: Union[SparkSession, SparkContext], *package_or_pip_option: str) -> None:
+    if __version__.startswith('2.') or __version__.startswith('3.0.'):
+        raise NotImplementedError(f'Not supported for PySpark __version__')
+
+    if isinstance(spark, SparkSession):
+        spark = spark.sparkContext
+
+    # create temporary directory for packages, inside a directory which will be deleted on spark application shutdown
+    id = f"spark-extension-pip-pkgs-{time.time()}"
+    dir = spark.create_temporary_dir(f"{id}-")
+
+    # install packages via pip install
+    # it is best to run pip as a separate process and not calling into module pip
+    # https://pip.pypa.io/en/stable/user_guide/#using-pip-from-your-program
+    subprocess.check_call([sys.executable, '-m', 'pip', "install"] + list(package_or_pip_option) + ["--target", dir])
+
+    # zip packages and remove directory
+    zip = shutil.make_archive(dir, "zip", dir)
+    shutil.rmtree(dir)
+
+    # register zip file as archive, and add as python source
+    # once support for Spark 3.0 is dropped, replace with spark.addArchive()
+    spark._jsc.sc().addArchive(zip + "#" + id)
+    spark._python_includes.append(id)
+    sys.path.insert(1, os.path.join(SparkFiles.getRootDirectory(), id))
+
+
+SparkSession.install_pip_package = install_pip_package
+SparkContext.install_pip_package = install_pip_package

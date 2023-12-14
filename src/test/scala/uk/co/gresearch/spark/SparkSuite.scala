@@ -16,17 +16,18 @@
 
 package uk.co.gresearch.spark
 
-import org.apache.spark.TaskContext
+import org.apache.spark.{SparkFiles, TaskContext}
 import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.expressions.{Descending, SortOrder}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
 import org.apache.spark.storage.StorageLevel
-import org.apache.spark.storage.StorageLevel.{DISK_ONLY, MEMORY_AND_DISK, MEMORY_ONLY, OFF_HEAP, NONE}
+import org.apache.spark.storage.StorageLevel.{DISK_ONLY, MEMORY_AND_DISK, MEMORY_ONLY, NONE, OFF_HEAP}
 import org.scalatest.funsuite.AnyFunSuite
 import uk.co.gresearch.ExtendedAny
 import uk.co.gresearch.spark.SparkSuite.{Value, collectJobDescription}
 
+import java.nio.file.Paths
 import java.sql.Timestamp
 import java.time.Instant
 
@@ -696,6 +697,12 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
         assert(actual.head.getLong(1) === actual.head.getLong(0))
       }
     }
+  }
+
+  test("Spark temp dir") {
+    import uk.co.gresearch.spark.createTemporaryDir
+    val dir = createTemporaryDir("test")
+    assert(Paths.get(dir).toAbsolutePath.toString.startsWith(SparkFiles.getRootDirectory()))
   }
 }
 

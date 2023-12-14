@@ -12,13 +12,17 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import datetime
+from decimal import Decimal
+from subprocess import CalledProcessError
+from unittest import skipUnless, skipIf
 
+from pyspark import __version__
 from pyspark.sql import Row
 from pyspark.sql.functions import col, count
+
 from gresearch.spark import dotnet_ticks_to_timestamp, dotnet_ticks_to_unix_epoch, dotnet_ticks_to_unix_epoch_nanos, \
     timestamp_to_dotnet_ticks, unix_epoch_to_dotnet_ticks, unix_epoch_nanos_to_dotnet_ticks, count_null
 from spark_common import SparkTest
-from decimal import Decimal
 
 
 class PackageTest(SparkTest):
@@ -150,6 +154,50 @@ class PackageTest(SparkTest):
             count_null(col("unix_nanos")).alias("null_nanos"),
         ).collect()
         self.assertEqual([Row(ids=7, nanos=6, null_ids=0, null_nanos=1)], actual)
+
+    def test_create_temp_dir(self):
+        from pyspark import SparkFiles
+
+        dir = self.spark.create_temporary_dir("prefix")
+        self.assertTrue(dir.startswith(SparkFiles.getRootDirectory()))
+
+    @skipIf(__version__.startswith('3.0.'), 'install_pip_package not supported for Spark 3.0')
+    def test_install_pip_package(self):
+        self.spark.sparkContext.setLogLevel("INFO")
+        with self.assertRaises(ImportError):
+            # noinspection PyPackageRequirements
+            import emoji
+            emoji.emojize("this test is :thumbs_up:")
+
+        self.spark.install_pip_package("emoji")
+
+        # noinspection PyPackageRequirements
+        import emoji
+        actual = emoji.emojize("this test is :thumbs_up:")
+        expected = "this test is 👍"
+        self.assertEqual(expected, actual)
+
+        import pandas as pd
+        actual = self.spark.range(0, 10, 1, 10) \
+            .mapInPandas(lambda it: [pd.DataFrame.from_dict({"val": [emoji.emojize(":thumbs_up:")]})], "val string") \
+            .collect()
+        expected = [Row("👍")] * 10
+        self.assertEqual(expected, actual)
+
+    @skipIf(__version__.startswith('3.0.'), 'install_pip_package not supported for Spark 3.0')
+    def test_install_pip_package_unknown_argument(self):
+        with self.assertRaises(CalledProcessError):
+            self.spark.install_pip_package("--unknown", "argument")
+
+    @skipIf(__version__.startswith('3.0.'), 'install_pip_package not supported for Spark 3.0')
+    def test_install_pip_package_package_not_found(self):
+        with self.assertRaises(CalledProcessError):
+            self.spark.install_pip_package("pyspark-extension==abc")
+
+    @skipUnless(__version__.startswith('3.0.'), 'install_pip_package not supported for Spark 3.0')
+    def test_install_pip_package_not_supported(self):
+        with self.assertRaises(NotImplementedError):
+            self.spark.install_pip_package("emoji")
 
 
 if __name__ == '__main__':
