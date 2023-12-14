@@ -80,7 +80,7 @@ runs:
     env:
       PYTHONPATH: python:python/test
     run: |
-      python -m pytest python/test --junit-xml test-results/pytest.xml
+      python -m pytest python/test --junit-xml test-results/pytest-$(date +%s.%N)-$RANDOM.xml
     shell: bash
 
   - name: Install Spark Extension
