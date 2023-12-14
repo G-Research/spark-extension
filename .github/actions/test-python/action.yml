@@ -78,18 +78,23 @@ runs:
 
   - name: Prepare poetry tests
     run: |
+      # install poetry in venv
       python -m venv .poetry-venv
       .poetry-venv/bin/python -m pip install poetry
+      # env var needed by poetry tests
+      echo "POETRY_PYTHON=$PWD/.poetry-venv/bin/python" | tee -a "$GITHUB_ENV"
+
+      # clone example poetry project
       git clone https://github.com/Textualize/rich.git .rich
       cd .rich
       git reset --hard 20024635c06c22879fd2fd1e380ec4cccd9935dd
+      # env var needed by poetry tests
+      echo "RICH_SOURCES=$PWD" | tee -a "$GITHUB_ENV"
     shell: bash
 
   - name: Python Unit Tests
     env:
       PYTHONPATH: python:python/test
-      RICH_SOURCES: .rich
-      POETRY_PYTHON: .poetry-venv/bin/python
     run: |
       python -m pytest python/test --junit-xml test-results/pytest-$(date +%s.%N)-$RANDOM.xml
     shell: bash
