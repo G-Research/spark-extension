@@ -15,9 +15,9 @@
 import contextlib
 import logging
 import os
-import subprocess
 import sys
 import unittest
+from pathlib import Path
 
 from pyspark import SparkConf
 from pyspark.sql import SparkSession
@@ -38,12 +38,13 @@ def spark_session():
 class SparkTest(unittest.TestCase):
 
     @staticmethod
-    def main():
+    def main(file: str):
         if len(sys.argv) == 2:
             # location to store test results provided, this requires package unittest-xml-reporting
             import xmlrunner
 
             unittest.main(
+                module=f'test.{Path(file).name[:-3]}',
                 testRunner=xmlrunner.XMLTestRunner(output=sys.argv[1]),
                 argv=sys.argv[:1],
                 # these make sure that some options that are not applicable
