@@ -6,6 +6,10 @@ Such a deployment can be cumbersome, especially when running in an interactive n
 The `spark-extension` package allows installing Python packages programmatically by the PySpark application itself (PySpark ≥ 3.1.0).
 These packages are only accessible by that PySpark application, and they are removed on calling `spark.stop()`.
 
+## Installing packages with `pip`
+
+Python packages can be installed with `pip` as follows:
+
 ```python
 # noinspection PyUnresolvedReferences
 from gresearch.spark import *
@@ -20,7 +24,7 @@ Above example installs PIP packages `pandas` and `pyarrow` via `pip`. Method `in
 spark.install_pip_package("pandas==1.4.3", "pyarrow~=8.0.0")
 
 # install packages from package sources (e.g. git clone https://github.com/pandas-dev/pandas.git)
-spark.install_pip_package("./pandas/")
+spark.install_pip_package("../pandas/")
 
 # install packages from git repo
 spark.install_pip_package("git+https://github.com/pandas-dev/pandas.git@main")
@@ -33,4 +37,15 @@ spark.install_pip_package("pandas", "pyarrow", "--index-url", "https://artifacts
 
 # install pip packages quietly (only disables output of PIP)
 spark.install_pip_package("pandas", "pyarrow", "--quiet")
+```
+
+## Installing Python projects with Poetry
+
+Python projects can be installed from sources, including their dependencies, using [Poetry](https://python-poetry.org/):
+
+```python
+# noinspection PyUnresolvedReferences
+from gresearch.spark import *
+
+spark.install_poetry_project("../my-poetry-project/", poetry_python="../venv-poetry/bin/python")
 ```

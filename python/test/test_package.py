@@ -12,6 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import datetime
+import os
 from decimal import Decimal
 from subprocess import CalledProcessError
 from unittest import skipUnless, skipIf
@@ -23,6 +24,9 @@ from pyspark.sql.functions import col, count
 from gresearch.spark import dotnet_ticks_to_timestamp, dotnet_ticks_to_unix_epoch, dotnet_ticks_to_unix_epoch_nanos, \
     timestamp_to_dotnet_ticks, unix_epoch_to_dotnet_ticks, unix_epoch_nanos_to_dotnet_ticks, count_null
 from spark_common import SparkTest
+
+POETRY_PYTHON_ENV = "POETRY_PYTHON"
+RICH_SOURCES_ENV = "RICH_SOURCES"
 
 
 class PackageTest(SparkTest):
@@ -169,7 +173,7 @@ class PackageTest(SparkTest):
             import emoji
             emoji.emojize("this test is :thumbs_up:")
 
-        self.spark.install_pip_package("emoji")
+        self.spark.install_pip_package("emoji", '--cache', '.cache/pypi')
 
         # noinspection PyPackageRequirements
         import emoji
@@ -198,6 +202,61 @@ class PackageTest(SparkTest):
     def test_install_pip_package_not_supported(self):
         with self.assertRaises(NotImplementedError):
             self.spark.install_pip_package("emoji")
+
+    @skipIf(__version__.startswith('3.0.'), 'install_poetry_project not supported for Spark 3.0')
+    # provide an environment variable with path to the python binary of a virtual env that has poetry installed
+    @skipIf(POETRY_PYTHON_ENV not in os.environ, f'Environment variable {POETRY_PYTHON_ENV} pointing to '
+                                                 f'virtual env python with poetry required')
+    @skipIf(RICH_SOURCES_ENV not in os.environ, f'Environment variable {RICH_SOURCES_ENV} pointing to '
+                                                f'rich project sources required')
+    def test_install_poetry_project(self):
+        self.spark.sparkContext.setLogLevel("INFO")
+        with self.assertRaises(ImportError):
+            # noinspection PyPackageRequirements
+            from rich.emoji import Emoji
+            thumbs_up = Emoji("thumbs_up")
+
+        rich_path = os.environ[RICH_SOURCES_ENV]
+        poetry_python = os.environ[POETRY_PYTHON_ENV]
+        self.spark.install_poetry_project(
+            rich_path,
+            poetry_python=poetry_python,
+            pip_args=['--cache', '.cache/pypi']
+        )
+
+        # noinspection PyPackageRequirements
+        from rich.emoji import Emoji
+        thumbs_up = Emoji("thumbs_up")
+        actual = thumbs_up.replace("this test is :thumbs_up:")
+        expected = "this test is 👍"
+        self.assertEqual(expected, actual)
+
+        import pandas as pd
+        actual = self.spark.range(0, 10, 1, 10) \
+            .mapInPandas(lambda it: [pd.DataFrame.from_dict({"val": [thumbs_up.replace(":thumbs_up:")]})], "val string") \
+            .collect()
+        expected = [Row("👍")] * 10
+        self.assertEqual(expected, actual)
+
+    @skipIf(__version__.startswith('3.0.'), 'install_pip_package not supported for Spark 3.0')
+    # provide an environment variable with path to the python binary of a virtual env that has poetry installed
+    @skipIf(POETRY_PYTHON_ENV not in os.environ, f'Environment variable {POETRY_PYTHON_ENV} pointing to '
+                                                 f'virtual env python with poetry required')
+    @skipIf(RICH_SOURCES_ENV not in os.environ, f'Environment variable {RICH_SOURCES_ENV} pointing to '
+                                                f'rich project sources required')
+    def test_install_poetry_project_wrong_arguments(self):
+        rich_path = os.environ[RICH_SOURCES_ENV]
+        poetry_python = os.environ[POETRY_PYTHON_ENV]
+
+        with self.assertRaises(RuntimeError):
+            self.spark.install_poetry_project("non-existing-project", poetry_python=poetry_python)
+        with self.assertRaises(FileNotFoundError):
+            self.spark.install_poetry_project(rich_path, poetry_python="non-existing-python")
+
+    @skipUnless(__version__.startswith('3.0.'), 'install_poetry_project not supported for Spark 3.0')
+    def test_install_poetry_project_not_supported(self):
+        with self.assertRaises(NotImplementedError):
+            self.spark.install_poetry_project("./rich")
 
 
 if __name__ == '__main__':

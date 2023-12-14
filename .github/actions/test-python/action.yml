@@ -76,9 +76,20 @@ runs:
       echo "SPARK_HOME=$SPARK_HOME" | tee -a "$GITHUB_ENV"
     shell: bash
 
+  - name: Prepare poetry tests
+    run: |
+      python -m venv .poetry-venv
+      .poetry-venv/bin/python -m pip install poetry
+      git clone https://github.com/Textualize/rich.git .rich
+      cd .rich
+      git reset --hard 20024635c06c22879fd2fd1e380ec4cccd9935dd
+    shell: bash
+
   - name: Python Unit Tests
     env:
       PYTHONPATH: python:python/test
+      RICH_SOURCES: .rich
+      POETRY_PYTHON: .poetry-venv/bin/python
     run: |
       python -m pytest python/test --junit-xml test-results/pytest-$(date +%s.%N)-$RANDOM.xml
     shell: bash

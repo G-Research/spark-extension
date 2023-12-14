@@ -13,12 +13,14 @@
 #  limitations under the License.
 
 import os
+import re
 import shutil
+import subprocess
 import sys
 import time
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Any, Union, List, Optional, Mapping, TYPE_CHECKING
-import subprocess
 
 from py4j.java_gateway import JVMView, JavaObject
 from pyspark import __version__
@@ -462,3 +464,77 @@ def install_pip_package(spark: Union[SparkSession, SparkContext], *package_or_pi
 
 SparkSession.install_pip_package = install_pip_package
 SparkContext.install_pip_package = install_pip_package
+
+
+def install_poetry_project(spark: Union[SparkSession, SparkContext],
+                           *project: str,
+                           poetry_python: Optional[str] = None,
+                           pip_args: Optional[List[str]] = None) -> None:
+    import logging
+    logger = logging.getLogger()
+
+    # spark.install_pip_dependency has this limitation, and it is used by this method
+    # and we want to fail quickly here
+    if __version__.startswith('2.') or __version__.startswith('3.0.'):
+        raise NotImplementedError(f'Not supported for PySpark __version__')
+
+    if isinstance(spark, SparkSession):
+        spark = spark.sparkContext
+    if poetry_python is None:
+        poetry_python = sys.executable
+    if pip_args is None:
+        pip_args = []
+
+    def check_and_log_poetry(proc: subprocess.CompletedProcess) -> List[str]:
+        stdout = proc.stdout.decode('utf-8').splitlines(keepends=False)
+        for line in stdout:
+            logger.info(f"poetry: {line}")
+
+        stderr = proc.stderr.decode('utf-8').splitlines(keepends=False)
+        for line in stderr:
+            logger.error(f"poetry: {line}")
+
+        if proc.returncode != 0:
+            raise RuntimeError(f'Poetry process terminated with exit code {proc.returncode}')
+
+        return stdout
+
+    def build_wheel(project: Path) -> Path:
+        logger.info(f"Running poetry using {poetry_python}")
+
+        # make sure the virtual env for this project exists, otherwise we won't get to see the build whl file in stdout
+        proc = subprocess.run([
+            poetry_python, '-m', 'poetry',
+            'env', 'use',
+            '--directory', str(project.absolute()),
+            sys.executable
+        ], capture_output=True)
+        check_and_log_poetry(proc)
+
+        # build the whl file
+        proc = subprocess.run([
+            poetry_python, '-m', 'poetry',
+            'build',
+            '--verbose',
+            '--no-interaction',
+            '--format', 'wheel',
+            '--directory', str(project.absolute())
+        ], capture_output=True)
+        stdout = check_and_log_poetry(proc)
+
+        # first matching line is taken to extract whl file name
+        whl_pattern = "^  - Built (.*.whl)$"
+        for line in stdout:
+            if match := re.match(whl_pattern, line):
+                return project.joinpath('dist', match.group(1))
+
+        raise RuntimeError(f'Could not find wheel file name in poetry output, was looking for "{whl_pattern}"')
+
+    wheels = [build_wheel(Path(path)) for path in project]
+
+    # install wheels via pip
+    spark.install_pip_package(*[str(whl.absolute()) for whl in wheels] + pip_args)
+
+
+SparkSession.install_poetry_project = install_poetry_project
+SparkContext.install_poetry_project = install_poetry_project
