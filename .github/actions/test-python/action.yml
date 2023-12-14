@@ -104,6 +104,8 @@ runs:
     shell: bash
 
   - name: Python Integration Tests
+    env:
+      PYTHONPATH: python:python/test
     run: |
       find python/test -name 'test*.py' > tests
       while read test
