@@ -238,7 +238,7 @@ class PackageTest(SparkTest):
         expected = [Row("👍")] * 10
         self.assertEqual(expected, actual)
 
-    @skipIf(__version__.startswith('3.0.'), 'install_pip_package not supported for Spark 3.0')
+    @skipIf(__version__.startswith('3.0.'), 'install_poetry_project not supported for Spark 3.0')
     # provide an environment variable with path to the python binary of a virtual env that has poetry installed
     @skipIf(POETRY_PYTHON_ENV not in os.environ, f'Environment variable {POETRY_PYTHON_ENV} pointing to '
                                                  f'virtual env python with poetry required')
@@ -260,4 +260,4 @@ class PackageTest(SparkTest):
 
 
 if __name__ == '__main__':
-    SparkTest.main()
+    SparkTest.main(__file__)

@@ -67,4 +67,4 @@ class JobDescriptionTest(SparkTest):
 
 
 if __name__ == '__main__':
-    SparkTest.main()
+    SparkTest.main(__file__)
