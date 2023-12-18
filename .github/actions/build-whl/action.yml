@@ -29,7 +29,7 @@ runs:
     shell: bash
 
   - name: Fetch Binaries Artifact
-    uses: actions/download-artifact@v3
+    uses: actions/download-artifact@v4
     with:
       name: Binaries-${{ inputs.spark-compat-version }}-${{ inputs.scala-compat-version }}
       path: .
@@ -48,7 +48,7 @@ runs:
       key: ${{ runner.os }}-pip-whl-${{ inputs.python-version }}-${{ inputs.spark-version }}
 
   - name: Setup Python
-    uses: actions/setup-python@v4
+    uses: actions/setup-python@v5
     with:
       python-version: ${{ inputs.python-version }}
 
@@ -71,7 +71,7 @@ runs:
     shell: bash
 
   - name: Upload whl
-    uses: actions/upload-artifact@v3
+    uses: actions/upload-artifact@v4
     with:
       name: Whl (Spark ${{ inputs.spark-compat-version }} Scala ${{ inputs.scala-compat-version }})
       path: |
