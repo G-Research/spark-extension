@@ -23,7 +23,7 @@
   <developers>
     <developer>
       <id>EnricoMi</id>
-      <name>Enico Minack</name>
+      <name>Enrico Minack</name>
       <email>github@enrico.minack.dev</email>
     </developer>
   </developers>
@@ -93,7 +93,7 @@
     <dependency>
       <groupId>org.scalatest</groupId>
       <artifactId>scalatest_${scala.compat.version}</artifactId>
-      <version>3.3.0-SNAP3</version>
+      <version>3.3.0-SNAP4</version>
       <scope>test</scope>
     </dependency>
 
@@ -150,7 +150,7 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>build-helper-maven-plugin</artifactId>
-        <version>3.4.0</version>
+        <version>3.5.0</version>
         <executions>
           <execution>
             <phase>generate-sources</phase>
@@ -168,7 +168,7 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>properties-maven-plugin</artifactId>
-        <version>1.1.0</version>
+        <version>1.2.1</version>
         <executions>
           <execution>
             <phase>generate-resources</phase>
@@ -235,7 +235,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
-        <version>3.1.0</version>
+        <version>3.1.2</version>
         <configuration>
           <skipTests>false</skipTests>
         </configuration>
@@ -319,7 +319,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-report-plugin</artifactId>
-        <version>3.1.0</version>
+        <version>3.1.2</version>
       </plugin>
     </plugins>
   </reporting>
