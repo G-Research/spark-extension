@@ -2,9 +2,45 @@ name: Check
 
 on:
   workflow_call:
+
 jobs:
+  lint:
+    name: Scala lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Cache Maven packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-mvn-lint-${{ hashFiles('pom.xml') }}
+
+      - name: Setup JDK ${{ inputs.java-compat-version }}
+        uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+          distribution: 'zulu'
+
+      - name: Check
+        id: check
+        run: |
+          mvn --batch-mode spotless:check
+        shell: bash
+
+      - name: Changes
+        if: failure() && steps.check.outcome == 'failure'
+        run: |
+          mvn --batch-mode spotless:apply
+          git diff
+        shell: bash
+
   config:
-    name: Configure check
+    name: Configure compat
     runs-on: ubuntu-latest
     outputs:
       major-version: ${{ steps.versions.outputs.major-version }}
@@ -32,8 +68,8 @@ jobs:
           echo "release-major-version=${release_version/.*/}" >> "$GITHUB_OUTPUT"
         shell: bash
 
-  check:
-    name: Check (Spark ${{ matrix.spark-compat-version }} Scala ${{ matrix.scala-compat-version }})
+  compat:
+    name: Compat (Spark ${{ matrix.spark-compat-version }} Scala ${{ matrix.scala-compat-version }})
     needs: config
     runs-on: ubuntu-latest
     if: needs.config.outputs.major-version == needs.config.outputs.release-major-version

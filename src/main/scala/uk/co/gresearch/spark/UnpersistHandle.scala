@@ -51,7 +51,7 @@ case class SilentUnpersistHandle() extends UnpersistHandle {
   }
 }
 
-case class NoopUnpersistHandle() extends UnpersistHandle{
+case class NoopUnpersistHandle() extends UnpersistHandle {
   override def setDataFrame(dataframe: DataFrame): DataFrame = dataframe
   override def apply(): Unit = {}
   override def apply(blocking: Boolean): Unit = {}

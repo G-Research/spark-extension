@@ -25,25 +25,30 @@ import uk.co.gresearch.spark.diff.comparator.DurationDiffComparator.isNotSupport
 import java.time.Duration
 
 /**
- * Compares two timestamps and considers them equal when they are less than
- * (or equal to when inclusive = true) a given duration apart.
+ * Compares two timestamps and considers them equal when they are less than (or equal to when inclusive = true) a given
+ * duration apart.
  *
- * @param duration equality threshold
- * @param inclusive duration is considered equal when true
+ * @param duration
+ *   equality threshold
+ * @param inclusive
+ *   duration is considered equal when true
  */
 case class DurationDiffComparator(duration: Duration, inclusive: Boolean = true) extends DiffComparator {
   if (isNotSupportedBySpark) {
-    throw new UnsupportedOperationException(s"java.time.Duration is not supported by Spark ${spark.SparkCompatVersionString}")
+    throw new UnsupportedOperationException(
+      s"java.time.Duration is not supported by Spark ${spark.SparkCompatVersionString}"
+    )
   }
 
   override def equiv(left: Column, right: Column): Column = {
-    val inDuration = if (inclusive)
-      (diff: Column) => diff <= duration
-    else
-      (diff: Column) => diff < duration
+    val inDuration =
+      if (inclusive)
+        (diff: Column) => diff <= duration
+      else
+        (diff: Column) => diff < duration
 
     left.isNull && right.isNull ||
-      left.isNotNull && right.isNotNull && inDuration(abs(left - right))
+    left.isNotNull && right.isNotNull && inDuration(abs(left - right))
   }
 
   def asInclusive(): DurationDiffComparator = if (inclusive) this else copy(inclusive = true)
@@ -52,5 +57,5 @@ case class DurationDiffComparator(duration: Duration, inclusive: Boolean = true)
 
 object DurationDiffComparator extends SparkVersion {
   val isSupportedBySpark: Boolean = SparkMajorVersion == 3 && SparkMinorVersion >= 3 || SparkMajorVersion > 3
-  val isNotSupportedBySpark: Boolean = ! isSupportedBySpark
+  val isNotSupportedBySpark: Boolean = !isSupportedBySpark
 }

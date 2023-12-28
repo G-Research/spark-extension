@@ -39,7 +39,11 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
   val emptyDataFrame: DataFrame = spark.createDataFrame(Seq.empty[Value])
 
   test("Get Spark version") {
-    assert(VersionString.contains(s"-$BuildSparkCompatVersionString-") || VersionString.endsWith(s"-$BuildSparkCompatVersionString"))
+    assert(
+      VersionString.contains(s"-$BuildSparkCompatVersionString-") || VersionString.endsWith(
+        s"-$BuildSparkCompatVersionString"
+      )
+    )
 
     assert(spark.version.startsWith(s"$BuildSparkCompatVersionString."))
     assert(SparkVersion === BuildSparkVersion)
@@ -121,7 +125,9 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
 
   test("UnpersistHandle throws on unpersist with blocking if no DataFrame is set") {
     val unpersist = UnpersistHandle()
-    assert(intercept[IllegalStateException] { unpersist(blocking = true) }.getMessage === s"DataFrame has to be set first")
+    assert(intercept[IllegalStateException] {
+      unpersist(blocking = true)
+    }.getMessage === s"DataFrame has to be set first")
   }
 
   test("SilentUnpersistHandle does not throw on unpersist if no DataFrame is set") {
@@ -145,7 +151,14 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
 
   test("count_null") {
     val df = Seq(
-      (1, "some"), (2, "text"), (3, "and"), (4, "some"), (5, "null"), (6, "values"), (7, null), (8, null)
+      (1, "some"),
+      (2, "text"),
+      (3, "and"),
+      (4, "some"),
+      (5, "null"),
+      (6, "values"),
+      (7, null),
+      (8, null)
     ).toDF("id", "str")
     val actual =
       df.select(
@@ -153,7 +166,8 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
         count($"str").as("strs"),
         count_null($"id").as("null ids"),
         count_null($"str").as("null strs")
-      ).collect().head
+      ).collect()
+        .head
     assert(actual === Row(8, 6, 0, 2))
   }
 
@@ -260,7 +274,6 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
     assertIsDataset[Value](spark.createDataFrame(Seq.empty[Value]).call(_.as[Value]))
   }
 
-
   Seq(true, false).foreach { condition =>
     test(s"call on $condition condition dataset-to-dataset transformation") {
       assertIsGenericType[Dataset[Value]](
@@ -298,10 +311,10 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
       )
     }
 
-
     test(s"call on $condition condition either dataset-to-dataset transformation") {
       assertIsGenericType[Dataset[Value]](
-        spark.emptyDataset[Value]
+        spark
+          .emptyDataset[Value]
           .transform(
             _.on(condition)
               .either(_.sort())
@@ -312,7 +325,8 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
 
     test(s"call on $condition condition either dataset-to-dataframe transformation") {
       assertIsGenericType[DataFrame](
-        spark.emptyDataset[Value]
+        spark
+          .emptyDataset[Value]
           .transform(
             _.on(condition)
               .either(_.drop("string"))
@@ -323,7 +337,8 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
 
     test(s"call on $condition condition either dataframe-to-dataset transformation") {
       assertIsGenericType[Dataset[Value]](
-        spark.createDataFrame(Seq.empty[Value])
+        spark
+          .createDataFrame(Seq.empty[Value])
           .transform(
             _.on(condition)
               .either(_.as[Value])
@@ -334,7 +349,8 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
 
     test(s"call on $condition condition either dataframe-to-dataframe transformation") {
       assertIsGenericType[DataFrame](
-        spark.createDataFrame(Seq.empty[Value])
+        spark
+          .createDataFrame(Seq.empty[Value])
           .transform(
             _.on(condition)
               .either(_.drop("string"))
@@ -343,7 +359,6 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
       )
     }
   }
-
 
   test("on true condition call either writer-to-writer methods") {
     assertIsGenericType[DataFrameWriter[Value]](
@@ -396,7 +411,7 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
   }
 
   test("global row number preserves order") {
-    doTestWithRowNumbers()(){ df =>
+    doTestWithRowNumbers()() { df =>
       assert(df.columns === Seq("id", "rand", "row_number"))
     }
   }
@@ -415,7 +430,9 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
 
   Seq(MEMORY_AND_DISK, MEMORY_ONLY, DISK_ONLY, OFF_HEAP, NONE).foreach { level =>
     test(s"global row number with $level") {
-      if (level.equals(StorageLevel.NONE) && (SparkMajorVersion > 3 || SparkMajorVersion == 3 && SparkMinorVersion >= 5)) {
+      if (
+        level.equals(StorageLevel.NONE) && (SparkMajorVersion > 3 || SparkMajorVersion == 3 && SparkMinorVersion >= 5)
+      ) {
         assertThrows[IllegalArgumentException] {
           doTestWithRowNumbers(storageLevel = level)($"id")()
         }
@@ -427,7 +444,9 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
 
   Seq(MEMORY_AND_DISK, MEMORY_ONLY, DISK_ONLY, OFF_HEAP, NONE).foreach { level =>
     test(s"global row number allows to unpersist with $level") {
-      if (level.equals(StorageLevel.NONE) && (SparkMajorVersion > 3 || SparkMajorVersion == 3 && SparkMinorVersion >= 5)) {
+      if (
+        level.equals(StorageLevel.NONE) && (SparkMajorVersion > 3 || SparkMajorVersion == 3 && SparkMinorVersion >= 5)
+      ) {
         assertThrows[IllegalArgumentException] {
           doTestWithRowNumbers(storageLevel = level)($"id")()
         }
@@ -447,59 +466,60 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
 
   test("global row number with existing row_number column") {
     // this overwrites the existing column 'row_number' (formerly 'rand') with the row numbers
-    doTestWithRowNumbers { df => df.withColumnRenamed("rand", "row_number") }(){ df =>
+    doTestWithRowNumbers { df => df.withColumnRenamed("rand", "row_number") }() { df =>
       assert(df.columns === Seq("id", "row_number"))
     }
   }
 
   test("global row number with custom row_number column") {
     // this puts the row numbers in the column "row", which is not the default column name
-    doTestWithRowNumbers(df => df.withColumnRenamed("rand", "row_number"),
-      rowNumberColumnName = "row" )(){ df =>
+    doTestWithRowNumbers(df => df.withColumnRenamed("rand", "row_number"), rowNumberColumnName = "row")() { df =>
       assert(df.columns === Seq("id", "row_number", "row"))
     }
   }
 
   test("global row number with internal column names") {
-    val cols = Seq("mono_id", "partition_id", "local_row_number", "max_local_row_number",
-      "cum_row_numbers", "partition_offset")
+    val cols =
+      Seq("mono_id", "partition_id", "local_row_number", "max_local_row_number", "cum_row_numbers", "partition_offset")
     var prefix: String = null
 
     doTestWithRowNumbers { df =>
       prefix = distinctPrefixFor(df.columns)
-      cols.foldLeft(df){ (df, name) => df.withColumn(prefix + name, rand()) }
-    }(){ df =>
+      cols.foldLeft(df) { (df, name) => df.withColumn(prefix + name, rand()) }
+    }() { df =>
       assert(df.columns === Seq("id", "rand") ++ cols.map(prefix + _) :+ "row_number")
     }
   }
 
-  def doTestWithRowNumbers(transform: DataFrame => DataFrame = identity,
-                           rowNumberColumnName: String = "row_number",
-                           storageLevel: StorageLevel = MEMORY_AND_DISK,
-                           unpersistHandle: UnpersistHandle = UnpersistHandle.Noop)
-                          (columns: Column*)
-                          (handle: DataFrame => Unit = identity[DataFrame]): Unit = {
+  def doTestWithRowNumbers(
+      transform: DataFrame => DataFrame = identity,
+      rowNumberColumnName: String = "row_number",
+      storageLevel: StorageLevel = MEMORY_AND_DISK,
+      unpersistHandle: UnpersistHandle = UnpersistHandle.Noop
+  )(columns: Column*)(handle: DataFrame => Unit = identity[DataFrame]): Unit = {
     val partitions = 10
     val rowsPerPartition = 1000
     val rows = partitions * rowsPerPartition
     assert(partitions > 1)
     assert(rowsPerPartition > 1)
 
-    val df = spark.range(1, rows + 1, 1, partitions)
+    val df = spark
+      .range(1, rows + 1, 1, partitions)
       .withColumn("rand", rand())
       .transform(transform)
       .withRowNumbers(
-        rowNumberColumnName=rowNumberColumnName,
-        storageLevel=storageLevel,
-        unpersistHandle=unpersistHandle,
-        columns: _*)
+        rowNumberColumnName = rowNumberColumnName,
+        storageLevel = storageLevel,
+        unpersistHandle = unpersistHandle,
+        columns: _*
+      )
       .cache()
 
     try {
       // testing with descending order is only supported for a single column
       val desc = columns.map(_.expr) match {
         case Seq(SortOrder(_, Descending, _, _)) => true
-        case _ => false
+        case _                                   => false
       }
 
       // assert row numbers are correct
@@ -519,7 +539,7 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
     }
 
     val correctRowNumbers = df.where(expect).count()
-    val incorrectRowNumbers = df.where(! expect).count()
+    val incorrectRowNumbers = df.where(!expect).count()
     assert(correctRowNumbers === rows)
     assert(incorrectRowNumbers === 0)
   }
@@ -536,50 +556,68 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
       (7, 3155378975999999999L)
     ).toDF("id", "ts")
 
-    val plan = df.select(
-      $"id",
-      dotNetTicksToTimestamp($"ts"),
-      dotNetTicksToTimestamp("ts"),
-      dotNetTicksToUnixEpoch($"ts"),
-      dotNetTicksToUnixEpoch("ts"),
-      dotNetTicksToUnixEpochNanos($"ts"),
-      dotNetTicksToUnixEpochNanos("ts")
-    ).orderBy($"id")
-    assert(plan.schema.fields.map(_.dataType) === Seq(
-      IntegerType, TimestampType, TimestampType, DecimalType(29, 9), DecimalType(29, 9), LongType, LongType
-    ))
+    val plan = df
+      .select(
+        $"id",
+        dotNetTicksToTimestamp($"ts"),
+        dotNetTicksToTimestamp("ts"),
+        dotNetTicksToUnixEpoch($"ts"),
+        dotNetTicksToUnixEpoch("ts"),
+        dotNetTicksToUnixEpochNanos($"ts"),
+        dotNetTicksToUnixEpochNanos("ts")
+      )
+      .orderBy($"id")
+    assert(
+      plan.schema.fields.map(_.dataType) === Seq(
+        IntegerType,
+        TimestampType,
+        TimestampType,
+        DecimalType(29, 9),
+        DecimalType(29, 9),
+        LongType,
+        LongType
+      )
+    )
 
     val actual = plan.collect()
 
-    assert(actual.map(_.getTimestamp(1)) === Seq(
-      Timestamp.from(Instant.parse("1900-01-01T00:00:00Z")),
-      Timestamp.from(Instant.parse("1970-01-01T00:00:00Z")),
-      Timestamp.from(Instant.parse("2023-03-27T19:16:14.89593Z")),
-      Timestamp.from(Instant.parse("2023-03-27T19:16:14.89593Z")),
-      Timestamp.from(Instant.parse("2023-03-27T19:16:14.895931Z")),
-      // largest possible unix epoch nanos
-      Timestamp.from(Instant.parse("2262-04-11T23:47:16.854775Z")),
-      Timestamp.from(Instant.parse("9999-12-31T23:59:59.999999Z")),
-    ))
+    assert(
+      actual.map(_.getTimestamp(1)) === Seq(
+        Timestamp.from(Instant.parse("1900-01-01T00:00:00Z")),
+        Timestamp.from(Instant.parse("1970-01-01T00:00:00Z")),
+        Timestamp.from(Instant.parse("2023-03-27T19:16:14.89593Z")),
+        Timestamp.from(Instant.parse("2023-03-27T19:16:14.89593Z")),
+        Timestamp.from(Instant.parse("2023-03-27T19:16:14.895931Z")),
+        // largest possible unix epoch nanos
+        Timestamp.from(Instant.parse("2262-04-11T23:47:16.854775Z")),
+        Timestamp.from(Instant.parse("9999-12-31T23:59:59.999999Z")),
+      )
+    )
     assert(actual.map(_.getTimestamp(2)) === actual.map(_.getTimestamp(1)))
 
-    assert(actual.map(_.getDecimal(3)).map(BigDecimal(_)) === Array(
-      BigDecimal(-2208988800000000000L, 9),
-      BigDecimal(0, 9),
-      BigDecimal(1679944574895930800L, 9),
-      BigDecimal(1679944574895930900L, 9),
-      BigDecimal(1679944574895931000L, 9),
-      // largest possible unix epoch nanos
-      BigDecimal(9223372036854775800L, 9),
-      BigDecimal(2534023007999999999L, 7).setScale(9),
-    ))
+    assert(
+      actual.map(_.getDecimal(3)).map(BigDecimal(_)) === Array(
+        BigDecimal(-2208988800000000000L, 9),
+        BigDecimal(0, 9),
+        BigDecimal(1679944574895930800L, 9),
+        BigDecimal(1679944574895930900L, 9),
+        BigDecimal(1679944574895931000L, 9),
+        // largest possible unix epoch nanos
+        BigDecimal(9223372036854775800L, 9),
+        BigDecimal(2534023007999999999L, 7).setScale(9),
+      )
+    )
     assert(actual.map(_.getDecimal(4)) === actual.map(_.getDecimal(3)))
 
-    assert(actual.map(row =>
-      if (BigDecimal(row.getDecimal(3)) <= BigDecimal(9223372036854775800L, 9)) row.getLong(5) else null
-    ) === actual.map(row =>
-      if (BigDecimal(row.getDecimal(3)) <= BigDecimal(9223372036854775800L, 9)) row.getDecimal(3).multiply(new java.math.BigDecimal(1000000000)).longValue() else null
-    ))
+    assert(
+      actual.map(row =>
+        if (BigDecimal(row.getDecimal(3)) <= BigDecimal(9223372036854775800L, 9)) row.getLong(5) else null
+      ) === actual.map(row =>
+        if (BigDecimal(row.getDecimal(3)) <= BigDecimal(9223372036854775800L, 9))
+          row.getDecimal(3).multiply(new java.math.BigDecimal(1000000000)).longValue()
+        else null
+      )
+    )
     assert(actual.map(_.get(6)) === actual.map(_.get(5)))
   }
 
@@ -596,24 +634,32 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
         df.select(timestampToDotNetTicks($"ts"))
       }
     } else {
-      val plan = df.select(
-        $"id",
-        timestampToDotNetTicks($"ts"),
-        timestampToDotNetTicks("ts"),
-      ).orderBy($"id")
+      val plan = df
+        .select(
+          $"id",
+          timestampToDotNetTicks($"ts"),
+          timestampToDotNetTicks("ts"),
+        )
+        .orderBy($"id")
 
-      assert(plan.schema.fields.map(_.dataType) === Seq(
-        IntegerType, LongType, LongType
-      ))
+      assert(
+        plan.schema.fields.map(_.dataType) === Seq(
+          IntegerType,
+          LongType,
+          LongType
+        )
+      )
 
       val actual = plan.collect()
 
-      assert(actual.map(_.getLong(1)) === Seq(
-        599266080000000000L,
-        621355968000000000L,
-        638155413748959310L,
-        3155378975999999990L
-      ))
+      assert(
+        actual.map(_.getLong(1)) === Seq(
+          599266080000000000L,
+          621355968000000000L,
+          638155413748959310L,
+          3155378975999999990L
+        )
+      )
       assert(actual.map(_.getLong(2)) === actual.map(_.getLong(1)))
 
       val message = intercept[AnalysisException] {
@@ -621,17 +667,29 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
       }.getMessage
 
       if (SparkMajorVersion == 3 && SparkMinorVersion == 1) {
-          assert(message.startsWith("cannot resolve 'unix_micros(`ts`)' due to data type mismatch: argument 1 requires timestamp type, however, '`ts`' is of bigint type.;"))
+        assert(
+          message.startsWith(
+            "cannot resolve 'unix_micros(`ts`)' due to data type mismatch: argument 1 requires timestamp type, however, '`ts`' is of bigint type.;"
+          )
+        )
       } else if (SparkMajorVersion == 3 && SparkMinorVersion < 4) {
-          assert(message.startsWith("cannot resolve 'unix_micros(ts)' due to data type mismatch: argument 1 requires timestamp type, however, 'ts' is of bigint type.;"))
+        assert(
+          message.startsWith(
+            "cannot resolve 'unix_micros(ts)' due to data type mismatch: argument 1 requires timestamp type, however, 'ts' is of bigint type.;"
+          )
+        )
       } else if (SparkMajorVersion == 3 && SparkMinorVersion >= 4 || SparkMajorVersion > 3) {
-        assert(message.startsWith("[DATATYPE_MISMATCH.UNEXPECTED_INPUT_TYPE] Cannot resolve \"unix_micros(ts)\" due to data type mismatch: Parameter 1 requires the \"TIMESTAMP\" type, however \"ts\" has the type \"BIGINT\"."))
+        assert(
+          message.startsWith(
+            "[DATATYPE_MISMATCH.UNEXPECTED_INPUT_TYPE] Cannot resolve \"unix_micros(ts)\" due to data type mismatch: Parameter 1 requires the \"TIMESTAMP\" type, however \"ts\" has the type \"BIGINT\"."
+          )
+        )
       }
     }
   }
 
   test("Unix epoch to .Net ticks") {
-    def df[T : Encoder](v: T): DataFrame =
+    def df[T: Encoder](v: T): DataFrame =
       spark.createDataset(Seq(v)).withColumnRenamed("value", "ts")
 
     Seq(
@@ -667,7 +725,7 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
   }
 
   test("Unix epoch nanos to .Net ticks") {
-    def df[T : Encoder](v: T): DataFrame =
+    def df[T: Encoder](v: T): DataFrame =
       spark.createDataset(Seq(v)).withColumnRenamed("value", "ts")
 
     Seq(
@@ -713,7 +771,9 @@ object SparkSuite {
     import spark.implicits._
     spark
       .range(0, 3, 1, 3)
-      .mapPartitions(it => it.map(id => (id, TaskContext.get().partitionId(), TaskContext.get().getLocalProperty("spark.job.description"))))
+      .mapPartitions(it =>
+        it.map(id => (id, TaskContext.get().partitionId(), TaskContext.get().getLocalProperty("spark.job.description")))
+      )
       .as[(Long, Long, String)]
       .sort()
       .collect()
