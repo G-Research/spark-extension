@@ -51,6 +51,8 @@ object App {
 
   // read options from args
   val programName = s"spark-extension_${spark.BuildScalaCompatVersionString}-${spark.VersionString}.jar"
+  val scop = s"com.github.scopt:scopt_${spark.BuildScalaCompatVersionString}:4.1.0"
+  val sparkSubmit = s"spark-submit --packages $scop $programName"
   val parser: OptionParser[Options] = new scopt.OptionParser[Options](programName) {
     head(s"Spark Diff app (${spark.VersionString})")
     head()
@@ -77,10 +79,11 @@ object App {
     note("Examples:")
     note("")
     note("  - Diff CSV files 'left.csv' and 'right.csv' and write result into CSV file 'diff.csv':")
-    note(s"    spark-submit --packages com.github.scopt:scopt_${spark.BuildScalaCompatVersionString}:4.1.0 $programName --format csv left.csv right.csv diff.csv")
+    note(s"    $sparkSubmit --format csv left.csv right.csv diff.csv")
     note("")
-    note("  - Diff CSV file 'left.csv' with Parquet file 'right.parquet' with id column 'id', and write result into Hive table 'diff':")
-    note(s"    spark-submit --packages com.github.scopt:scopt_${spark.BuildScalaCompatVersionString}:4.1.0 $programName --left-format csv --right-format parquet --hive --id id left.csv right.parquet diff")
+    note("  - Diff CSV file 'left.csv' and Parquet file 'right.parquet' with id column 'id',")
+    note("    and write result into Hive table 'diff':")
+    note(s"    $sparkSubmit --left-format csv --right-format parquet --hive --id id left.csv right.parquet diff")
 
     note("")
     note("Spark session")
