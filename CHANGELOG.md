@@ -3,6 +3,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [UNRELEASED] - YYYY-MM-DD
+
+### Added
+
+- Add count_null aggregate function (#206)
+- Support reading parquet schema (#208)
+- Add more columns to reading parquet metadata (#209, #211)
+- Provide groupByKey shortcuts for groupBy.as (#213)
+- Allow to install PIP packages into PySpark job (#215)
+- Allow to install Poetry projects into PySpark job (#216)
+
 ## [2.10.0] - 2023-09-27
 
 ### Fixed
