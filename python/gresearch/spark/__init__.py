@@ -17,6 +17,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from contextlib import contextmanager
 from pathlib import Path
@@ -426,9 +427,8 @@ def create_temporary_dir(spark: Union[SparkSession, SparkContext], prefix: str) 
     if isinstance(spark, SparkSession):
         spark = spark.sparkContext
 
-    package = spark._jvm.uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$")
-    mktempdir = package.createTemporaryDir
-    return mktempdir(prefix)
+    root_dir = spark._jvm.org.apache.spark.SparkFiles.getRootDirectory()
+    return tempfile.mkdtemp(prefix=prefix, dir=root_dir)
 
 
 SparkSession.create_temporary_dir = create_temporary_dir
