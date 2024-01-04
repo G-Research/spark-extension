@@ -35,7 +35,7 @@ setup(
     author="Enrico Minack",
     author_email="github@enrico.minack.dev",
     url="https://github.com/G-Research/spark-extension",
-    install_requires=[f"pyspark>={spark_compat_version},<4", "py4j"],
+    tests_require=[f"pyspark~={spark_compat_version}.0", "py4j"],
     packages=[
         "gresearch",
         "gresearch.spark",
