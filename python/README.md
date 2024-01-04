@@ -2,20 +2,20 @@
 
 This project provides extensions to the [Apache Spark project](https://spark.apache.org/) in Scala and Python:
 
-**Diff:** A `diff` transformation and application for `Dataset`s that computes the differences between
+**[Diff](https://github.com/G-Research/spark-extension/blob/v2.11.0/DIFF.md):** A `diff` transformation and application for `Dataset`s that computes the differences between
 two datasets, i.e. which rows to _add_, _delete_ or _change_ to get from one dataset to the other.
 
-**Histogram:** A `histogram` transformation that computes the histogram DataFrame for a value column.
+**[Histogram](https://github.com/G-Research/spark-extension/blob/v2.11.0/HISTOGRAM.md):** A `histogram` transformation that computes the histogram DataFrame for a value column.
 
-**Global Row Number:** A `withRowNumbers` transformation that provides the global row number w.r.t.
+**[Global Row Number](https://github.com/G-Research/spark-extension/blob/v2.11.0/ROW_NUMBER.md):** A `withRowNumbers` transformation that provides the global row number w.r.t.
 the current order of the Dataset, or any given order. In contrast to the existing SQL function `row_number`, which
 requires a window spec, this transformation provides the row number across the entire Dataset without scaling problems.
 
-**Inspect Parquet files:** The structure of Parquet files (the metadata, not the data stored in Parquet) can be inspected similar to [parquet-tools](https://pypi.org/project/parquet-tools/)
+**[Inspect Parquet files](https://github.com/G-Research/spark-extension/blob/v2.11.0/PARQUET.md):** The structure of Parquet files (the metadata, not the data stored in Parquet) can be inspected similar to [parquet-tools](https://pypi.org/project/parquet-tools/)
 or [parquet-cli](https://pypi.org/project/parquet-cli/) by reading from a simple Spark data source.
 This simplifies identifying why some Parquet files cannot be split by Spark into scalable partitions.
 
-**Install Python packages into PySpark job:** Install Python dependencies via PIP or Poetry programatically into your running PySpark job (PySpark ≥ 3.1.0):
+**[Install Python packages into PySpark job](https://github.com/G-Research/spark-extension/blob/v2.11.0/PYSPARK-DEPS.md):** Install Python dependencies via PIP or Poetry programatically into your running PySpark job (PySpark ≥ 3.1.0):
 
 ```python
 # noinspection PyUnresolvedReferences
