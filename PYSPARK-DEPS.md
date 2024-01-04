@@ -6,6 +6,9 @@ Such a deployment can be cumbersome, especially when running in an interactive n
 The `spark-extension` package allows installing Python packages programmatically by the PySpark application itself (PySpark ≥ 3.1.0).
 These packages are only accessible by that PySpark application, and they are removed on calling `spark.stop()`.
 
+Either install the `spark-extension` Maven package, or the `pyspark-extension` PyPi package (on the driver only),
+as described [here](README.md#using-spark-extension).
+
 ## Installing packages with `pip`
 
 Python packages can be installed with `pip` as follows:
