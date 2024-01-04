@@ -49,3 +49,69 @@ from gresearch.spark import *
 
 spark.install_poetry_project("../my-poetry-project/", poetry_python="../venv-poetry/bin/python")
 ```
+
+## Example
+
+This example uses `install_pip_package` in a Spark standalone cluster.
+
+First checkout the example code:
+
+```shell
+git clone https://github.com/G-Research/spark-extension.git
+cd spark-extension/examples/python-deps
+```
+
+Build a Docker image based on the official Spark release:
+```shell
+docker build -t spark-extension-example-docker .
+```
+
+Start the example Spark standalone cluster consisting of a Spark master and one worker:
+```shell
+docker compose -f docker-compose.yml up -d
+```
+
+Run the `example.py` Spark application on the example cluster:
+```shell
+docker exec -i spark-master /opt/spark/bin/spark-submit --master spark://master:7077 --packages uk.co.gresearch.spark:spark-extension_2.12:2.11.0-3.5 /example/example.py
+```
+The `--packages uk.co.gresearch.spark:spark-extension_2.12:2.11.0-3.5` argument
+tells `spark-submit` to add the `spark-extension` Maven package to the Spark job.
+
+Alternatively, install the `pyspark-extension` PyPi package via `pip install` and remove the `--packages` argument from `spark-submit`:
+```shell
+docker exec -i spark-master pip install --user pyspark_extension==2.11.1.3.5
+docker exec -i spark-master /opt/spark/bin/spark-submit --master spark://master:7077 /example/example.py
+```
+
+By removing the `spark.install_pip_package("pandas", "pyarrow")` line from the `example.py` …
+```diff
+ from pyspark.sql import SparkSession
+
+ def main():
+     spark = SparkSession.builder.appName("spark_app").getOrCreate()
+
+     def func(df):
+         return df
+
+     from gresearch.spark import install_pip_package
+
+-    spark.install_pip_package("pandas", "pyarrow")
+     spark.range(0, 3, 1, 5).mapInPandas(func, "id long").show()
+
+ if __name__ == "__main__":
+     main()
+```
+
+… and running the `spark-submit` command again, we will see that the example does not work anymore,
+because the Pandas and PyArrow packages are missing from the driver:
+```
+Traceback (most recent call last):
+  File "/opt/spark/python/lib/pyspark.zip/pyspark/sql/pandas/utils.py", line 27, in require_minimum_pandas_version
+ModuleNotFoundError: No module named 'pandas'
+```
+
+Finally, shutdown the example cluster:
+```shell
+docker compose -f docker-compose.yml down
+```
