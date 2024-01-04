@@ -73,18 +73,29 @@ docker compose -f docker-compose.yml up -d
 
 Run the `example.py` Spark application on the example cluster:
 ```shell
-docker exec -i spark-master spark-submit --master spark://master:7077 --packages uk.co.gresearch.spark:spark-extension_2.12:2.11.0-3.5 /example/example.py
+docker exec spark-master spark-submit --master spark://master:7077 --packages uk.co.gresearch.spark:spark-extension_2.12:2.11.0-3.5 /example/example.py
 ```
 The `--packages uk.co.gresearch.spark:spark-extension_2.12:2.11.0-3.5` argument
 tells `spark-submit` to add the `spark-extension` Maven package to the Spark job.
 
 Alternatively, install the `pyspark-extension` PyPi package via `pip install` and remove the `--packages` argument from `spark-submit`:
 ```shell
-docker exec -i spark-master pip install --user pyspark_extension==2.11.1.3.5
-docker exec -i spark-master spark-submit --master spark://master:7077 /example/example.py
+docker exec spark-master pip install --user pyspark_extension==2.11.1.3.5
+docker exec spark-master spark-submit --master spark://master:7077 /example/example.py
 ```
 
-By removing the `spark.install_pip_package("pandas", "pyarrow")` line from the `example.py` …
+This output proves that PySpark could call into the function `func`, wich only works when Pandas and PyArrow are installed:
+```
++---+
+| id|
++---+
+|  0|
+|  1|
+|  2|
++---+
+```
+
+Test that `spark.install_pip_package("pandas", "pyarrow")` is really required by this example by removing this line from `example.py` …
 ```diff
  from pyspark.sql import SparkSession
 
@@ -103,7 +114,7 @@ By removing the `spark.install_pip_package("pandas", "pyarrow")` line from the `
      main()
 ```
 
-… and running the `spark-submit` command again, we will see that the example does not work anymore,
+… and running the `spark-submit` command again. The example does not work anymore,
 because the Pandas and PyArrow packages are missing from the driver:
 ```
 Traceback (most recent call last):
