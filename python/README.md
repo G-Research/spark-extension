@@ -5,6 +5,8 @@ This project provides extensions to the [Apache Spark project](https://spark.apa
 **Diff:** A `diff` transformation and application for `Dataset`s that computes the differences between
 two datasets, i.e. which rows to _add_, _delete_ or _change_ to get from one dataset to the other.
 
+**Histogram:** A `histogram` transformation that computes the histogram DataFrame for a value column.
+
 **Global Row Number:** A `withRowNumbers` transformation that provides the global row number w.r.t.
 the current order of the Dataset, or any given order. In contrast to the existing SQL function `row_number`, which
 requires a window spec, this transformation provides the row number across the entire Dataset without scaling problems.
@@ -13,40 +15,59 @@ requires a window spec, this transformation provides the row number across the e
 or [parquet-cli](https://pypi.org/project/parquet-cli/) by reading from a simple Spark data source.
 This simplifies identifying why some Parquet files cannot be split by Spark into scalable partitions.
 
+**Install Python packages into PySpark job:** Install Python dependencies via PIP or Poetry programatically into your running PySpark job (PySpark ≥ 3.1.0):
+
+```python
+# noinspection PyUnresolvedReferences
+from gresearch.spark import *
+
+# using PIP
+spark.install_pip_package("pandas==1.4.3", "pyarrow")
+spark.install_pip_package("-r", "requirements.txt")
+
+# using Poetry
+spark.install_poetry_project("../my-poetry-project/", poetry_python="../venv-poetry/bin/python")
+```
+
+**Count null values:** `count_null(e: Column)`: an aggregation function like `count` that counts null values in column `e`.
+This is equivalent to calling `count(when(e.isNull, lit(1)))`.
+
 **.Net DateTime.Ticks:** Convert .Net (C#, F#, Visual Basic) `DateTime.Ticks` into Spark timestamps, seconds and nanoseconds.
 
 <details>
 <summary>Available methods:</summary>
 
-```scala
-// Scala
-dotNetTicksToTimestamp(Column): Column       // returns timestamp as TimestampType
-dotNetTicksToUnixEpoch(Column): Column       // returns Unix epoch seconds as DecimalType
-dotNetTicksToUnixEpochNanos(Column): Column  // returns Unix epoch nanoseconds as LongType
-```
-
-The reverse is provided by (all return `LongType` .Net ticks):
-```scala
-// Scala
-timestampToDotNetTicks(Column): Column
-unixEpochToDotNetTicks(Column): Column
-unixEpochNanosToDotNetTicks(Column): Column
-```
-
-These methods are also available in Python:
 ```python
-# Python
 dotnet_ticks_to_timestamp(column_or_name)         # returns timestamp as TimestampType
 dotnet_ticks_to_unix_epoch(column_or_name)        # returns Unix epoch seconds as DecimalType
 dotnet_ticks_to_unix_epoch_nanos(column_or_name)  # returns Unix epoch nanoseconds as LongType
+```
 
+The reverse is provided by (all return `LongType` .Net ticks):
+```python
 timestamp_to_dotnet_ticks(column_or_name)
 unix_epoch_to_dotnet_ticks(column_or_name)
 unix_epoch_nanos_to_dotnet_ticks(column_or_name)
 ```
 </details>
 
-**Spark job description:** Set Spark job description for all Spark jobs within a context:
+**Spark temporary directory**: Create a temporary directory that will be removed on Spark application shutdown.
+
+<details>
+<summary>Example:</summary>
+
+```python
+# noinspection PyUnresolvedReferences
+from gresearch.spark import *
+
+dir = spark.create_temporary_dir("prefix")
+```
+</details>
+
+**Spark job description:** Set Spark job description for all Spark jobs within a context.
+
+<details>
+<summary>Example:</summary>
 
 ```python
 from gresearch.spark import job_description, append_job_description
@@ -58,6 +79,7 @@ with job_description("parquet file"):
     with append_job_description("write"):
         df.write.csv("data.csv")
 ```
+</details>
 
 For details, see the [README.md](https://github.com/G-Research/spark-extension#spark-extension) at the project homepage.
 
