@@ -59,14 +59,14 @@ rm -rf metastore_db/ spark-warehouse/
 ./set-version.sh 3.0.3 2.12.10; mvn clean deploy -Dsign; ./build-whl.sh; ./test-release.sh
 ./set-version.sh 3.1.3 2.12.10; mvn clean deploy -Dsign; ./build-whl.sh; ./test-release.sh
 ./set-version.sh 3.2.4 2.12.15; mvn clean deploy -Dsign; ./build-whl.sh; ./test-release.sh
-./set-version.sh 3.3.3 2.12.15; mvn clean deploy -Dsign; ./build-whl.sh; ./test-release.sh
-./set-version.sh 3.4.1 2.12.17; mvn clean deploy -Dsign; ./build-whl.sh; ./test-release.sh
+./set-version.sh 3.3.4 2.12.15; mvn clean deploy -Dsign; ./build-whl.sh; ./test-release.sh
+./set-version.sh 3.4.2 2.12.17; mvn clean deploy -Dsign; ./build-whl.sh; ./test-release.sh
 ./set-version.sh 3.5.0 2.12.18; mvn clean deploy -Dsign; ./build-whl.sh; ./test-release.sh
 rm -rf python/dist
 
 ./set-version.sh 3.2.4 2.13.5; mvn clean deploy -Dsign; ./test-release.sh
-./set-version.sh 3.3.3 2.13.8; mvn clean deploy -Dsign; ./test-release.sh
-./set-version.sh 3.4.1 2.13.8; mvn clean deploy -Dsign; ./test-release.sh
+./set-version.sh 3.3.4 2.13.8; mvn clean deploy -Dsign; ./test-release.sh
+./set-version.sh 3.4.2 2.13.8; mvn clean deploy -Dsign; ./test-release.sh
 ./set-version.sh 3.5.0 2.13.8; mvn clean deploy -Dsign; ./test-release.sh
 rm -rf metastore_db/ spark-warehouse/
 
