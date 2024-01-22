@@ -27,12 +27,12 @@ Above example installs PIP packages `pandas` and `pyarrow` via `pip`. Method `in
 spark.install_pip_package("pandas==1.4.3", "pyarrow~=8.0.0")
 
 # install packages from package sources (e.g. git clone https://github.com/pandas-dev/pandas.git)
-spark.install_pip_package("../pandas/")
+spark.install_pip_package("./pandas/")
 
 # install packages from git repo
 spark.install_pip_package("git+https://github.com/pandas-dev/pandas.git@main")
 
-# use a pip cache directory to cache downloaded whl files
+# use a pip cache directory to cache downloaded and built whl files
 spark.install_pip_package("pandas", "pyarrow", "--cache-dir", "/home/user/.cache/pip")
 
 # use an alternative index url (other than https://pypi.org/simple)
