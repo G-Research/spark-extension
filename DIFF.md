@@ -187,9 +187,9 @@ options = DiffOptions() \
   .with_change_column("changes") \
   .with_diff_mode(DiffMode.Default) \
   .with_sparse_mode(True) \
-  .withDefaultComparator(DiffComparators.epsilon(0.01)) \
-  .withComparator(DiffComparators.epsilon(0.001), DoubleType()) \
-  .withComparator(DiffComparators.epsilon(0.001), "float_column")
+  .with_default_comparator(DiffComparators.epsilon(0.01)) \
+  .with_data_type_comparator(DiffComparators.epsilon(0.001), DoubleType()) \
+  .with_column_name_comparator(DiffComparators.epsilon(0.001), "float_column")
 ```
 ### Diffing Modes
 
