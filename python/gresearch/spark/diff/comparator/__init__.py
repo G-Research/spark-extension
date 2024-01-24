@@ -118,7 +118,7 @@ class MapDiffComparator(DiffComparator):
     def _to_java(self, jvm: JVMView) -> JavaObject:
         from pyspark.sql import SparkSession
 
-        jspark = SparkSession._getActiveSessionOrCreate()._jsparkSession
-        jkeytype = jspark.parseDataType(self.key_type.json())
-        jvaluetype = jspark.parseDataType(self.value_type.json())
+        jfromjson = jvm.org.apache.spark.sql.types.__getattr__("DataType$").__getattr__("MODULE$").fromJson
+        jkeytype = jfromjson(self.key_type.json())
+        jvaluetype = jfromjson(self.value_type.json())
         return jvm.uk.co.gresearch.spark.diff.DiffComparators.map(jkeytype, jvaluetype, self.key_order_sensitive)
