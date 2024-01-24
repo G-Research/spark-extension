@@ -70,6 +70,13 @@ case object MapDiffComparator {
     MapDiffComparator[K, V](comparator)
   }
 
+  def apply(keyType: DataType, valueType: DataType, keyOrderSensitive: Boolean): MapDiffComparator[Any, Any] = {
+    val equiv = MapDiffEquiv(keyType, valueType, keyOrderSensitive)
+    val dataType = MapType(keyType, valueType)
+    val comparator = InputTypedEquivDiffComparator[UnsafeMapData](equiv, dataType)
+    MapDiffComparator[Any, Any](comparator)
+  }
+
   // for backward compatibility to v2.4.0 up to v2.8.0
   // replace with default value in above apply when moving to v3
   def apply[K: Encoder, V: Encoder](): MapDiffComparator[K, V] = apply(keyOrderSensitive = false)

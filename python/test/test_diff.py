@@ -17,7 +17,7 @@ import re
 from py4j.java_gateway import JavaObject
 from pyspark.sql import Row
 from pyspark.sql.functions import col, when
-from pyspark.sql.types import IntegerType, StringType, DateType
+from pyspark.sql.types import IntegerType, LongType, StringType, DateType
 
 from gresearch.spark.diff import Differ, DiffOptions, DiffMode, DiffComparators
 from spark_common import SparkTest
@@ -375,6 +375,8 @@ class DiffTest(SparkTest):
         self.assertIsNotNone(DiffComparators.string()._to_java(jvm))
         if jvm.uk.co.gresearch.spark.diff.comparator.DurationDiffComparator.isSupportedBySpark():
             self.assertIsNotNone(DiffComparators.duration('PT24H')._to_java(jvm))
+        self.assertIsNotNone(DiffComparators.map(IntegerType(), LongType())._to_java(jvm))
+        self.assertIsNotNone(DiffComparators.map(IntegerType(), LongType(), True)._to_java(jvm))
 
 
 if __name__ == '__main__':

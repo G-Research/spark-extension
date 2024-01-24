@@ -18,6 +18,8 @@ from dataclasses import dataclass
 
 from py4j.java_gateway import JVMView, JavaObject
 
+from pyspark.sql.types import DataType
+
 
 class DiffComparator(abc.ABC):
     @abc.abstractmethod
@@ -45,6 +47,10 @@ class DiffComparators:
     @staticmethod
     def duration(duration: str) -> 'DurationDiffComparator':
         return DurationDiffComparator(duration)
+
+    @staticmethod
+    def map(key_type: DataType, value_type: DataType, key_order_sensitive: bool = False) -> 'MapDiffComparator':
+        return MapDiffComparator(key_type, value_type, key_order_sensitive)
 
 
 class DefaultDiffComparator(DiffComparator):
@@ -101,3 +107,18 @@ class DurationDiffComparator(DiffComparator):
     def _to_java(self, jvm: JVMView) -> JavaObject:
         jduration = jvm.java.time.Duration.parse(self.duration)
         return jvm.uk.co.gresearch.spark.diff.comparator.DurationDiffComparator(jduration, self.inclusive)
+
+
+@dataclass(frozen=True)
+class MapDiffComparator(DiffComparator):
+    key_type: DataType
+    value_type: DataType
+    key_order_sensitive: bool
+
+    def _to_java(self, jvm: JVMView) -> JavaObject:
+        from pyspark.sql import SparkSession
+
+        jspark = SparkSession._getActiveSessionOrCreate()._jsparkSession
+        jkeytype = jspark.parseDataType(self.key_type.json())
+        jvaluetype = jspark.parseDataType(self.value_type.json())
+        return jvm.uk.co.gresearch.spark.diff.DiffComparators.map(jkeytype, jvaluetype, self.key_order_sensitive)

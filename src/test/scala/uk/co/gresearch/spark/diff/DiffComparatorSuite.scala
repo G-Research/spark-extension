@@ -415,25 +415,35 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
   }
 
   Seq(true, false).foreach { sensitive =>
-    Seq("true", "false").foreach { codegen =>
-      test(s"map comparator - keyOrderSensitive=$sensitive - codegen enabled=$codegen") {
-        withSQLConf(
-          SQLConf.WHOLESTAGE_CODEGEN_ENABLED.key -> codegen,
-          SQLConf.CODEGEN_FALLBACK.key -> "false"
-        ) {
-          val options = DiffOptions.default.withComparator(DiffComparators.map[Int, Long](sensitive), "map")
+    Seq(true, false).foreach { codegen =>
+      Seq(true, false).foreach { typed =>
+        val typedLabel = if (typed) "typed" else "untyped"
 
-          val actual = leftMaps.diff(rightMaps, options, "id").orderBy($"id").collect()
-          val diffs = Seq((1, "N"), (2, "C"), (3, "C"), (4, "D"), (5, "I"), (6, if (sensitive) "C" else "N"), (7, "C"))
-            .toDF("id", "diff")
-          val expected = leftMaps
-            .withColumnRenamed("map", "left_map")
-            .join(rightMaps.withColumnRenamed("map", "right_map"), Seq("id"), "fullouter")
-            .join(diffs, "id")
-            .select($"diff", $"id", $"left_map", $"right_map")
-            .orderBy($"id")
-            .collect()
-          assert(actual === expected)
+        test(s"map comparator $typedLabel - keyOrderSensitive=$sensitive - codegen enabled=$codegen") {
+          withSQLConf(
+            SQLConf.WHOLESTAGE_CODEGEN_ENABLED.key -> codegen.toString,
+            SQLConf.CODEGEN_FALLBACK.key -> "false"
+          ) {
+            val options =
+              if (typed) {
+                DiffOptions.default.withComparator(DiffComparators.map[Int, Long](sensitive), "map")
+              } else {
+                DiffOptions.default.withComparator(DiffComparators.map(IntegerType, LongType, sensitive), "map")
+              }
+
+            val actual = leftMaps.diff(rightMaps, options, "id").orderBy($"id").collect()
+            val diffs =
+              Seq((1, "N"), (2, "C"), (3, "C"), (4, "D"), (5, "I"), (6, if (sensitive) "C" else "N"), (7, "C"))
+                .toDF("id", "diff")
+            val expected = leftMaps
+              .withColumnRenamed("map", "left_map")
+              .join(rightMaps.withColumnRenamed("map", "right_map"), Seq("id"), "fullouter")
+              .join(diffs, "id")
+              .select($"diff", $"id", $"left_map", $"right_map")
+              .orderBy($"id")
+              .collect()
+            assert(actual === expected)
+          }
         }
       }
     }
