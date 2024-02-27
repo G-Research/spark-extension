@@ -1,0 +1,94 @@
+name: Publish snapshot
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["master"]
+
+env:
+  PYTHON_VERSION: "3.10"
+
+jobs:
+  snapshot:
+    name: Release snapshot Spark:${{ matrix.params.spark-version }} - Scala:${{ matrix.params.scala-version }}
+    if: ${{ !github.event.repository.fork }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - params: {"spark-version": "3.0.3", "scala-version": "2.12.10"}
+          - params: {"spark-version": "3.1.3", "scala-version": "2.12.10"}
+          - params: {"spark-version": "3.2.4", "scala-version": "2.12.15"}
+          - params: {"spark-version": "3.3.4", "scala-version": "2.12.15"}
+          - params: {"spark-version": "3.4.2", "scala-version": "2.12.17"}
+          - params: {"spark-version": "3.5.0", "scala-version": "2.12.18"}
+          - params: {"spark-version": "3.2.4", "scala-version": "2.13.5"}
+          - params: {"spark-version": "3.3.4", "scala-version": "2.13.8"}
+          - params: {"spark-version": "3.4.2", "scala-version": "2.13.8"}
+          - params: {"spark-version": "3.5.0", "scala-version": "2.13.8"}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 8
+        uses: actions/setup-java@v4
+        with:
+          java-version: '8'
+          distribution: 'corretto'
+
+      - uses: actions/setup-python@v5 
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache Maven packages
+        id: cache-maven
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-mvn-build-${{ matrix.params.spark-version }}-${{ matrix.params.scala-version }}-${{ hashFiles('pom.xml') }}
+          restore-keys: ${{ runner.os }}-mvn-build-${{ matrix.params.spark-version }}-${{ matrix.params.scala-version }}-
+      
+      - name: Cache Pip packages
+        id: cache-pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-whl-${{ env.PYTHON_VERSION }}-${{ matrix.params.spark-version }}
+
+      - name: Import GPG key
+        id: sign
+        uses: crazy-max/ghaction-import-gpg@01dd5d3ca463c7f10f7f4f7b4f177225ac661ee4
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+
+      - name: Check if this is a SNAPSHOT version
+        id: check-snapshot
+        run: |
+          if ! grep -q "<version>.*-SNAPSHOT</version>" pom.xml
+          then
+            echo "Version in pom is not a SNAPSHOT version, cannot test all versions"
+            exit 1
+          fi
+
+      - name: Release snapshot
+        id: snapshot
+        run: |
+
+          # required by mvn
+          mkdir -p ~/.ivy2
+          # required by ./test-release.sh
+          pip3 install virtualenv
+
+          ./set-version.sh ${{ matrix.params.spark-version }} ${{ matrix.params.scala-version }}
+          mvn clean deploy -Dsign
+
+          # For Scala version 2.12 build the python
+          if [[ ${{ matrix.params.scala-version }}  == 2.12* ]]; then
+              echo "Scala version starts with '2.12'"
+              ./build-whl.sh
+          fi
+
+          # Test the release
+          ./test-release.sh
