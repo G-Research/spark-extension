@@ -666,6 +666,7 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
         Seq(1L).toDF("ts").select(timestampToDotNetTicks($"ts")).collect()
       }.getMessage
 
+      // SparkMajorVersion == 2 no supported
       if (SparkMajorVersion == 3 && SparkMinorVersion == 1) {
         assert(
           message.startsWith(
@@ -678,10 +679,16 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
             "cannot resolve 'unix_micros(ts)' due to data type mismatch: argument 1 requires timestamp type, however, 'ts' is of bigint type.;"
           )
         )
-      } else if (SparkMajorVersion == 3 && SparkMinorVersion >= 4 || SparkMajorVersion > 3) {
+      } else if (SparkMajorVersion == 3 && SparkMinorVersion >= 4) {
         assert(
           message.startsWith(
             "[DATATYPE_MISMATCH.UNEXPECTED_INPUT_TYPE] Cannot resolve \"unix_micros(ts)\" due to data type mismatch: Parameter 1 requires the \"TIMESTAMP\" type, however \"ts\" has the type \"BIGINT\"."
+          )
+        )
+      } else { // SparkMajorVersion > 3
+        assert(
+          message.startsWith(
+            "[DATATYPE_MISMATCH.UNEXPECTED_INPUT_TYPE] Cannot resolve \"unix_micros(ts)\" due to data type mismatch: The first parameter requires the \"TIMESTAMP\" type, however \"ts\" has the type \"BIGINT\"."
           )
         )
       }
