@@ -35,6 +35,7 @@ runs:
       path: .
 
   - name: Cache Maven packages
+    if: github.event_name != 'merge_group'
     uses: actions/cache@v3
     with:
       path: ~/.m2/repository
@@ -42,6 +43,7 @@ runs:
       restore-keys: ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-
 
   - name: Cache Pip packages
+    if: github.event_name != 'merge_group'
     uses: actions/cache@v3
     with:
       path: ~/.cache/pip

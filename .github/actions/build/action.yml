@@ -29,6 +29,7 @@ runs:
     shell: bash
 
   - name: Cache Maven packages
+    if: github.event_name != 'merge_group'
     uses: actions/cache@v3
     with:
       path: ~/.m2/repository
