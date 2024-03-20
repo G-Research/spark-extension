@@ -38,8 +38,8 @@ runs:
       path: .
 
   - name: Cache Spark Binaries
-    if: github.event_name != 'merge_group' && ! contains(inputs.spark-version, '-SNAPSHOT')
     uses: actions/cache@v3
+    if: ( ! contains(inputs.spark-version, '-SNAPSHOT') )
     with:
       path: ~/spark
       key: ${{ runner.os }}-spark-binaries-${{ inputs.spark-version }}-${{ inputs.scala-compat-version }}
