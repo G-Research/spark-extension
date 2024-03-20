@@ -46,7 +46,7 @@
     <!-- keep in-sync with python/requirements-3.3_2.13.txt -->
     <spark.major.version>3</spark.major.version>
     <spark.minor.version>5</spark.minor.version>
-    <spark.patch.version>0</spark.patch.version>
+    <spark.patch.version>1</spark.patch.version>
     <spark.compat.version>${spark.major.version}.${spark.minor.version}</spark.compat.version>
     <spark.version>${spark.compat.version}.${spark.patch.version}</spark.version>
   </properties>
