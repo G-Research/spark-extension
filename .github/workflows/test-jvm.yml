@@ -69,6 +69,11 @@ jobs:
             scala-version: '2.12.18'
             spark-patch-version: '0'
             hadoop-version: '3'
+          - spark-compat-version: '3.5'
+            scala-compat-version: '2.12'
+            scala-version: '2.12.18'
+            spark-patch-version: '1'
+            hadoop-version: '3'
 
           - spark-compat-version: '3.2'
             scala-compat-version: '2.13'
@@ -107,6 +112,11 @@ jobs:
             scala-compat-version: '2.13'
             scala-version: '2.13.8'
             spark-patch-version: '0'
+            hadoop-version: '3'
+          - spark-compat-version: '3.5'
+            scala-compat-version: '2.13'
+            scala-version: '2.13.8'
+            spark-patch-version: '1'
             hadoop-version: '3'
 
     steps:
