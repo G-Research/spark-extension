@@ -62,8 +62,8 @@ runs:
     uses: actions/cache@v3
     with:
       path: ~/.m2/repository
-      key: ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-${{ hashFiles('pom.xml') }}
-      restore-keys: ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-
+      key: ${{ runner.os }}-mvn-build-${{ inputs.spark-compat-version }}-${{ inputs.scala-compat-version }}-${{ hashFiles('pom.xml') }}
+      restore-keys: ${{ runner.os }}-mvn-build-${{ inputs.spark-compat-version }}-${{ inputs.scala-compat-version }}-
 
   - name: Setup JDK ${{ inputs.java-compat-version }}
     uses: actions/setup-java@v4

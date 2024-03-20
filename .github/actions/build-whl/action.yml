@@ -39,15 +39,15 @@ runs:
     uses: actions/cache@v3
     with:
       path: ~/.m2/repository
-      key: ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-${{ hashFiles('pom.xml') }}
-      restore-keys: ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-
+      key: ${{ runner.os }}-mvn-build-${{ inputs.spark-compat-version }}-${{ inputs.scala-compat-version }}-${{ hashFiles('pom.xml') }}
+      restore-keys: ${{ runner.os }}-mvn-build-${{ inputs.spark-compat-version }}-${{ inputs.scala-compat-version }}-
 
   - name: Cache Pip packages
     if: github.event_name != 'merge_group'
     uses: actions/cache@v3
     with:
       path: ~/.cache/pip
-      key: ${{ runner.os }}-pip-whl-${{ inputs.python-version }}-${{ inputs.spark-version }}
+      key: ${{ runner.os }}-pip-whl-${{ inputs.python-version }}-${{ inputs.spark-compat-version }}
 
   - name: Setup Python
     uses: actions/setup-python@v5
