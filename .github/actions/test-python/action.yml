@@ -102,7 +102,7 @@ runs:
     shell: bash
 
   - name: Install Spark Extension
-    run: mvn --batch-mode install -Dspotless.check.skip -DskipTests -Dmaven.test.skip=true -Dgpg.skip
+    run: mvn --batch-mode --update-snapshots install -Dspotless.check.skip -DskipTests -Dmaven.test.skip=true -Dgpg.skip
     shell: bash
 
   - name: Python Integration Tests

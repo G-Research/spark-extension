@@ -30,13 +30,13 @@ jobs:
       - name: Check
         id: check
         run: |
-          mvn --batch-mode spotless:check
+          mvn --batch-mode --update-snapshots spotless:check
         shell: bash
 
       - name: Changes
         if: failure() && steps.check.outcome == 'failure'
         run: |
-          mvn --batch-mode spotless:apply
+          mvn --batch-mode --update-snapshots spotless:apply
           git diff
         shell: bash
 
