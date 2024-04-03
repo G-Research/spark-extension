@@ -5,6 +5,7 @@ on:
     workflows: ["CI"]
     types:
       - completed
+  pull_request:
 permissions: {}
 
 jobs:

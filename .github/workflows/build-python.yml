@@ -2,6 +2,7 @@ name: Build Python
 
 on:
   workflow_call:
+  pull_request:
 
 jobs:
   # pyspark is not available for snapshots or scala other than 2.12

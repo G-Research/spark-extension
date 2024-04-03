@@ -2,6 +2,7 @@ name: Check
 
 on:
   workflow_call:
+  pull_request:
 
 jobs:
   lint:
@@ -73,7 +74,7 @@ jobs:
     name: Compat (Spark ${{ matrix.spark-compat-version }} Scala ${{ matrix.scala-compat-version }})
     needs: config
     runs-on: ubuntu-latest
-    if: needs.config.outputs.major-version == needs.config.outputs.release-major-version
+    # if: needs.config.outputs.major-version == needs.config.outputs.release-major-version
 
     strategy:
       fail-fast: false

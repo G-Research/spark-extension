@@ -2,6 +2,7 @@ name: Build JVM
 
 on:
   workflow_call:
+  pull_request:
 
 jobs:
   build:
