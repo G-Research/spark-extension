@@ -42,7 +42,7 @@ runs:
 
   - name: Cache Maven packages
     if: github.event_name != 'merge_group'
-    uses: actions/cache@v3
+    uses: actions/cache@v4
     with:
       path: ~/.m2/repository
       key: ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-${{ hashFiles('pom.xml') }}
@@ -56,7 +56,7 @@ runs:
 
   - name: Cache Pip packages
     if: github.event_name != 'merge_group'
-    uses: actions/cache@v3
+    uses: actions/cache@v4
     with:
       path: ~/.cache/pip
       key: ${{ runner.os }}-pip-test-${{ inputs.python-version }}-${{ hashFiles(format('python/requirements-{0}_{1}.txt', inputs.spark-compat-version, inputs.scala-compat-version)) }}
