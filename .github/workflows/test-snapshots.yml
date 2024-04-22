@@ -2,7 +2,6 @@ name: Test Snapshots
 
 on:
   workflow_call:
-  pull_request:
 
 jobs:
   test:
