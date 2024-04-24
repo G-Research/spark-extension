@@ -158,7 +158,9 @@ class Differ(options: DiffOptions) {
               .map(columns =>
                 concat(
                   columns
-                    .map(entry => when(entry._2.equiv(left(backticks(entry._1)), right(backticks(entry._1))), array()).otherwise(array(lit(entry._1)))): _*
+                    .map { case (c, cmp) =>
+                      when(cmp.equiv(left(backticks(c)), right(backticks(c))), array()).otherwise(array(lit(c)))
+                    }: _*
                 )
               )
               .getOrElse(
