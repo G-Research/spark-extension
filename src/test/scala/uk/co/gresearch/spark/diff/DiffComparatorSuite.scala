@@ -33,6 +33,7 @@ import uk.co.gresearch.spark.diff.comparator._
 
 import java.sql.{Date, Timestamp}
 import java.time.Duration
+import java.util
 
 case class Numbers(
     id: Int,
@@ -411,6 +412,36 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
       val optionsWithRelaxedComparator =
         DiffOptions.default.withComparator(DiffComparators.duration(Duration.ofSeconds(61)).asExclusive(), "time")
       doTest(optionsWithTightComparator, optionsWithRelaxedComparator, leftTimes.toDF, rightTimes.toDF)
+    }
+
+    test("changeset accounts for comparators") {
+      val changesetOptions = DiffOptions.default
+        .withComparator(DiffComparators.epsilon(10).asAbsolute().asInclusive(), "longValue")
+        .withChangeColumn("changeset")
+
+      lazy val left: Dataset[Numbers] = Seq(
+        Numbers(1, 1L, 1.0f, 1.0, Decimal(10, 8, 3), None, None),
+        Numbers(2, 2L, 2.0f, 2.0, Decimal(20, 8, 3), Some(2), Some(2L)),
+        Numbers(3, 3L, 3.0f, 3.0, Decimal(30, 8, 3), Some(3), Some(3L)),
+        Numbers(4, 4L, 4.0f, 4.0, Decimal(40, 8, 3), Some(4), None),
+        Numbers(5, 5L, 5.0f, 5.0, Decimal(50, 8, 3), None, Some(5L)),
+      ).toDS()
+
+      lazy val right: Dataset[Numbers] = Seq(
+        Numbers(1, 1L, 1.0f, 1.0, Decimal(10, 8, 3), None, None),
+        Numbers(2, 8L, 2.0f, 2.0, Decimal(20, 8, 3), Some(2), Some(2L)),
+        Numbers(3, 9L, 6.0f, 3.0, Decimal(30, 8, 3), Some(3), Some(3L)),
+        Numbers(4, 10L, 4.0f, 4.0, Decimal(40, 8, 3), Some(4), None),
+        Numbers(5, 11L, 5.0f, 5.0, Decimal(50, 8, 3), None, Some(5L)),
+      ).toDS()
+
+      val rs = left.diff(right, changesetOptions, "id").where($"diff" === "C")
+      assert(rs.count() == 1, "Only one row should differ with the numeric comparator applied")
+      val changesInDifferingRow: util.List[String] = rs.head.getList[String](1)
+      assert(
+        changesInDifferingRow.get(0) == "floatValue",
+        "Only floatVal differs after considering the comparators so the changeset should be size 1"
+      )
     }
   }
 

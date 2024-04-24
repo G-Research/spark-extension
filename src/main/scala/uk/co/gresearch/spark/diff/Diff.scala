@@ -19,6 +19,7 @@ package uk.co.gresearch.spark.diff
 import org.apache.spark.sql._
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.{ArrayType, StringType}
+import uk.co.gresearch.spark.diff.comparator.DiffComparator
 import uk.co.gresearch.spark.{backticks, distinctPrefixFor}
 
 import scala.collection.JavaConverters
@@ -144,7 +145,7 @@ class Differ(options: DiffOptions) {
 
   private def getChangeColumn(
       existsColumnName: String,
-      valueColumns: Seq[String],
+      valueVolumnsWithComparator: Seq[(String, DiffComparator)],
       left: Dataset[_],
       right: Dataset[_]
   ): Option[Column] = {
@@ -152,12 +153,14 @@ class Differ(options: DiffOptions) {
       .map(changeColumn =>
         when(left(existsColumnName).isNull || right(existsColumnName).isNull, lit(null))
           .otherwise(
-            Some(valueColumns.toSeq)
+            Some(valueVolumnsWithComparator)
               .filter(_.nonEmpty)
               .map(columns =>
                 concat(
                   columns
-                    .map(c => when(left(backticks(c)) <=> right(backticks(c)), array()).otherwise(array(lit(c)))): _*
+                    .map { case (c, cmp) =>
+                      when(cmp.equiv(left(backticks(c)), right(backticks(c))), array()).otherwise(array(lit(c)))
+                    }: _*
                 )
               )
               .getOrElse(
@@ -282,6 +285,7 @@ class Differ(options: DiffOptions) {
         cmp.equiv(leftWithExists(backticks(c)), rightWithExists(backticks(c)))
       }
       .reduceOption(_ && _)
+
     val changeCondition = not(unChanged.getOrElse(lit(true)))
 
     val diffActionColumn =
@@ -292,7 +296,7 @@ class Differ(options: DiffOptions) {
         .as(options.diffColumn)
 
     val diffColumns = getDiffColumns(pkColumns, valueColumns, left, right, ignoreColumns).map(_._2)
-    val changeColumn = getChangeColumn(existsColumnName, valueColumns, leftWithExists, rightWithExists)
+    val changeColumn = getChangeColumn(existsColumnName, valueVolumnsWithComparator, leftWithExists, rightWithExists)
       // turn this column into a sequence of one or none column so we can easily concat it below with diffActionColumn and diffColumns
       .map(Seq(_))
       .getOrElse(Seq.empty[Column])
