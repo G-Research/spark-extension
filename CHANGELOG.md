@@ -3,6 +3,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [UNRELEASED] - YYYY-MM-DD
+
+## Fixes
+
+- Diff change column should respect comparators (#238)
+
+## Changed
+
+- Make create_temporary_dir work with pyspark-extension only (#222).
+  This allows [installing PIP packages and Poetry projects](PYSPARK-DEPS.md)
+  via pure Python spark-extension package (Maven package not required any more).
+- Add map diff comparator to Python API (#226)
+
 ## [2.11.0] - 2024-01-04
 
 ### Added
