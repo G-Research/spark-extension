@@ -198,7 +198,7 @@ The package version has the following semantics: `spark-extension_{SCALA_COMPAT_
 Add this line to your `build.sbt` file:
 
 ```sbt
-libraryDependencies += "uk.co.gresearch.spark" %% "spark-extension" % "2.11.0-3.5"
+libraryDependencies += "uk.co.gresearch.spark" %% "spark-extension" % "2.12.0-3.5"
 ```
 
 ### Maven
@@ -209,7 +209,7 @@ Add this dependency to your `pom.xml` file:
 <dependency>
   <groupId>uk.co.gresearch.spark</groupId>
   <artifactId>spark-extension_2.12</artifactId>
-  <version>2.11.0-3.5</version>
+  <version>2.12.0-3.5</version>
 </dependency>
 ```
 
@@ -219,7 +219,7 @@ Add this dependency to your `build.gradle` file:
 
 ```groovy
 dependencies {
-    implementation "uk.co.gresearch.spark:spark-extension_2.12:2.11.0-3.5"
+    implementation "uk.co.gresearch.spark:spark-extension_2.12:2.12.0-3.5"
 }
 ```
 
@@ -228,7 +228,7 @@ dependencies {
 Submit your Spark app with the Spark Extension dependency (version ≥1.1.0) as follows:
 
 ```shell script
-spark-submit --packages uk.co.gresearch.spark:spark-extension_2.12:2.11.0-3.5 [jar]
+spark-submit --packages uk.co.gresearch.spark:spark-extension_2.12:2.12.0-3.5 [jar]
 ```
 
 Note: Pick the right Scala version (here 2.12) and Spark version (here 3.5) depending on your Spark version.
@@ -238,7 +238,7 @@ Note: Pick the right Scala version (here 2.12) and Spark version (here 3.5) depe
 Launch a Spark Shell with the Spark Extension dependency (version ≥1.1.0) as follows:
 
 ```shell script
-spark-shell --packages uk.co.gresearch.spark:spark-extension_2.12:2.11.0-3.5
+spark-shell --packages uk.co.gresearch.spark:spark-extension_2.12:2.12.0-3.5
 ```
 
 Note: Pick the right Scala version (here 2.12) and Spark version (here 3.5) depending on your Spark Shell version.
@@ -254,7 +254,7 @@ from pyspark.sql import SparkSession
 
 spark = SparkSession \
     .builder \
-    .config("spark.jars.packages", "uk.co.gresearch.spark:spark-extension_2.12:2.11.0-3.5") \
+    .config("spark.jars.packages", "uk.co.gresearch.spark:spark-extension_2.12:2.12.0-3.5") \
     .getOrCreate()
 ```
 
@@ -265,7 +265,7 @@ Note: Pick the right Scala version (here 2.12) and Spark version (here 3.5) depe
 Launch the Python Spark REPL with the Spark Extension dependency (version ≥1.1.0) as follows:
 
 ```shell script
-pyspark --packages uk.co.gresearch.spark:spark-extension_2.12:2.11.0-3.5
+pyspark --packages uk.co.gresearch.spark:spark-extension_2.12:2.12.0-3.5
 ```
 
 Note: Pick the right Scala version (here 2.12) and Spark version (here 3.5) depending on your PySpark version.
@@ -275,7 +275,7 @@ Note: Pick the right Scala version (here 2.12) and Spark version (here 3.5) depe
 Run your Python scripts that use PySpark via `spark-submit`:
 
 ```shell script
-spark-submit --packages uk.co.gresearch.spark:spark-extension_2.12:2.11.0-3.5 [script.py]
+spark-submit --packages uk.co.gresearch.spark:spark-extension_2.12:2.12.0-3.5 [script.py]
 ```
 
 Note: Pick the right Scala version (here 2.12) and Spark version (here 3.5) depending on your Spark version.
@@ -289,7 +289,7 @@ Running your Python application on a Spark cluster will still require one of the
 to add the Scala package to the Spark environment.
 
 ```shell script
-pip install pyspark-extension==2.11.0.3.5
+pip install pyspark-extension==2.12.0.3.5
 ```
 
 Note: Pick the right Spark version (here 3.5) depending on your PySpark version.
@@ -299,7 +299,7 @@ Note: Pick the right Spark version (here 3.5) depending on your PySpark version.
 There are plenty of [Data Science notebooks](https://datasciencenotebook.org/) around. To use this library,
 add **a jar dependency** to your notebook using these **Maven coordinates**:
 
-    uk.co.gresearch.spark:spark-extension_2.12:2.11.0-3.5
+    uk.co.gresearch.spark:spark-extension_2.12:2.12.0-3.5
 
 Or [download the jar](https://mvnrepository.com/artifact/uk.co.gresearch.spark/spark-extension) and place it
 on a filesystem where it is accessible by the notebook, and reference that jar file directly.

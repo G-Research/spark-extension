@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>uk.co.gresearch.spark</groupId>
   <artifactId>spark-extension_2.13</artifactId>
-  <version>2.12.0-3.5-SNAPSHOT</version>
+  <version>2.12.0-3.5</version>
   <name>Spark Extension</name>
   <description>A library that provides useful extensions to Apache Spark.</description>
   <inceptionYear>2020</inceptionYear>
