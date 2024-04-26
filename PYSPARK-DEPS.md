@@ -76,9 +76,9 @@ docker compose -f docker-compose.yml up -d
 
 Run the `example.py` Spark application on the example cluster:
 ```shell
-docker exec spark-master spark-submit --master spark://master:7077 --packages uk.co.gresearch.spark:spark-extension_2.12:2.11.0-3.5 /example/example.py
+docker exec spark-master spark-submit --master spark://master:7077 --packages uk.co.gresearch.spark:spark-extension_2.12:2.12.0-3.5 /example/example.py
 ```
-The `--packages uk.co.gresearch.spark:spark-extension_2.12:2.11.0-3.5` argument
+The `--packages uk.co.gresearch.spark:spark-extension_2.12:2.12.0-3.5` argument
 tells `spark-submit` to add the `spark-extension` Maven package to the Spark job.
 
 Alternatively, install the `pyspark-extension` PyPi package via `pip install` and remove the `--packages` argument from `spark-submit`:

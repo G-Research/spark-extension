@@ -83,13 +83,13 @@ echo "Releasing ${#changes[@]} changes as version $version:"
 for (( i=0; i<${#changes[@]}; i++ )); do echo "${changes[$i]}" ; done
 
 sed -i "s/## \[UNRELEASED\] - YYYY-MM-DD/## [$version] - $(date +%Y-%m-%d)/" CHANGELOG.md
-sed -i -e "s/$latest-/$version-/g" -e "s/$latest\./$version./g" README.md PYSPARK-DEPS.md python/README.md
+sed -i -e "s/$latest-/$version-/g" -e "s/$latest\./$version./g" -e "s/v$latest/v$version/g" README.md PYSPARK-DEPS.md python/README.md
 ./set-version.sh $version
 
 # commit changes to local repo
 echo
 echo "Committing release to local git"
-git add pom.xml python/setup.py CHANGELOG.md README.md python/README.md
+git add pom.xml python/setup.py CHANGELOG.md README.md PYSPARK-DEPS.md python/README.md
 git commit -m "Releasing $version"
 git tag -a "v${version}" -m "Release v${version}"
 
