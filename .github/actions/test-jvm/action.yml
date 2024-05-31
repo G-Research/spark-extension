@@ -4,7 +4,7 @@ description: 'A GitHub Action that tests JVM spark-extension'
 
 inputs:
   spark-version:
-    description: Spark version, e.g. 3.4.0 or 3.4.0-SNAPSHOT
+    description: Spark version, e.g. 3.4.0, 3.4.0-SNAPSHOT or 4.0.0-preview1
     required: true
   scala-version:
     description: Scala version, e.g. 2.12.15
@@ -38,7 +38,7 @@ runs:
       path: .
 
   - name: Restore Spark Binaries cache
-    if: github.event_name != 'schedule' && ! contains(inputs.spark-version, '-SNAPSHOT')
+    if: github.event_name != 'schedule' && ! contains(inputs.spark-version, '-SNAPSHOT') && ! contains(inputs.spark-version, '-preview')
     uses: actions/cache/restore@v4
     with:
       path: ~/spark
@@ -47,7 +47,7 @@ runs:
         ${{ runner.os }}-spark-binaries-${{ inputs.spark-version }}-${{ inputs.scala-compat-version }}
 
   - name: Setup Spark Binaries
-    if: ( ! contains(inputs.spark-version, '-SNAPSHOT') )
+    if: ( ! contains(inputs.spark-version, '-SNAPSHOT') && ! contains(inputs.spark-version, '-preview') )
     env:
       SPARK_PACKAGE: spark-${{ inputs.spark-version }}/spark-${{ inputs.spark-version }}-bin-hadoop${{ inputs.hadoop-version }}${{ inputs.scala-compat-version == '2.13' && '-scala2.13' || '' }}.tgz
     run: |
@@ -82,7 +82,7 @@ runs:
     shell: bash
 
   - name: Diff App test
-    if: ( ! contains(inputs.spark-version, '-SNAPSHOT') )
+    if: ( ! contains(inputs.spark-version, '-SNAPSHOT') && ! contains(inputs.spark-version, '-preview') )
     run: |
       $SPARK_HOME/bin/spark-submit --packages com.github.scopt:scopt_${{ inputs.scala-compat-version }}:4.1.0 target/spark-extension_*.jar --format parquet --id id src/test/files/test.parquet/file1.parquet src/test/files/test.parquet/file2.parquet diff.parquet
       $SPARK_HOME/bin/spark-shell <<< 'val df = spark.read.parquet("diff.parquet").orderBy($"id").groupBy($"diff").count; df.show; if (df.count != 2) sys.exit(1)'
