@@ -32,4 +32,4 @@ jobs:
           spark-compat-version: ${{ matrix.spark-compat-version }}
           scala-compat-version: ${{ matrix.scala-compat-version }}
           hadoop-version: ${{ matrix.hadoop-version }}
-          java-compat-version: '8'
+          java-compat-version: '17'
