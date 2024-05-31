@@ -118,6 +118,12 @@
       <name>Apache Snapshots</name>
       <url>https://repository.apache.org/snapshots/</url>
     </repository>
+    <!-- required to resolve Spark preview versions -->
+    <repository>
+      <id>apache preview</id>
+      <name>Apache Preview</name>
+      <url>https://repository.apache.org/content/repositories/orgapachespark-1456/</url>
+    </repository>
   </repositories>
 
   <distributionManagement>
