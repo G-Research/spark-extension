@@ -151,16 +151,16 @@ jobs:
               # upload to test PyPi
               pip install twine
               twine check python/dist/*
-              python3 -m twine upload --repository testpypi -p $TESTPYPY_TWINE_PASSWORD -u $TESTPYPY_TWINE_USERNAME python/dist/*
+              python3 -m twine upload --repository testpypi -p $TESTPYPI_TWINE_PASSWORD -u $TESTPYPI_TWINE_USERNAME python/dist/*
 
               # upload to PyPi
-              python3 -m twine upload -p $PYPY_TWINE_PASSWORD -u $PYPY_TWINE_USERNAME python/dist/*
+              python3 -m twine upload -p $PYPI_TWINE_PASSWORD -u $PYPI_TWINE_USERNAME python/dist/*
           fi
         env:
-          TESTPYPY_TWINE_USERNAME: ${{ secrets.TEST_PYPI_USERNAME }}
-          TESTPYPY_TWINE_PASSWORD: ${{ secrets.TEST_PYPI_PASSWORD }}
-          PYPY_TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-          PYPY_TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+          TESTPYPI_TWINE_USERNAME: ${{ secrets.TEST_PYPI_USERNAME }}
+          TESTPYPI_TWINE_PASSWORD: ${{ secrets.TEST_PYPI_PASSWORD }}
+          PYPI_TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          PYPI_TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
 
       - name: Extract release notes
         id: release-notes
