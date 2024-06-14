@@ -20,6 +20,8 @@ from py4j.java_gateway import JVMView, JavaObject
 
 from pyspark.sql.types import DataType
 
+from gresearch.spark import _jvm
+
 
 class DiffComparator(abc.ABC):
     @abc.abstractmethod
@@ -55,12 +57,12 @@ class DiffComparators:
 
 class DefaultDiffComparator(DiffComparator):
     def _to_java(self, jvm: JVMView) -> JavaObject:
-        return jvm.uk.co.gresearch.spark.diff.DiffComparators.default()
+        return _jvm(jvm).uk.co.gresearch.spark.diff.DiffComparators.default()
 
 
 class NullSafeEqualDiffComparator(DiffComparator):
     def _to_java(self, jvm: JVMView) -> JavaObject:
-        return jvm.uk.co.gresearch.spark.diff.DiffComparators.nullSafeEqual()
+        return _jvm(jvm).uk.co.gresearch.spark.diff.DiffComparators.nullSafeEqual()
 
 
 @dataclass(frozen=True)
@@ -82,7 +84,7 @@ class EpsilonDiffComparator(DiffComparator):
         return dataclasses.replace(self, inclusive=False)
 
     def _to_java(self, jvm: JVMView) -> JavaObject:
-        return jvm.uk.co.gresearch.spark.diff.comparator.EpsilonDiffComparator(self.epsilon, self.relative, self.inclusive)
+        return _jvm(jvm).uk.co.gresearch.spark.diff.comparator.EpsilonDiffComparator(self.epsilon, self.relative, self.inclusive)
 
 
 @dataclass(frozen=True)
@@ -90,7 +92,7 @@ class StringDiffComparator(DiffComparator):
     whitespace_agnostic: bool
 
     def _to_java(self, jvm: JVMView) -> JavaObject:
-        return jvm.uk.co.gresearch.spark.diff.DiffComparators.string(self.whitespace_agnostic)
+        return _jvm(jvm).uk.co.gresearch.spark.diff.DiffComparators.string(self.whitespace_agnostic)
 
 
 @dataclass(frozen=True)
@@ -106,7 +108,7 @@ class DurationDiffComparator(DiffComparator):
 
     def _to_java(self, jvm: JVMView) -> JavaObject:
         jduration = jvm.java.time.Duration.parse(self.duration)
-        return jvm.uk.co.gresearch.spark.diff.comparator.DurationDiffComparator(jduration, self.inclusive)
+        return _jvm(jvm).uk.co.gresearch.spark.diff.comparator.DurationDiffComparator(jduration, self.inclusive)
 
 
 @dataclass(frozen=True)
@@ -121,4 +123,4 @@ class MapDiffComparator(DiffComparator):
         jfromjson = jvm.org.apache.spark.sql.types.__getattr__("DataType$").__getattr__("MODULE$").fromJson
         jkeytype = jfromjson(self.key_type.json())
         jvaluetype = jfromjson(self.value_type.json())
-        return jvm.uk.co.gresearch.spark.diff.DiffComparators.map(jkeytype, jvaluetype, self.key_order_sensitive)
+        return _jvm(jvm).uk.co.gresearch.spark.diff.DiffComparators.map(jkeytype, jvaluetype, self.key_order_sensitive)

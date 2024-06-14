@@ -20,7 +20,7 @@ from py4j.java_gateway import JavaObject, JVMView
 from pyspark.sql import DataFrame
 from pyspark.sql.types import DataType
 
-from gresearch.spark import _to_seq, _to_map
+from gresearch.spark import _jvm, _to_seq, _to_map
 from gresearch.spark.diff.comparator import DiffComparator, DiffComparators, DefaultDiffComparator
 
 
@@ -34,7 +34,7 @@ class DiffMode(Enum):
     Default = "Default"
 
     def _to_java(self, jvm: JVMView) -> JavaObject:
-        return jvm.uk.co.gresearch.spark.diff.DiffMode.withNameOption(self.name).get()
+        return _jvm(jvm).uk.co.gresearch.spark.diff.DiffMode.withNameOption(self.name).get()
 
 
 @dataclass(frozen=True)
@@ -233,7 +233,7 @@ class DiffOptions:
         return dataclasses.replace(self, column_name_comparators=column_name_comparators)
 
     def _to_java(self, jvm: JVMView) -> JavaObject:
-        return jvm.uk.co.gresearch.spark.diff.DiffOptions(
+        return _jvm(jvm).uk.co.gresearch.spark.diff.DiffOptions(
             self.diff_column,
             self.left_column_prefix,
             self.right_column_prefix,
@@ -268,7 +268,7 @@ class Differ:
 
     def _to_java(self, jvm: JVMView) -> JavaObject:
         jdo = self._options._to_java(jvm)
-        return jvm.uk.co.gresearch.spark.diff.Differ(jdo)
+        return _jvm(jvm).uk.co.gresearch.spark.diff.Differ(jdo)
 
     def diff(self, left: DataFrame, right: DataFrame, *id_columns: str) -> DataFrame:
         """

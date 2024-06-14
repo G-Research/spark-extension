@@ -47,6 +47,33 @@ def _to_map(jvm: JVMView, map: Mapping[Any, Any]) -> JavaObject:
     return jvm.scala.collection.JavaConverters.mapAsScalaMap(map)
 
 
+_java_pkg_is_installed: Optional[bool] = None
+
+
+def _check_java_pkg_is_installed(jvm: JVMView) -> bool:
+    """Check that the Java / Scala package is installed."""
+    try:
+        jvm.uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$").VersionString()
+        return True
+    except TypeError as e:
+        print(e.args)
+        return False
+    except:
+        # any other exception indicate some problem, be safe and do not fail fast here
+        return True
+
+
+def _jvm(jvm: JVMView) -> JVMView:
+    """Check that the Java / Scala package is accessible via this JVMView."""
+    global _java_pkg_is_installed
+    if _java_pkg_is_installed is None:
+        _java_pkg_is_installed = _check_java_pkg_is_installed(jvm)
+    if _java_pkg_is_installed:
+        return jvm
+    raise RuntimeError("Java / Scala package not found! You need to add the spark-extension package "
+                       "to your PySpark environment: https://github.com/G-Research/spark-extension#python")
+
+
 def dotnet_ticks_to_timestamp(tick_column: Union[str, Column]) -> Column:
     """
     Convert a .Net `DateTime.Ticks` timestamp to a Spark timestamp. The input column must be
@@ -76,7 +103,7 @@ def dotnet_ticks_to_timestamp(tick_column: Union[str, Column]) -> Column:
     if sc is None or sc._jvm is None:
         raise RuntimeError("This method must be called inside an active Spark session")
 
-    func = sc._jvm.uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$").dotNetTicksToTimestamp
+    func = _jvm(sc._jvm).uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$").dotNetTicksToTimestamp
     return Column(func(_to_java_column(tick_column)))
 
 
@@ -109,7 +136,7 @@ def dotnet_ticks_to_unix_epoch(tick_column: Union[str, Column]) -> Column:
     if sc is None or sc._jvm is None:
         raise RuntimeError("This method must be called inside an active Spark session")
 
-    func = sc._jvm.uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$").dotNetTicksToUnixEpoch
+    func = _jvm(sc._jvm).uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$").dotNetTicksToUnixEpoch
     return Column(func(_to_java_column(tick_column)))
 
 
@@ -142,7 +169,7 @@ def dotnet_ticks_to_unix_epoch_nanos(tick_column: Union[str, Column]) -> Column:
     if sc is None or sc._jvm is None:
         raise RuntimeError("This method must be called inside an active Spark session")
 
-    func = sc._jvm.uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$").dotNetTicksToUnixEpochNanos
+    func = _jvm(sc._jvm).uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$").dotNetTicksToUnixEpochNanos
     return Column(func(_to_java_column(tick_column)))
 
 
@@ -174,7 +201,7 @@ def timestamp_to_dotnet_ticks(timestamp_column: Union[str, Column]) -> Column:
     if sc is None or sc._jvm is None:
         raise RuntimeError("This method must be called inside an active Spark session")
 
-    func = sc._jvm.uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$").timestampToDotNetTicks
+    func = _jvm(sc._jvm).uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$").timestampToDotNetTicks
     return Column(func(_to_java_column(timestamp_column)))
 
 
@@ -208,7 +235,7 @@ def unix_epoch_to_dotnet_ticks(unix_column: Union[str, Column]) -> Column:
     if sc is None or sc._jvm is None:
         raise RuntimeError("This method must be called inside an active Spark session")
 
-    func = sc._jvm.uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$").unixEpochToDotNetTicks
+    func = _jvm(sc._jvm).uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$").unixEpochToDotNetTicks
     return Column(func(_to_java_column(unix_column)))
 
 
@@ -243,7 +270,7 @@ def unix_epoch_nanos_to_dotnet_ticks(unix_column: Union[str, Column]) -> Column:
     if sc is None or sc._jvm is None:
         raise RuntimeError("This method must be called inside an active Spark session")
 
-    func = sc._jvm.uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$").unixEpochNanosToDotNetTicks
+    func = _jvm(sc._jvm).uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$").unixEpochNanosToDotNetTicks
     return Column(func(_to_java_column(unix_column)))
 
 
@@ -286,7 +313,7 @@ def histogram(self: DataFrame,
     value_column = col(value_column)
     aggregate_columns = [col(column) for column in aggregate_columns]
 
-    hist = jvm.uk.co.gresearch.spark.Histogram
+    hist = _jvm(jvm).uk.co.gresearch.spark.Histogram
     jdf = hist.of(self._jdf, _to_seq(jvm, thresholds), value_column, _to_seq(jvm, aggregate_columns))
     return DataFrame(jdf, self.session_or_ctx())
 
@@ -308,7 +335,7 @@ class UnpersistHandle:
 
 def unpersist_handle(self: SparkSession) -> UnpersistHandle:
     jvm = self._sc._jvm
-    handle = jvm.uk.co.gresearch.spark.UnpersistHandle()
+    handle = _jvm(jvm).uk.co.gresearch.spark.UnpersistHandle()
     return UnpersistHandle(handle)
 
 
@@ -323,11 +350,11 @@ def with_row_numbers(self: DataFrame,
                      ascending: Union[bool, List[bool]] = True) -> DataFrame:
     jvm = self._sc._jvm
     jsl = self._sc._getJavaStorageLevel(storage_level)
-    juho = jvm.uk.co.gresearch.spark.UnpersistHandle
+    juho = _jvm(jvm).uk.co.gresearch.spark.UnpersistHandle
     juh = unpersist_handle._handle if unpersist_handle else juho.Noop()
     jcols = self._sort_cols([order], {'ascending': ascending}) if not isinstance(order, list) or order else jvm.PythonUtils.toSeq([])
 
-    row_numbers = jvm.uk.co.gresearch.spark.RowNumbers
+    row_numbers = _jvm(jvm).uk.co.gresearch.spark.RowNumbers
     jdf = row_numbers \
         .withRowNumberColumnName(row_number_column_name) \
         .withStorageLevel(jsl) \
@@ -349,7 +376,7 @@ DataFrame.session_or_ctx = session_or_ctx
 def set_description(description: str, if_not_set: bool = False):
     context = SparkContext._active_spark_context
     jvm = context._jvm
-    spark_package = jvm.uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$")
+    spark_package = _jvm(jvm).uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$")
     return spark_package.setJobDescription(description, if_not_set, context._jsc.sc())
 
 
@@ -385,7 +412,7 @@ def job_description(description: str, if_not_set: bool = False):
 def append_description(extra_description: str, separator: str = " - "):
     context = SparkContext._active_spark_context
     jvm = context._jvm
-    spark_package = jvm.uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$")
+    spark_package = _jvm(jvm).uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$")
     return spark_package.appendJobDescription(extra_description, separator, context._jsc.sc())
 
 

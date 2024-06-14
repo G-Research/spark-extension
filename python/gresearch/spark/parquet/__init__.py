@@ -17,12 +17,12 @@ from typing import Optional
 from py4j.java_gateway import JavaObject
 from pyspark.sql import DataFrameReader, DataFrame
 
-from gresearch.spark import _to_seq
+from gresearch.spark import _jvm, _to_seq
 
 
 def _jreader(reader: DataFrameReader) -> JavaObject:
     jvm = reader._spark._jvm
-    return jvm.uk.co.gresearch.spark.parquet.__getattr__("package$").__getattr__("MODULE$").ExtendedDataFrameReader(reader._jreader)
+    return _jvm(jvm).uk.co.gresearch.spark.parquet.__getattr__("package$").__getattr__("MODULE$").ExtendedDataFrameReader(reader._jreader)
 
 
 def parquet_metadata(self: DataFrameReader, *paths: str, parallelism: Optional[int] = None) -> DataFrame:
