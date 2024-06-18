@@ -13,6 +13,10 @@ jobs:
     name: Release snapshot Spark:${{ matrix.params.spark-version }} - Scala:${{ matrix.params.scala-version }}
     if: ${{ !github.event.repository.fork }}
     runs-on: ubuntu-latest
+    environment: release # secret GPG_PRIVATE_KEY is protected 
+    permissions:
+      contents: write # required to push to a branch
+      id-token: write # required for PiPy publish
     strategy:
       fail-fast: false
       matrix:
@@ -38,6 +42,17 @@ jobs:
           java-version: '8'
           distribution: 'corretto'
 
+      - name: Set up Maven Central Repository
+        uses: actions/setup-java@99b8673ff64fbf99d8d325f52d9a5bdedb8483e9
+        with:
+          java-version: '8'
+          distribution: 'corretto'
+          server-id: ossrh
+          server-username: MAVEN_USERNAME
+          server-password: MAVEN_PASSWORD
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: MAVEN_GPG_PASSPHRASE
+
       - uses: actions/setup-python@v5 
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -56,12 +71,6 @@ jobs:
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-whl-${{ env.PYTHON_VERSION }}-${{ matrix.params.spark-version }}
-
-      - name: Import GPG key
-        id: sign
-        uses: crazy-max/ghaction-import-gpg@01dd5d3ca463c7f10f7f4f7b4f177225ac661ee4
-        with:
-          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
 
       - name: Check if this is a SNAPSHOT version
         id: check-snapshot
@@ -83,12 +92,20 @@ jobs:
 
           ./set-version.sh ${{ matrix.params.spark-version }} ${{ matrix.params.scala-version }}
           mvn clean deploy -Dsign
+        env:
+          MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE}}
 
-          # For Scala version 2.12 build the python
-          if [[ ${{ matrix.params.scala-version }}  == 2.12* ]]; then
-              echo "Scala version starts with '2.12'"
-              ./build-whl.sh
-          fi
+      - name: Prepare PyPi package
+        id: prepare-pypi-package
+        if: ${{ matrix.params.scala-version }} == 2.12*
+        run: |
+          echo "Scala version starts with '2.12'"
+          ./build-whl.sh
 
+      - name: Test release
+        id: test-package
+        run: |
           # Test the release
           ./test-release.sh
