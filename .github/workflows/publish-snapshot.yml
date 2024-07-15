@@ -13,7 +13,7 @@ jobs:
     name: Release snapshot Spark:${{ matrix.params.spark-version }} - Scala:${{ matrix.params.scala-version }}
     if: ${{ !github.event.repository.fork }}
     runs-on: ubuntu-latest
-    environment: release # secret GPG_PRIVATE_KEY is protected 
+    environment: release-snapshot # secret GPG_PRIVATE_KEY is protected 
     permissions:
       contents: write # required to push to a branch
       id-token: write # required for PiPy publish
