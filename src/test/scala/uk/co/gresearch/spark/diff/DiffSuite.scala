@@ -19,7 +19,7 @@ package uk.co.gresearch.spark.diff
 import org.apache.spark.sql.functions.regexp_replace
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.{Dataset, Encoders, Row}
+import org.apache.spark.sql.{Dataset, Encoders, Row, SparkSession}
 import org.scalatest.funsuite.AnyFunSuite
 import uk.co.gresearch.spark.{SparkTestSession, distinctPrefixFor}
 
@@ -38,76 +38,85 @@ case class Value9up(ID: Int, SEQ: Option[Int], VALUE: Option[String], INFO: Opti
 case class ValueLeft(left_id: Int, value: Option[String])
 case class ValueRight(right_id: Int, value: Option[String])
 
-case class DiffAs(diff: String,
-                  id: Int,
-                  left_value: Option[String],
-                  right_value: Option[String])
-case class DiffAs8(diff: String,
-                   id: Int,
-                   seq: Option[Int],
-                   left_value: Option[String],
-                   right_value: Option[String],
-                   left_meta: Option[String],
-                   right_meta: Option[String])
-case class DiffAs8SideBySide(diff: String,
-                             id: Int,
-                             seq: Option[Int],
-                             left_value: Option[String],
-                             left_meta: Option[String],
-                             right_value: Option[String],
-                             right_meta: Option[String])
-case class DiffAs8OneSide(diff: String,
-                          id: Int,
-                          seq: Option[Int],
-                          value: Option[String],
-                          meta: Option[String])
-case class DiffAs8changes(diff: String,
-                          changed: Array[String],
-                          id: Int,
-                          seq: Option[Int],
-                          left_value: Option[String],
-                          right_value: Option[String],
-                          left_meta: Option[String],
-                          right_meta: Option[String])
-case class DiffAs8and9(diff: String,
-                       id: Int,
-                       seq: Option[Int],
-                       left_value: Option[String],
-                       right_value: Option[String],
-                       left_meta: Option[String],
-                       right_info: Option[String])
+case class DiffAs(diff: String, id: Int, left_value: Option[String], right_value: Option[String])
+case class DiffAs8(
+    diff: String,
+    id: Int,
+    seq: Option[Int],
+    left_value: Option[String],
+    right_value: Option[String],
+    left_meta: Option[String],
+    right_meta: Option[String]
+)
+case class DiffAs8SideBySide(
+    diff: String,
+    id: Int,
+    seq: Option[Int],
+    left_value: Option[String],
+    left_meta: Option[String],
+    right_value: Option[String],
+    right_meta: Option[String]
+)
+case class DiffAs8OneSide(diff: String, id: Int, seq: Option[Int], value: Option[String], meta: Option[String])
+case class DiffAs8changes(
+    diff: String,
+    changed: Array[String],
+    id: Int,
+    seq: Option[Int],
+    left_value: Option[String],
+    right_value: Option[String],
+    left_meta: Option[String],
+    right_meta: Option[String]
+)
+case class DiffAs8and9(
+    diff: String,
+    id: Int,
+    seq: Option[Int],
+    left_value: Option[String],
+    right_value: Option[String],
+    left_meta: Option[String],
+    right_info: Option[String]
+)
 
-case class DiffAsCustom(action: String,
-                        id: Int,
-                        before_value: Option[String],
-                        after_value: Option[String])
-case class DiffAsSubset(diff: String,
-                        id: Int,
-                        left_value: Option[String])
-case class DiffAsExtra(diff: String,
-                       id: Int,
-                       left_value: Option[String],
-                       right_value: Option[String],
-                       extra: String)
-case class DiffAsOneSide(diff: String,
-                         id: Int,
-                         value: Option[String])
+case class DiffAsCustom(action: String, id: Int, before_value: Option[String], after_value: Option[String])
+case class DiffAsSubset(diff: String, id: Int, left_value: Option[String])
+case class DiffAsExtra(diff: String, id: Int, left_value: Option[String], right_value: Option[String], extra: String)
+case class DiffAsOneSide(diff: String, id: Int, value: Option[String])
+
+object DiffSuite {
+  def left(spark: SparkSession): Dataset[Value] = {
+    import spark.implicits._
+    Seq(
+      Value(1, Some("one")),
+      Value(2, Some("two")),
+      Value(3, Some("three"))
+    ).toDS()
+  }
+
+  def right(spark: SparkSession): Dataset[Value] = {
+    import spark.implicits._
+    Seq(
+      Value(1, Some("one")),
+      Value(2, Some("Two")),
+      Value(4, Some("four"))
+    ).toDS()
+  }
+
+  val expectedDiff: Seq[Row] = Seq(
+    Row("N", 1, "one", "one"),
+    Row("C", 2, "two", "Two"),
+    Row("D", 3, "three", null),
+    Row("I", 4, null, "four")
+  )
+
+}
 
 class DiffSuite extends AnyFunSuite with SparkTestSession {
 
   import spark.implicits._
 
-  lazy val left: Dataset[Value] = Seq(
-    Value(1, Some("one")),
-    Value(2, Some("two")),
-    Value(3, Some("three"))
-  ).toDS()
-
-  lazy val right: Dataset[Value] = Seq(
-    Value(1, Some("one")),
-    Value(2, Some("Two")),
-    Value(4, Some("four"))
-  ).toDS()
+  lazy val left: Dataset[Value] = DiffSuite.left(spark)
+  lazy val right: Dataset[Value] = DiffSuite.right(spark)
 
   lazy val left7: Dataset[Value7] = Seq(
     Value7(1, Some("one"), Some("one label")),
@@ -151,16 +160,12 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     Value8(3, None, None, None)
   ).toDS()
 
-  lazy val right9: Dataset[Value9] = right8.withColumn("info", regexp_replace($"meta", "user", "info")).drop("meta").as[Value9]
+  lazy val right9: Dataset[Value9] =
+    right8.withColumn("info", regexp_replace($"meta", "user", "info")).drop("meta").as[Value9]
 
   lazy val expectedDiffColumns: Seq[String] = Seq("diff", "id", "left_value", "right_value")
 
-  lazy val expectedDiff: Seq[Row] = Seq(
-    Row("N", 1, "one", "one"),
-    Row("C", 2, "two", "Two"),
-    Row("D", 3, "three", null),
-    Row("I", 4, null, "four")
-  )
+  lazy val expectedDiff: Seq[Row] = DiffSuite.expectedDiff
 
   lazy val expectedReverseDiff: Seq[Row] = Seq(
     Row("N", 1, "one", "one"),
@@ -169,9 +174,8 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     Row("D", 4, "four", null)
   )
 
-  lazy val expectedDiffAs: Seq[DiffAs] = expectedDiff.map(r =>
-    DiffAs(r.getString(0), r.getInt(1), Option(r.getString(2)), Option(r.getString(3)))
-  )
+  lazy val expectedDiffAs: Seq[DiffAs] =
+    expectedDiff.map(r => DiffAs(r.getString(0), r.getInt(1), Option(r.getString(2)), Option(r.getString(3))))
 
   lazy val expectedDiff7: Seq[Row] = Seq(
     Row("C", 1, "one", "One", "one label", "one label"),
@@ -186,9 +190,13 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     Row("I", 10, null, null, null, null)
   )
 
-  lazy val expectedSideBySideDiff7: Seq[Row] = expectedDiff7.map(row => Row(row.getString(0), row.getInt(1), row.getString(2), row.getString(4), row.getString(3), row.getString(5)))
-  lazy val expectedLeftSideDiff7: Seq[Row] = expectedDiff7.map(row => Row(row.getString(0), row.getInt(1), row.getString(2), row.getString(4)))
-  lazy val expectedRightSideDiff7: Seq[Row] = expectedDiff7.map(row => Row(row.getString(0), row.getInt(1), row.getString(3), row.getString(5)))
+  lazy val expectedSideBySideDiff7: Seq[Row] = expectedDiff7.map(row =>
+    Row(row.getString(0), row.getInt(1), row.getString(2), row.getString(4), row.getString(3), row.getString(5))
+  )
+  lazy val expectedLeftSideDiff7: Seq[Row] =
+    expectedDiff7.map(row => Row(row.getString(0), row.getInt(1), row.getString(2), row.getString(4)))
+  lazy val expectedRightSideDiff7: Seq[Row] =
+    expectedDiff7.map(row => Row(row.getString(0), row.getInt(1), row.getString(3), row.getString(5)))
 
   lazy val expectedSparseDiff7: Seq[Row] = Seq(
     Row("C", 1, "one", "One", null, null),
@@ -203,9 +211,13 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     Row("I", 10, null, null, null, null)
   )
 
-  lazy val expectedSideBySideSparseDiff7: Seq[Row] = expectedSparseDiff7.map(row => Row(row.getString(0), row.getInt(1), row.getString(2), row.getString(4), row.getString(3), row.getString(5)))
-  lazy val expectedLeftSideSparseDiff7: Seq[Row] = expectedSparseDiff7.map(row => Row(row.getString(0), row.getInt(1), row.getString(2), row.getString(4)))
-  lazy val expectedRightSideSparseDiff7: Seq[Row] = expectedSparseDiff7.map(row => Row(row.getString(0), row.getInt(1), row.getString(3), row.getString(5)))
+  lazy val expectedSideBySideSparseDiff7: Seq[Row] = expectedSparseDiff7.map(row =>
+    Row(row.getString(0), row.getInt(1), row.getString(2), row.getString(4), row.getString(3), row.getString(5))
+  )
+  lazy val expectedLeftSideSparseDiff7: Seq[Row] =
+    expectedSparseDiff7.map(row => Row(row.getString(0), row.getInt(1), row.getString(2), row.getString(4)))
+  lazy val expectedRightSideSparseDiff7: Seq[Row] =
+    expectedSparseDiff7.map(row => Row(row.getString(0), row.getInt(1), row.getString(3), row.getString(5)))
 
   lazy val expectedDiff7WithChanges: Seq[Row] = Seq(
     Row("C", Seq("value"), 1, "one", "One", "one label", "one label"),
@@ -242,9 +254,12 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     Row("N", 3, null, null, null, null, null)
   )
 
-  lazy val expectedSideBySideDiff8: Seq[Row] = expectedDiff8.map(r => Row(r.get(0), r.get(1), r.get(2), r.get(3), r.get(5), r.get(4), r.get(6)))
-  lazy val expectedLeftSideDiff8: Seq[Row] = expectedDiff8.map(r => Row(r.get(0), r.get(1), r.get(2), r.get(3), r.get(5)))
-  lazy val expectedRightSideDiff8: Seq[Row] = expectedDiff8.map(r => Row(r.get(0), r.get(1), r.get(2), r.get(4), r.get(6)))
+  lazy val expectedSideBySideDiff8: Seq[Row] =
+    expectedDiff8.map(r => Row(r.get(0), r.get(1), r.get(2), r.get(3), r.get(5), r.get(4), r.get(6)))
+  lazy val expectedLeftSideDiff8: Seq[Row] =
+    expectedDiff8.map(r => Row(r.get(0), r.get(1), r.get(2), r.get(3), r.get(5)))
+  lazy val expectedRightSideDiff8: Seq[Row] =
+    expectedDiff8.map(r => Row(r.get(0), r.get(1), r.get(2), r.get(4), r.get(6)))
 
   lazy val expectedSparseDiff8: Seq[Row] = Seq(
     Row("N", 1, 1, null, null, "user1", "user2"),
@@ -257,49 +272,65 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     Row("N", 3, null, null, null, null, null)
   )
 
-  lazy val expectedSideBySideSparseDiff8: Seq[Row] = expectedSparseDiff8.map(r => Row(r.get(0), r.get(1), r.get(2), r.get(3), r.get(5), r.get(4), r.get(6)))
-  lazy val expectedLeftSideSparseDiff8: Seq[Row] = expectedSparseDiff8.map(r => Row(r.get(0), r.get(1), r.get(2), r.get(3), r.get(5)))
-  lazy val expectedRightSideSparseDiff8: Seq[Row] = expectedSparseDiff8.map(r => Row(r.get(0), r.get(1), r.get(2), r.get(4), r.get(6)))
+  lazy val expectedSideBySideSparseDiff8: Seq[Row] =
+    expectedSparseDiff8.map(r => Row(r.get(0), r.get(1), r.get(2), r.get(3), r.get(5), r.get(4), r.get(6)))
+  lazy val expectedLeftSideSparseDiff8: Seq[Row] =
+    expectedSparseDiff8.map(r => Row(r.get(0), r.get(1), r.get(2), r.get(3), r.get(5)))
+  lazy val expectedRightSideSparseDiff8: Seq[Row] =
+    expectedSparseDiff8.map(r => Row(r.get(0), r.get(1), r.get(2), r.get(4), r.get(6)))
 
   lazy val expectedDiffAs8: Seq[DiffAs8] = expectedDiff8.map(r =>
-    DiffAs8(r.getString(0),
-      r.getInt(1), Some(r).filterNot(_.isNullAt(2)).map(_.getInt(2)),
-      Option(r.getString(3)), Option(r.getString(4)),
-      Option(r.getString(5)), Option(r.getString(6))
+    DiffAs8(
+      r.getString(0),
+      r.getInt(1),
+      Some(r).filterNot(_.isNullAt(2)).map(_.getInt(2)),
+      Option(r.getString(3)),
+      Option(r.getString(4)),
+      Option(r.getString(5)),
+      Option(r.getString(6))
     )
   )
 
   lazy val expectedDiff8WithChanges: Seq[Row] = expectedDiff8.map(r =>
-    Row(r.get(0),
+    Row(
+      r.get(0),
       r.get(0) match {
         case "N" => Seq.empty
         case "I" => null
         case "C" => Seq("value")
         case "D" => null
       },
-      r.get(1), r.get(2),
-      r.getString(3), r.getString(4),
-      r.getString(5), r.getString(6)
+      r.get(1),
+      r.get(2),
+      r.getString(3),
+      r.getString(4),
+      r.getString(5),
+      r.getString(6)
     )
   )
 
   lazy val expectedDiffAs8and9: Seq[DiffAs8and9] = expectedDiff8and9.map(r =>
-    DiffAs8and9(r.getString(0),
-      r.getInt(1), Some(r).filterNot(_.isNullAt(2)).map(_.getInt(2)),
-      Option(r.getString(3)), Option(r.getString(4)),
-      Option(r.getString(5)), Option(r.getString(6))
+    DiffAs8and9(
+      r.getString(0),
+      r.getInt(1),
+      Some(r).filterNot(_.isNullAt(2)).map(_.getInt(2)),
+      Option(r.getString(3)),
+      Option(r.getString(4)),
+      Option(r.getString(5)),
+      Option(r.getString(6))
     )
   )
 
-  lazy val expectedDiffWith8and9: Seq[(String, Value8, Value9)] = expectedDiffAs8and9.map(v => (
-    v.diff,
-    if (v.diff == "I") null else Value8(v.id, v.seq, v.left_value, v.left_meta),
-    if (v.diff == "D") null else Value9(v.id, v.seq, v.right_value, v.right_info)
-  ))
-
-  lazy val expectedDiffWith8and9up: Seq[(String, Value8, Value9up)] = expectedDiffWith8and9.map(t =>
-    t.copy(_3 = Option(t._3).map(v => Value9up(v.id, v.seq, v.value, v.info)).orNull)
+  lazy val expectedDiffWith8and9: Seq[(String, Value8, Value9)] = expectedDiffAs8and9.map(v =>
+    (
+      v.diff,
+      if (v.diff == "I") null else Value8(v.id, v.seq, v.left_value, v.left_meta),
+      if (v.diff == "D") null else Value9(v.id, v.seq, v.right_value, v.right_info)
+    )
   )
+
+  lazy val expectedDiffWith8and9up: Seq[(String, Value8, Value9up)] =
+    expectedDiffWith8and9.map(t => t.copy(_3 = Option(t._3).map(v => Value9up(v.id, v.seq, v.value, v.info)).orNull))
 
   test("distinct prefix for") {
     assert(distinctPrefixFor(Seq.empty[String]) === "_")
@@ -314,9 +345,11 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
   test("diff dataframe with duplicate columns") {
     val df = Seq(1).toDF("id").select($"id", $"id")
 
-    doTestRequirement(df.diff(df, "id"),
+    doTestRequirement(
+      df.diff(df, "id"),
       "The datasets have duplicate columns.\n" +
-        "Left column names: id, id\nRight column names: id, id")
+        "Left column names: id, id\nRight column names: id, id"
+    )
   }
 
   test("diff with no id column") {
@@ -369,8 +402,7 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
 
   test("diff with one id column case-sensitive") {
     withSQLConf(SQLConf.CASE_SENSITIVE.key -> "true") {
-      doTestRequirement(left.diff(right, "ID"),
-        "Some id columns do not exist: ID missing among id, value")
+      doTestRequirement(left.diff(right, "ID"), "Some id columns do not exist: ID missing among id, value")
 
       val actual = left.diff(right, "id").orderBy("id")
       val reverse = right.diff(left, "id").orderBy("id")
@@ -512,10 +544,14 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
       )
       val expectedColumns = Seq(
         "diff",
-        "id", "seq",
-        "left_value1", "right_value1",
-        "left_value2", "right_value2",
-        "left_value3", "right_value3"
+        "id",
+        "seq",
+        "left_value1",
+        "right_value1",
+        "left_value2",
+        "right_value2",
+        "left_value3",
+        "right_value3"
       )
 
       val actual = left.diff(right, "id", "seq").orderBy("id", "seq")
@@ -534,10 +570,14 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
       )
       val expectedColumns = Seq(
         "diff",
-        "id", "seq",
-        "left_value2", "right_value2",
-        "left_value3", "right_value3",
-        "left_value1", "right_value1"
+        "id",
+        "seq",
+        "left_value2",
+        "right_value2",
+        "left_value3",
+        "right_value3",
+        "left_value1",
+        "right_value1"
       )
 
       val actual = right.diff(left, "id", "seq").orderBy("id", "seq")
@@ -556,7 +596,12 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
         Row("I", "val2.2.1", 2, "val2.2.2", 2, "val2.2.3")
       )
       val expectedColumns = Seq(
-        "diff", "value1", "id", "value2", "seq", "value3"
+        "diff",
+        "value1",
+        "id",
+        "value2",
+        "seq",
+        "value3"
       )
 
       val actual = left.diff(right).orderBy("id", "seq", "diff")
@@ -575,7 +620,12 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
         Row("I", "val2.2.1", 2, "val2.2.2", 2, "val2.2.3")
       )
       val expectedColumns = Seq(
-        "diff", "value1", "id", "value2", "seq", "value3"
+        "diff",
+        "value1",
+        "id",
+        "value2",
+        "seq",
+        "value3"
       )
 
       val actual = left.diff(right).orderBy("id", "seq", "diff")
@@ -603,9 +653,12 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     val expectedColumns = Seq(
       "diff",
       "id",
-      "left_left_value", "right_left_value",
-      "left_right_value", "right_right_value",
-      "left_value", "right_value"
+      "left_left_value",
+      "right_left_value",
+      "left_right_value",
+      "right_right_value",
+      "left_value",
+      "right_value"
     )
     val expectedDiff = Seq(
       Row("C", 1, "left", "Left", "right", "Right", "value", "Value")
@@ -619,21 +672,25 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     val left = Seq(Value4(1, "diff")).toDS()
     val right = Seq(Value4(1, "Diff")).toDS()
 
-    doTestRequirement(left.diff(right),
-      "The id columns must not contain the diff column name 'diff': id, diff")
-    doTestRequirement(left.diff(right, "diff"),
-      "The id columns must not contain the diff column name 'diff': diff")
-    doTestRequirement(left.diff(right, "diff", "id"),
-      "The id columns must not contain the diff column name 'diff': diff, id")
+    doTestRequirement(left.diff(right), "The id columns must not contain the diff column name 'diff': id, diff")
+    doTestRequirement(left.diff(right, "diff"), "The id columns must not contain the diff column name 'diff': diff")
+    doTestRequirement(
+      left.diff(right, "diff", "id"),
+      "The id columns must not contain the diff column name 'diff': diff, id"
+    )
 
     withSQLConf(SQLConf.CASE_SENSITIVE.key -> "false") {
-      doTestRequirement(left.withColumnRenamed("diff", "Diff")
-        .diff(right.withColumnRenamed("diff", "Diff"), "Diff", "id"),
-        "The id columns must not contain the diff column name 'diff': Diff, id")
+      doTestRequirement(
+        left
+          .withColumnRenamed("diff", "Diff")
+          .diff(right.withColumnRenamed("diff", "Diff"), "Diff", "id"),
+        "The id columns must not contain the diff column name 'diff': Diff, id"
+      )
     }
 
     withSQLConf(SQLConf.CASE_SENSITIVE.key -> "true") {
-      left.withColumnRenamed("diff", "Diff")
+      left
+        .withColumnRenamed("diff", "Diff")
         .diff(right.withColumnRenamed("diff", "Diff"), "Diff", "id")
     }
   }
@@ -646,7 +703,8 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     val expectedColumns = Seq(
       "diff",
       "id",
-      "left_diff", "right_diff"
+      "left_diff",
+      "right_diff"
     )
     val expectedDiff = Seq(
       Row("C", 1, "diff", "Diff")
@@ -662,9 +720,11 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
       .withLeftColumnPrefix("a")
       .withRightColumnPrefix("b")
 
-    doTestRequirement(left.diff(right, options, "id"),
+    doTestRequirement(
+      left.diff(right, options, "id"),
       "The column prefixes 'a' and 'b', together with these non-id columns " +
-        "must not produce the diff column name 'a_value': value")
+        "must not produce the diff column name 'a_value': value"
+    )
   }
 
   test("diff with left-side mode where non-id column would produce diff column name") {
@@ -694,9 +754,11 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
         .withLeftColumnPrefix("A")
         .withRightColumnPrefix("B")
 
-      doTestRequirement(left.diff(right, options, "id"),
+      doTestRequirement(
+        left.diff(right, options, "id"),
         "The column prefixes 'A' and 'B', together with these non-id columns " +
-          "must not produce the diff column name 'a_value': value")
+          "must not produce the diff column name 'a_value': value"
+      )
     }
   }
 
@@ -733,7 +795,10 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
 
       val actual = left.diff(right, options, "id").orderBy("id")
       val expectedColumns = Seq(
-        "a_value", "id", "A_value", "B_value"
+        "a_value",
+        "id",
+        "A_value",
+        "B_value"
       )
 
       assert(actual.columns === expectedColumns)
@@ -747,9 +812,11 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
       .withLeftColumnPrefix("a")
       .withRightColumnPrefix("b")
 
-    doTestRequirement(left.diff(right, options, "id"),
+    doTestRequirement(
+      left.diff(right, options, "id"),
       "The column prefixes 'a' and 'b', together with these non-id columns " +
-        "must not produce the change column name 'a_value': value")
+        "must not produce the change column name 'a_value': value"
+    )
   }
 
   test("diff where case-insensitive non-id column produces change column name") {
@@ -759,9 +826,11 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
         .withLeftColumnPrefix("A")
         .withRightColumnPrefix("B")
 
-      doTestRequirement(left.diff(right, options, "id"),
+      doTestRequirement(
+        left.diff(right, options, "id"),
         "The column prefixes 'A' and 'B', together with these non-id columns " +
-          "must not produce the change column name 'a_value': value")
+          "must not produce the change column name 'a_value': value"
+      )
     }
   }
 
@@ -774,7 +843,13 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
 
       val actual = left7.diff(right7, options, "id").orderBy("id")
       val expectedColumns = Seq(
-        "diff", "a_value", "id", "A_value", "B_value", "A_label", "B_label"
+        "diff",
+        "a_value",
+        "id",
+        "A_value",
+        "B_value",
+        "A_label",
+        "B_label"
       )
 
       assert(actual.columns === expectedColumns)
@@ -790,9 +865,11 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     val left = Seq(Value5(1, "value")).toDS()
     val right = Seq(Value5(1, "Value")).toDS()
 
-    doTestRequirement(left.diff(right, options, "first_id"),
+    doTestRequirement(
+      left.diff(right, options, "first_id"),
       "The column prefixes 'first' and 'second', together with these non-id columns " +
-        "must not produce any id column name 'first_id': id")
+        "must not produce any id column name 'first_id': id"
+    )
   }
 
   test("diff where case-insensitive non-id column produces id column name") {
@@ -804,9 +881,11 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
       val left = Seq(Value5(1, "value")).toDS()
       val right = Seq(Value5(1, "Value")).toDS()
 
-      doTestRequirement(left.diff(right, options, "first_id"),
+      doTestRequirement(
+        left.diff(right, options, "first_id"),
         "The column prefixes 'FIRST' and 'SECOND', together with these non-id columns " +
-          "must not produce any id column name 'first_id': id")
+          "must not produce any id column name 'first_id': id"
+      )
     }
   }
 
@@ -821,7 +900,10 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
 
       val actual = left.diff(right, options, "first_id")
       val expectedColumns = Seq(
-        "diff", "first_id", "FIRST_id", "SECOND_id"
+        "diff",
+        "first_id",
+        "FIRST_id",
+        "SECOND_id"
       )
 
       assert(actual.columns === expectedColumns)
@@ -856,8 +938,10 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     val left = Seq((1, "info")).toDF("id", "info")
     val right = Seq((1, "meta")).toDF("id", "meta")
 
-    doTestRequirement(left.diff(right, Seq.empty, Seq("id", "info", "meta")),
-      "The schema except ignored columns must not be empty")
+    doTestRequirement(
+      left.diff(right, Seq.empty, Seq("id", "info", "meta")),
+      "The schema except ignored columns must not be empty"
+    )
   }
 
   test("diff with different types") {
@@ -865,10 +949,12 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     val left = Seq((1, "str")).toDF("id", "value")
     val right = Seq((1, 2)).toDF("id", "value")
 
-    doTestRequirement(left.diff(right),
+    doTestRequirement(
+      left.diff(right),
       "The datasets do not have the same schema.\n" +
         "Left extra columns: value (StringType)\n" +
-        "Right extra columns: value (IntegerType)")
+        "Right extra columns: value (IntegerType)"
+    )
   }
 
   test("diff with ignored columns of different types") {
@@ -877,12 +963,16 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     val right = Seq((1, 2)).toDF("id", "value")
 
     val actual = left.diff(right, Seq.empty, Seq("value"))
-    assert(ignoreNullable(actual.schema) === StructType(Seq(
-      StructField("diff", StringType),
-      StructField("id", IntegerType),
-      StructField("left_value", StringType),
-      StructField("right_value", IntegerType),
-    )))
+    assert(
+      ignoreNullable(actual.schema) === StructType(
+        Seq(
+          StructField("diff", StringType),
+          StructField("id", IntegerType),
+          StructField("left_value", StringType),
+          StructField("right_value", IntegerType),
+        )
+      )
+    )
     assert(actual.collect() === Seq(Row("N", 1, "str", 2)))
   }
 
@@ -908,10 +998,12 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     val left = Seq((1, "str")).toDF("id", "value")
     val right = Seq((1, "str")).toDF("id", "comment")
 
-    doTestRequirement(left.diff(right, "id"),
+    doTestRequirement(
+      left.diff(right, "id"),
       "The datasets do not have the same schema.\n" +
         "Left extra columns: value (StringType)\n" +
-        "Right extra columns: comment (StringType)")
+        "Right extra columns: comment (StringType)"
+    )
   }
 
   test("diff with case-insensitive column names") {
@@ -936,16 +1028,20 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     val right = this.right.toDF("ID", "VaLuE")
 
     withSQLConf(SQLConf.CASE_SENSITIVE.key -> "true") {
-      doTestRequirement(left.diff(right, "id"),
+      doTestRequirement(
+        left.diff(right, "id"),
         "The datasets do not have the same schema.\n" +
           "Left extra columns: id (IntegerType), value (StringType)\n" +
-          "Right extra columns: ID (IntegerType), VaLuE (StringType)")
+          "Right extra columns: ID (IntegerType), VaLuE (StringType)"
+      )
     }
   }
 
   test("diff of non-existing id column") {
-    doTestRequirement(left.diff(right, "does not exists"),
-      "Some id columns do not exist: does not exists missing among id, value")
+    doTestRequirement(
+      left.diff(right, "does not exists"),
+      "Some id columns do not exist: does not exists missing among id, value"
+    )
   }
 
   test("diff with different number of columns") {
@@ -953,20 +1049,24 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     val left = Seq((1, "str")).toDF("id", "value")
     val right = Seq((1, 1, "str")).toDF("id", "seq", "value")
 
-    doTestRequirement(left.diff(right, "id"),
+    doTestRequirement(
+      left.diff(right, "id"),
       "The number of columns doesn't match.\n" +
         "Left column names (2): id, value\n" +
-        "Right column names (3): id, seq, value")
+        "Right column names (3): id, seq, value"
+    )
   }
 
   test("diff similar with ignored column and different number of columns") {
     val left = Seq((1, "str", "meta")).toDF("id", "value", "meta")
     val right = Seq((1, 1, "str")).toDF("id", "seq", "value")
 
-    doTestRequirement(left.diff(right, Seq("id"), Seq("meta")),
+    doTestRequirement(
+      left.diff(right, Seq("id"), Seq("meta")),
       "The number of columns doesn't match.\n" +
         "Left column names except ignored columns (2): id, value\n" +
-        "Right column names except ignored columns (3): id, seq, value")
+        "Right column names except ignored columns (3): id, seq, value"
+    )
   }
 
   test("diff as U") {
@@ -996,7 +1096,8 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
       (DiffOptions.default.nochangeDiffValue, "eq")
     ).toDF("diff", "action")
 
-    val expected = expectedDiffAs.toDS()
+    val expected = expectedDiffAs
+      .toDS()
       .join(actions, "diff")
       .select($"action", $"id", $"left_value".as("before_value"), $"right_value".as("after_value"))
       .as[DiffAsCustom]
@@ -1018,8 +1119,10 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
   }
 
   test("diff as U with extra column") {
-    doTestRequirement(left.diffAs[DiffAsExtra](right, "id"),
-      "Diff encoder's columns must be part of the diff result schema, these columns are unexpected: extra")
+    doTestRequirement(
+      left.diffAs[DiffAsExtra](right, "id"),
+      "Diff encoder's columns must be part of the diff result schema, these columns are unexpected: extra"
+    )
   }
 
   test("diff with change column") {
@@ -1027,15 +1130,19 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     val actual = left7.diff(right7, options, "id").orderBy("id")
 
     assert(actual.columns === Seq("diff", "changes", "id", "left_value", "right_value", "left_label", "right_label"))
-    assert(actual.schema === StructType(Seq(
-      StructField("diff", StringType, nullable = false),
-      StructField("changes", ArrayType(StringType, containsNull = false), nullable = true),
-      StructField("id", IntegerType, nullable = true),
-      StructField("left_value", StringType, nullable = true),
-      StructField("right_value", StringType, nullable = true),
-      StructField("left_label", StringType, nullable = true),
-      StructField("right_label", StringType, nullable = true)
-    )))
+    assert(
+      actual.schema === StructType(
+        Seq(
+          StructField("diff", StringType, nullable = false),
+          StructField("changes", ArrayType(StringType, containsNull = false), nullable = true),
+          StructField("id", IntegerType, nullable = true),
+          StructField("left_value", StringType, nullable = true),
+          StructField("right_value", StringType, nullable = true),
+          StructField("left_label", StringType, nullable = true),
+          StructField("right_label", StringType, nullable = true)
+        )
+      )
+    )
     assert(actual.collect() === expectedDiff7WithChanges)
   }
 
@@ -1044,15 +1151,21 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     val actual = left7.diff(right7, options)
 
     assert(actual.columns === Seq("diff", "changes", "id", "value", "label"))
-    assert(actual.schema === StructType(Seq(
-      StructField("diff", StringType, nullable = false),
-      StructField("changes", ArrayType(StringType, containsNull = false), nullable = true),
-      StructField("id", IntegerType, nullable = true),
-      StructField("value", StringType, nullable = true),
-      StructField("label", StringType, nullable = true)
-    )))
-    assert(actual.select($"diff", $"changes").distinct().orderBy($"diff").collect() ===
-      Seq(Row("D", null), Row("I", null), Row("N", Seq.empty[String])))
+    assert(
+      actual.schema === StructType(
+        Seq(
+          StructField("diff", StringType, nullable = false),
+          StructField("changes", ArrayType(StringType, containsNull = false), nullable = true),
+          StructField("id", IntegerType, nullable = true),
+          StructField("value", StringType, nullable = true),
+          StructField("label", StringType, nullable = true)
+        )
+      )
+    )
+    assert(
+      actual.select($"diff", $"changes").distinct().orderBy($"diff").collect() ===
+        Seq(Row("D", null), Row("I", null), Row("N", Seq.empty[String]))
+    )
   }
 
   test("diff with change column name in non-id columns") {
@@ -1065,8 +1178,10 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
 
   test("diff with change column name in id columns") {
     val options = DiffOptions.default.withChangeColumn("value")
-    doTestRequirement(left.diff(right, options, "id", "value"),
-      "The id columns must not contain the change column name 'value': id, value")
+    doTestRequirement(
+      left.diff(right, options, "id", "value"),
+      "The id columns must not contain the change column name 'value': id, value"
+    )
   }
 
   test("diff with column-by-column diff mode") {
@@ -1131,26 +1246,34 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
 
   test("diff with left-side diff mode and diff column name in value columns") {
     val options = DiffOptions.default.withDiffColumn("value").withDiffMode(DiffMode.LeftSide)
-    doTestRequirement(left.diff(right, options, "id"),
-      "The left non-id columns must not contain the diff column name 'value': value")
+    doTestRequirement(
+      left.diff(right, options, "id"),
+      "The left non-id columns must not contain the diff column name 'value': value"
+    )
   }
 
   test("diff with right-side diff mode and diff column name in value columns") {
     val options = DiffOptions.default.withDiffColumn("value").withDiffMode(DiffMode.RightSide)
-    doTestRequirement(right.diff(right, options, "id"),
-      "The right non-id columns must not contain the diff column name 'value': value")
+    doTestRequirement(
+      right.diff(right, options, "id"),
+      "The right non-id columns must not contain the diff column name 'value': value"
+    )
   }
 
   test("diff with left-side diff mode and change column name in value columns") {
     val options = DiffOptions.default.withChangeColumn("value").withDiffMode(DiffMode.LeftSide)
-    doTestRequirement(left.diff(right, options, "id"),
-      "The left non-id columns must not contain the change column name 'value': value")
+    doTestRequirement(
+      left.diff(right, options, "id"),
+      "The left non-id columns must not contain the change column name 'value': value"
+    )
   }
 
   test("diff with right-side diff mode and change column name in value columns") {
     val options = DiffOptions.default.withChangeColumn("value").withDiffMode(DiffMode.RightSide)
-    doTestRequirement(right.diff(right, options, "id"),
-      "The right non-id columns must not contain the change column name 'value': value")
+    doTestRequirement(
+      right.diff(right, options, "id"),
+      "The right non-id columns must not contain the change column name 'value': value"
+    )
   }
 
   test("diff with dots in diff column") {
@@ -1269,10 +1392,12 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     schema.copy(fields =
       schema.fields
         .map(_.copy(nullable = true))
-        .map(field => field.dataType match {
-          case a: ArrayType => field.copy(dataType = a.copy(containsNull = false))
-          case _ => field
-        })
+        .map(field =>
+          field.dataType match {
+            case a: ArrayType => field.copy(dataType = a.copy(containsNull = false))
+            case _            => field
+          }
+        )
     )
   }
 
@@ -1283,24 +1408,63 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
   }
 
   test("diff with ignored columns") {
-    assertIgnoredColumns(left8.diff(right8, Seq("id", "seq"), Seq("meta")), expectedDiff8, Encoders.product[DiffAs8].schema)
-    assertIgnoredColumns(Diff.of(left8, right8, Seq("id", "seq"), Seq("meta")), expectedDiff8, Encoders.product[DiffAs8].schema)
-    assertIgnoredColumns(Diff.default.diff(left8, right8, Seq("id", "seq"), Seq("meta")), expectedDiff8, Encoders.product[DiffAs8].schema)
-
-    assertIgnoredColumns[DiffAs8](left8.diffAs(right8, Seq("id", "seq"), Seq("meta")), expectedDiffAs8, Encoders.product[DiffAs8].schema)
-    assertIgnoredColumns[DiffAs8](Diff.ofAs(left8, right8, Seq("id", "seq"), Seq("meta")), expectedDiffAs8, Encoders.product[DiffAs8].schema)
-    assertIgnoredColumns[DiffAs8](Diff.default.diffAs(left8, right8, Seq("id", "seq"), Seq("meta")), expectedDiffAs8, Encoders.product[DiffAs8].schema)
-
-    val expected = expectedDiff8.map(row => (
-      row.getString(0),
-      Value8(row.getInt(1), Option(row.get(2)).map(_.asInstanceOf[Int]), Option(row.getString(3)), Option(row.getString(5))),
-      Value8(row.getInt(1), Option(row.get(2)).map(_.asInstanceOf[Int]), Option(row.getString(4)), Option(row.getString(6)))
-    )).map { case (diff, left, right) => (
-      diff,
-      if (diff == "I") null else left,
-      if (diff == "D") null else right
+    assertIgnoredColumns(
+      left8.diff(right8, Seq("id", "seq"), Seq("meta")),
+      expectedDiff8,
+      Encoders.product[DiffAs8].schema
     )
-    }
+    assertIgnoredColumns(
+      Diff.of(left8, right8, Seq("id", "seq"), Seq("meta")),
+      expectedDiff8,
+      Encoders.product[DiffAs8].schema
+    )
+    assertIgnoredColumns(
+      Diff.default.diff(left8, right8, Seq("id", "seq"), Seq("meta")),
+      expectedDiff8,
+      Encoders.product[DiffAs8].schema
+    )
+
+    assertIgnoredColumns[DiffAs8](
+      left8.diffAs(right8, Seq("id", "seq"), Seq("meta")),
+      expectedDiffAs8,
+      Encoders.product[DiffAs8].schema
+    )
+    assertIgnoredColumns[DiffAs8](
+      Diff.ofAs(left8, right8, Seq("id", "seq"), Seq("meta")),
+      expectedDiffAs8,
+      Encoders.product[DiffAs8].schema
+    )
+    assertIgnoredColumns[DiffAs8](
+      Diff.default.diffAs(left8, right8, Seq("id", "seq"), Seq("meta")),
+      expectedDiffAs8,
+      Encoders.product[DiffAs8].schema
+    )
+
+    val expected = expectedDiff8
+      .map(row =>
+        (
+          row.getString(0),
+          Value8(
+            row.getInt(1),
+            Option(row.get(2)).map(_.asInstanceOf[Int]),
+            Option(row.getString(3)),
+            Option(row.getString(5))
+          ),
+          Value8(
+            row.getInt(1),
+            Option(row.get(2)).map(_.asInstanceOf[Int]),
+            Option(row.getString(4)),
+            Option(row.getString(6))
+          )
+        )
+      )
+      .map { case (diff, left, right) =>
+        (
+          diff,
+          if (diff == "I") null else left,
+          if (diff == "D") null else right
+        )
+      }
 
     assertDiffWith(left8.diffWith(right8, Seq("id", "seq"), Seq("meta")).collect(), expected)
     assertDiffWith(Diff.ofWith(left8, right8, Seq("id", "seq"), Seq("meta")).collect(), expected)
@@ -1311,112 +1475,230 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
     val options = DiffOptions.default.withChangeColumn("changed")
     val differ = new Differ(options)
 
-    assertIgnoredColumns(left8.diff(right8, options, Seq("id", "seq"), Seq("meta")), expectedDiff8WithChanges, Encoders.product[DiffAs8changes].schema)
-    assertIgnoredColumns(differ.diff(left8, right8, Seq("id", "seq"), Seq("meta")), expectedDiff8WithChanges, Encoders.product[DiffAs8changes].schema)
+    assertIgnoredColumns(
+      left8.diff(right8, options, Seq("id", "seq"), Seq("meta")),
+      expectedDiff8WithChanges,
+      Encoders.product[DiffAs8changes].schema
+    )
+    assertIgnoredColumns(
+      differ.diff(left8, right8, Seq("id", "seq"), Seq("meta")),
+      expectedDiff8WithChanges,
+      Encoders.product[DiffAs8changes].schema
+    )
   }
 
   test("diff with ignored columns and column-by-column diff mode") {
     val options = DiffOptions.default.withDiffMode(DiffMode.ColumnByColumn)
     val differ = new Differ(options)
 
-    assertIgnoredColumns(left8.diff(right8, options, Seq("id", "seq"), Seq("meta")), expectedDiff8, Encoders.product[DiffAs8].schema)
-    assertIgnoredColumns(differ.diff(left8, right8, Seq("id", "seq"), Seq("meta")), expectedDiff8, Encoders.product[DiffAs8].schema)
+    assertIgnoredColumns(
+      left8.diff(right8, options, Seq("id", "seq"), Seq("meta")),
+      expectedDiff8,
+      Encoders.product[DiffAs8].schema
+    )
+    assertIgnoredColumns(
+      differ.diff(left8, right8, Seq("id", "seq"), Seq("meta")),
+      expectedDiff8,
+      Encoders.product[DiffAs8].schema
+    )
   }
 
   test("diff with ignored columns and side-by-side diff mode") {
     val options = DiffOptions.default.withDiffMode(DiffMode.SideBySide)
     val differ = new Differ(options)
 
-    assertIgnoredColumns(left8.diff(right8, options, Seq("id", "seq"), Seq("meta")), expectedSideBySideDiff8, Encoders.product[DiffAs8SideBySide].schema)
-    assertIgnoredColumns(differ.diff(left8, right8, Seq("id", "seq"), Seq("meta")), expectedSideBySideDiff8, Encoders.product[DiffAs8SideBySide].schema)
+    assertIgnoredColumns(
+      left8.diff(right8, options, Seq("id", "seq"), Seq("meta")),
+      expectedSideBySideDiff8,
+      Encoders.product[DiffAs8SideBySide].schema
+    )
+    assertIgnoredColumns(
+      differ.diff(left8, right8, Seq("id", "seq"), Seq("meta")),
+      expectedSideBySideDiff8,
+      Encoders.product[DiffAs8SideBySide].schema
+    )
   }
 
   test("diff with ignored columns and left-side diff mode") {
     val options = DiffOptions.default.withDiffMode(DiffMode.LeftSide)
     val differ = new Differ(options)
 
-    assertIgnoredColumns(left8.diff(right8, options, Seq("id", "seq"), Seq("meta")), expectedLeftSideDiff8, Encoders.product[DiffAs8OneSide].schema)
-    assertIgnoredColumns(differ.diff(left8, right8, Seq("id", "seq"), Seq("meta")), expectedLeftSideDiff8, Encoders.product[DiffAs8OneSide].schema)
+    assertIgnoredColumns(
+      left8.diff(right8, options, Seq("id", "seq"), Seq("meta")),
+      expectedLeftSideDiff8,
+      Encoders.product[DiffAs8OneSide].schema
+    )
+    assertIgnoredColumns(
+      differ.diff(left8, right8, Seq("id", "seq"), Seq("meta")),
+      expectedLeftSideDiff8,
+      Encoders.product[DiffAs8OneSide].schema
+    )
   }
 
   test("diff with ignored columns and right-side diff mode") {
     val options = DiffOptions.default.withDiffMode(DiffMode.RightSide)
     val differ = new Differ(options)
 
-    assertIgnoredColumns(left8.diff(right8, options, Seq("id", "seq"), Seq("meta")), expectedRightSideDiff8, Encoders.product[DiffAs8OneSide].schema)
-    assertIgnoredColumns(differ.diff(left8, right8, Seq("id", "seq"), Seq("meta")), expectedRightSideDiff8, Encoders.product[DiffAs8OneSide].schema)
+    assertIgnoredColumns(
+      left8.diff(right8, options, Seq("id", "seq"), Seq("meta")),
+      expectedRightSideDiff8,
+      Encoders.product[DiffAs8OneSide].schema
+    )
+    assertIgnoredColumns(
+      differ.diff(left8, right8, Seq("id", "seq"), Seq("meta")),
+      expectedRightSideDiff8,
+      Encoders.product[DiffAs8OneSide].schema
+    )
   }
 
   test("diff with ignored columns, column-by-column diff and sparse mode") {
     val options = DiffOptions.default.withDiffMode(DiffMode.ColumnByColumn).withSparseMode(true)
     val differ = new Differ(options)
 
-    assertIgnoredColumns(left8.diff(right8, options, Seq("id", "seq"), Seq("meta")), expectedSparseDiff8, Encoders.product[DiffAs8].schema)
-    assertIgnoredColumns(differ.diff(left8, right8, Seq("id", "seq"), Seq("meta")), expectedSparseDiff8, Encoders.product[DiffAs8].schema)
+    assertIgnoredColumns(
+      left8.diff(right8, options, Seq("id", "seq"), Seq("meta")),
+      expectedSparseDiff8,
+      Encoders.product[DiffAs8].schema
+    )
+    assertIgnoredColumns(
+      differ.diff(left8, right8, Seq("id", "seq"), Seq("meta")),
+      expectedSparseDiff8,
+      Encoders.product[DiffAs8].schema
+    )
   }
 
   test("diff with ignored columns, side-by-side diff and sparse mode") {
     val options = DiffOptions.default.withDiffMode(DiffMode.SideBySide).withSparseMode(true)
     val differ = new Differ(options)
 
-    assertIgnoredColumns(left8.diff(right8, options, Seq("id", "seq"), Seq("meta")), expectedSideBySideSparseDiff8, Encoders.product[DiffAs8SideBySide].schema)
-    assertIgnoredColumns(differ.diff(left8, right8, Seq("id", "seq"), Seq("meta")), expectedSideBySideSparseDiff8, Encoders.product[DiffAs8SideBySide].schema)
+    assertIgnoredColumns(
+      left8.diff(right8, options, Seq("id", "seq"), Seq("meta")),
+      expectedSideBySideSparseDiff8,
+      Encoders.product[DiffAs8SideBySide].schema
+    )
+    assertIgnoredColumns(
+      differ.diff(left8, right8, Seq("id", "seq"), Seq("meta")),
+      expectedSideBySideSparseDiff8,
+      Encoders.product[DiffAs8SideBySide].schema
+    )
   }
 
   test("diff with ignored columns, left-side diff and sparse mode") {
     val options = DiffOptions.default.withDiffMode(DiffMode.LeftSide).withSparseMode(true)
     val differ = new Differ(options)
 
-    assertIgnoredColumns(left8.diff(right8, options, Seq("id", "seq"), Seq("meta")), expectedLeftSideSparseDiff8, Encoders.product[DiffAs8OneSide].schema)
-    assertIgnoredColumns(differ.diff(left8, right8, Seq("id", "seq"), Seq("meta")), expectedLeftSideSparseDiff8, Encoders.product[DiffAs8OneSide].schema)
+    assertIgnoredColumns(
+      left8.diff(right8, options, Seq("id", "seq"), Seq("meta")),
+      expectedLeftSideSparseDiff8,
+      Encoders.product[DiffAs8OneSide].schema
+    )
+    assertIgnoredColumns(
+      differ.diff(left8, right8, Seq("id", "seq"), Seq("meta")),
+      expectedLeftSideSparseDiff8,
+      Encoders.product[DiffAs8OneSide].schema
+    )
   }
 
   test("diff with ignored columns, right-side diff and sparse mode") {
     val options = DiffOptions.default.withDiffMode(DiffMode.RightSide).withSparseMode(true)
     val differ = new Differ(options)
 
-    assertIgnoredColumns(left8.diff(right8, options, Seq("id", "seq"), Seq("meta")), expectedRightSideSparseDiff8, Encoders.product[DiffAs8OneSide].schema)
-    assertIgnoredColumns(differ.diff(left8, right8, Seq("id", "seq"), Seq("meta")), expectedRightSideSparseDiff8, Encoders.product[DiffAs8OneSide].schema)
+    assertIgnoredColumns(
+      left8.diff(right8, options, Seq("id", "seq"), Seq("meta")),
+      expectedRightSideSparseDiff8,
+      Encoders.product[DiffAs8OneSide].schema
+    )
+    assertIgnoredColumns(
+      differ.diff(left8, right8, Seq("id", "seq"), Seq("meta")),
+      expectedRightSideSparseDiff8,
+      Encoders.product[DiffAs8OneSide].schema
+    )
   }
 
   test("diff similar with ignored columns") {
-    val expectedSchema = StructType(Seq(
-      StructField("diff", StringType),
-      StructField("id", IntegerType),
-      StructField("seq", IntegerType),
-      StructField("left_value", StringType),
-      StructField("right_value", StringType),
-      StructField("left_meta", StringType),
-      StructField("right_info", StringType),
-    ))
+    val expectedSchema = StructType(
+      Seq(
+        StructField("diff", StringType),
+        StructField("id", IntegerType),
+        StructField("seq", IntegerType),
+        StructField("left_value", StringType),
+        StructField("right_value", StringType),
+        StructField("left_meta", StringType),
+        StructField("right_info", StringType),
+      )
+    )
 
     assertIgnoredColumns(left8.diff(right9, Seq("id", "seq"), Seq("meta", "info")), expectedDiff8and9, expectedSchema)
-    assertIgnoredColumns(Diff.of(left8, right9, Seq("id", "seq"), Seq("meta", "info")), expectedDiff8and9, expectedSchema)
-    assertIgnoredColumns(Diff.default.diff(left8, right9, Seq("id", "seq"), Seq("meta", "info")), expectedDiff8and9, expectedSchema)
+    assertIgnoredColumns(
+      Diff.of(left8, right9, Seq("id", "seq"), Seq("meta", "info")),
+      expectedDiff8and9,
+      expectedSchema
+    )
+    assertIgnoredColumns(
+      Diff.default.diff(left8, right9, Seq("id", "seq"), Seq("meta", "info")),
+      expectedDiff8and9,
+      expectedSchema
+    )
 
-    assertIgnoredColumns[DiffAs8and9](left8.diffAs(right9, Seq("id", "seq"), Seq("meta", "info")), expectedDiffAs8and9, expectedSchema)
-    assertIgnoredColumns[DiffAs8and9](Diff.ofAs(left8, right9, Seq("id", "seq"), Seq("meta", "info")), expectedDiffAs8and9, expectedSchema)
-    assertIgnoredColumns[DiffAs8and9](Diff.default.diffAs(left8, right9, Seq("id", "seq"), Seq("meta", "info")), expectedDiffAs8and9, expectedSchema)
+    assertIgnoredColumns[DiffAs8and9](
+      left8.diffAs(right9, Seq("id", "seq"), Seq("meta", "info")),
+      expectedDiffAs8and9,
+      expectedSchema
+    )
+    assertIgnoredColumns[DiffAs8and9](
+      Diff.ofAs(left8, right9, Seq("id", "seq"), Seq("meta", "info")),
+      expectedDiffAs8and9,
+      expectedSchema
+    )
+    assertIgnoredColumns[DiffAs8and9](
+      Diff.default.diffAs(left8, right9, Seq("id", "seq"), Seq("meta", "info")),
+      expectedDiffAs8and9,
+      expectedSchema
+    )
 
-    val expectedSchemaWith = StructType(Seq(
-      StructField("_1", StringType),
-      StructField("_2", StructType(Seq(
-        StructField("id", IntegerType, nullable = true),
-        StructField("seq", IntegerType, nullable = true),
-        StructField("value", StringType, nullable = true),
-        StructField("meta", StringType, nullable = true)
-      ))),
-      StructField("_3", StructType(Seq(
-        StructField("id", IntegerType, nullable = true),
-        StructField("seq", IntegerType, nullable = true),
-        StructField("value", StringType, nullable = true),
-        StructField("info", StringType, nullable = true)
-      ))),
-    ))
+    val expectedSchemaWith = StructType(
+      Seq(
+        StructField("_1", StringType),
+        StructField(
+          "_2",
+          StructType(
+            Seq(
+              StructField("id", IntegerType, nullable = true),
+              StructField("seq", IntegerType, nullable = true),
+              StructField("value", StringType, nullable = true),
+              StructField("meta", StringType, nullable = true)
+            )
+          )
+        ),
+        StructField(
+          "_3",
+          StructType(
+            Seq(
+              StructField("id", IntegerType, nullable = true),
+              StructField("seq", IntegerType, nullable = true),
+              StructField("value", StringType, nullable = true),
+              StructField("info", StringType, nullable = true)
+            )
+          )
+        ),
+      )
+    )
 
-    assertDiffWithSchema(left8.diffWith(right9, Seq("id", "seq"), Seq("meta", "info")), expectedDiffWith8and9, expectedSchemaWith)
-    assertDiffWithSchema(Diff.ofWith(left8, right9, Seq("id", "seq"), Seq("meta", "info")), expectedDiffWith8and9, expectedSchemaWith)
-    assertDiffWithSchema(Diff.default.diffWith(left8, right9, Seq("id", "seq"), Seq("meta", "info")), expectedDiffWith8and9, expectedSchemaWith)
+    assertDiffWithSchema(
+      left8.diffWith(right9, Seq("id", "seq"), Seq("meta", "info")),
+      expectedDiffWith8and9,
+      expectedSchemaWith
+    )
+    assertDiffWithSchema(
+      Diff.ofWith(left8, right9, Seq("id", "seq"), Seq("meta", "info")),
+      expectedDiffWith8and9,
+      expectedSchemaWith
+    )
+    assertDiffWithSchema(
+      Diff.default.diffWith(left8, right9, Seq("id", "seq"), Seq("meta", "info")),
+      expectedDiffWith8and9,
+      expectedSchemaWith
+    )
   }
 
   test("diff similar with ignored columns of different type") {
@@ -1429,23 +1711,45 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
       val right = right8.toDF("ID", "SEQ", "VALUE", "META")
 
       def expectedSchema(id: String, seq: String): StructType =
-        StructType(Seq(
-          StructField("diff", StringType),
-          StructField(id, IntegerType),
-          StructField(seq, IntegerType),
-          StructField("left_value", StringType),
-          StructField("right_VALUE", StringType),
-          StructField("left_meta", StringType),
-          StructField("right_META", StringType),
-        ))
+        StructType(
+          Seq(
+            StructField("diff", StringType),
+            StructField(id, IntegerType),
+            StructField(seq, IntegerType),
+            StructField("left_value", StringType),
+            StructField("right_VALUE", StringType),
+            StructField("left_meta", StringType),
+            StructField("right_META", StringType),
+          )
+        )
 
       assertIgnoredColumns(left.diff(right, Seq("iD", "sEq"), Seq("MeTa")), expectedDiff8, expectedSchema("iD", "sEq"))
-      assertIgnoredColumns(Diff.of(left, right, Seq("Id", "SeQ"), Seq("mEtA")), expectedDiff8, expectedSchema("Id", "SeQ"))
-      assertIgnoredColumns(Diff.default.diff(left, right, Seq("ID", "SEQ"), Seq("META")), expectedDiff8, expectedSchema("ID", "SEQ"))
+      assertIgnoredColumns(
+        Diff.of(left, right, Seq("Id", "SeQ"), Seq("mEtA")),
+        expectedDiff8,
+        expectedSchema("Id", "SeQ")
+      )
+      assertIgnoredColumns(
+        Diff.default.diff(left, right, Seq("ID", "SEQ"), Seq("META")),
+        expectedDiff8,
+        expectedSchema("ID", "SEQ")
+      )
 
-      assertIgnoredColumns[DiffAs8](left.diffAs(right, Seq("id", "seq"), Seq("MeTa")), expectedDiffAs8, expectedSchema("id", "seq"))
-      assertIgnoredColumns[DiffAs8](Diff.ofAs(left, right, Seq("id", "seq"), Seq("mEtA")), expectedDiffAs8, expectedSchema("id", "seq"))
-      assertIgnoredColumns[DiffAs8](Diff.default.diffAs(left, right, Seq("id", "seq"), Seq("meta")), expectedDiffAs8, expectedSchema("id", "seq"))
+      assertIgnoredColumns[DiffAs8](
+        left.diffAs(right, Seq("id", "seq"), Seq("MeTa")),
+        expectedDiffAs8,
+        expectedSchema("id", "seq")
+      )
+      assertIgnoredColumns[DiffAs8](
+        Diff.ofAs(left, right, Seq("id", "seq"), Seq("mEtA")),
+        expectedDiffAs8,
+        expectedSchema("id", "seq")
+      )
+      assertIgnoredColumns[DiffAs8](
+        Diff.default.diffAs(left, right, Seq("id", "seq"), Seq("meta")),
+        expectedDiffAs8,
+        expectedSchema("id", "seq")
+      )
 
       // TODO: add diffWith
     }
@@ -1456,26 +1760,44 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
       val left = left8.toDF("id", "seq", "value", "meta")
       val right = right8.toDF("ID", "SEQ", "VALUE", "META")
 
-      doTestRequirement(left.diff(right, Seq("Id", "SeQ"), Seq("MeTa")),
-        "The datasets do not have the same schema.\nLeft extra columns: id (IntegerType), seq (IntegerType), value (StringType), meta (StringType)\nRight extra columns: ID (IntegerType), SEQ (IntegerType), VALUE (StringType), META (StringType)")
-      doTestRequirement(Diff.of(left, right, Seq("Id", "SeQ"), Seq("MeTa")),
-        "The datasets do not have the same schema.\nLeft extra columns: id (IntegerType), seq (IntegerType), value (StringType), meta (StringType)\nRight extra columns: ID (IntegerType), SEQ (IntegerType), VALUE (StringType), META (StringType)")
-      doTestRequirement(Diff.default.diff(left, right, Seq("Id", "SeQ"), Seq("MeTa")),
-        "The datasets do not have the same schema.\nLeft extra columns: id (IntegerType), seq (IntegerType), value (StringType), meta (StringType)\nRight extra columns: ID (IntegerType), SEQ (IntegerType), VALUE (StringType), META (StringType)")
+      doTestRequirement(
+        left.diff(right, Seq("Id", "SeQ"), Seq("MeTa")),
+        "The datasets do not have the same schema.\nLeft extra columns: id (IntegerType), seq (IntegerType), value (StringType), meta (StringType)\nRight extra columns: ID (IntegerType), SEQ (IntegerType), VALUE (StringType), META (StringType)"
+      )
+      doTestRequirement(
+        Diff.of(left, right, Seq("Id", "SeQ"), Seq("MeTa")),
+        "The datasets do not have the same schema.\nLeft extra columns: id (IntegerType), seq (IntegerType), value (StringType), meta (StringType)\nRight extra columns: ID (IntegerType), SEQ (IntegerType), VALUE (StringType), META (StringType)"
+      )
+      doTestRequirement(
+        Diff.default.diff(left, right, Seq("Id", "SeQ"), Seq("MeTa")),
+        "The datasets do not have the same schema.\nLeft extra columns: id (IntegerType), seq (IntegerType), value (StringType), meta (StringType)\nRight extra columns: ID (IntegerType), SEQ (IntegerType), VALUE (StringType), META (StringType)"
+      )
 
-      doTestRequirement(left8.diff(right8, Seq("Id", "SeQ"), Seq("MeTa")),
-        "Some id columns do not exist: Id, SeQ missing among id, seq, value, meta")
-      doTestRequirement(Diff.of(left8, right8, Seq("Id", "SeQ"), Seq("MeTa")),
-        "Some id columns do not exist: Id, SeQ missing among id, seq, value, meta")
-      doTestRequirement(Diff.default.diff(left8, right8, Seq("Id", "SeQ"), Seq("MeTa")),
-        "Some id columns do not exist: Id, SeQ missing among id, seq, value, meta")
+      doTestRequirement(
+        left8.diff(right8, Seq("Id", "SeQ"), Seq("MeTa")),
+        "Some id columns do not exist: Id, SeQ missing among id, seq, value, meta"
+      )
+      doTestRequirement(
+        Diff.of(left8, right8, Seq("Id", "SeQ"), Seq("MeTa")),
+        "Some id columns do not exist: Id, SeQ missing among id, seq, value, meta"
+      )
+      doTestRequirement(
+        Diff.default.diff(left8, right8, Seq("Id", "SeQ"), Seq("MeTa")),
+        "Some id columns do not exist: Id, SeQ missing among id, seq, value, meta"
+      )
 
-      doTestRequirement(left8.diff(right8, Seq("id", "seq"), Seq("MeTa")),
-        "Some ignore columns do not exist: MeTa missing among id, meta, seq, value")
-      doTestRequirement(Diff.of(left8, right8, Seq("id", "seq"), Seq("MeTa")),
-        "Some ignore columns do not exist: MeTa missing among id, meta, seq, value")
-      doTestRequirement(Diff.default.diff(left8, right8, Seq("id", "seq"), Seq("MeTa")),
-        "Some ignore columns do not exist: MeTa missing among id, meta, seq, value")
+      doTestRequirement(
+        left8.diff(right8, Seq("id", "seq"), Seq("MeTa")),
+        "Some ignore columns do not exist: MeTa missing among id, meta, seq, value"
+      )
+      doTestRequirement(
+        Diff.of(left8, right8, Seq("id", "seq"), Seq("MeTa")),
+        "Some ignore columns do not exist: MeTa missing among id, meta, seq, value"
+      )
+      doTestRequirement(
+        Diff.default.diff(left8, right8, Seq("id", "seq"), Seq("MeTa")),
+        "Some ignore columns do not exist: MeTa missing among id, meta, seq, value"
+      )
     }
   }
 
@@ -1485,45 +1807,97 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
       val right = right9.toDF("ID", "SEQ", "VALUE", "INFO").as[Value9up]
 
       def expectedSchema(id: String, seq: String): StructType =
-        StructType(Seq(
-          StructField("diff", StringType),
-          StructField(id, IntegerType),
-          StructField(seq, IntegerType),
-          StructField("left_value", StringType),
-          StructField("right_VALUE", StringType),
-          StructField("left_meta", StringType),
-          StructField("right_INFO", StringType),
-        ))
+        StructType(
+          Seq(
+            StructField("diff", StringType),
+            StructField(id, IntegerType),
+            StructField(seq, IntegerType),
+            StructField("left_value", StringType),
+            StructField("right_VALUE", StringType),
+            StructField("left_meta", StringType),
+            StructField("right_INFO", StringType),
+          )
+        )
 
-      assertIgnoredColumns(left.diff(right, Seq("iD", "sEq"), Seq("MeTa", "InFo")), expectedDiff8and9, expectedSchema("iD", "sEq"))
-      assertIgnoredColumns(Diff.of(left, right, Seq("Id", "SeQ"), Seq("mEtA", "iNfO")), expectedDiff8and9, expectedSchema("Id", "SeQ"))
-      assertIgnoredColumns(Diff.default.diff(left, right, Seq("ID", "SEQ"), Seq("META", "INFO")), expectedDiff8and9, expectedSchema("ID", "SEQ"))
+      assertIgnoredColumns(
+        left.diff(right, Seq("iD", "sEq"), Seq("MeTa", "InFo")),
+        expectedDiff8and9,
+        expectedSchema("iD", "sEq")
+      )
+      assertIgnoredColumns(
+        Diff.of(left, right, Seq("Id", "SeQ"), Seq("mEtA", "iNfO")),
+        expectedDiff8and9,
+        expectedSchema("Id", "SeQ")
+      )
+      assertIgnoredColumns(
+        Diff.default.diff(left, right, Seq("ID", "SEQ"), Seq("META", "INFO")),
+        expectedDiff8and9,
+        expectedSchema("ID", "SEQ")
+      )
 
       // TODO: remove generic type
-      assertIgnoredColumns[DiffAs8and9](left.diffAs(right, Seq("id", "seq"), Seq("MeTa", "InFo")), expectedDiffAs8and9, expectedSchema("id", "seq"))
-      assertIgnoredColumns[DiffAs8and9](Diff.ofAs(left, right, Seq("id", "seq"), Seq("mEtA", "iNfO")), expectedDiffAs8and9, expectedSchema("id", "seq"))
-      assertIgnoredColumns[DiffAs8and9](Diff.default.diffAs(left, right, Seq("id", "seq"), Seq("meta", "info")), expectedDiffAs8and9, expectedSchema("id", "seq"))
+      assertIgnoredColumns[DiffAs8and9](
+        left.diffAs(right, Seq("id", "seq"), Seq("MeTa", "InFo")),
+        expectedDiffAs8and9,
+        expectedSchema("id", "seq")
+      )
+      assertIgnoredColumns[DiffAs8and9](
+        Diff.ofAs(left, right, Seq("id", "seq"), Seq("mEtA", "iNfO")),
+        expectedDiffAs8and9,
+        expectedSchema("id", "seq")
+      )
+      assertIgnoredColumns[DiffAs8and9](
+        Diff.default.diffAs(left, right, Seq("id", "seq"), Seq("meta", "info")),
+        expectedDiffAs8and9,
+        expectedSchema("id", "seq")
+      )
 
       def expectedSchemaWith(id: String, seq: String): StructType =
-        StructType(Seq(
-          StructField("_1", StringType, nullable = false),
-          StructField("_2", StructType(Seq(
-            StructField(id, IntegerType),
-            StructField(seq, IntegerType),
-            StructField("value", StringType),
-            StructField("meta", StringType)
-          )), nullable = true),
-          StructField("_3", StructType(Seq(
-            StructField(id, IntegerType),
-            StructField(seq, IntegerType),
-            StructField("VALUE", StringType),
-            StructField("INFO", StringType)
-          )), nullable = true),
-        ))
+        StructType(
+          Seq(
+            StructField("_1", StringType, nullable = false),
+            StructField(
+              "_2",
+              StructType(
+                Seq(
+                  StructField(id, IntegerType),
+                  StructField(seq, IntegerType),
+                  StructField("value", StringType),
+                  StructField("meta", StringType)
+                )
+              ),
+              nullable = true
+            ),
+            StructField(
+              "_3",
+              StructType(
+                Seq(
+                  StructField(id, IntegerType),
+                  StructField(seq, IntegerType),
+                  StructField("VALUE", StringType),
+                  StructField("INFO", StringType)
+                )
+              ),
+              nullable = true
+            ),
+          )
+        )
 
-      assertIgnoredColumns[(String, Value8, Value9up)](left.diffWith(right, Seq("iD", "sEq"), Seq("MeTa", "InFo")), expectedDiffWith8and9up, expectedSchemaWith("iD", "sEq"))
-      assertIgnoredColumns[(String, Value8, Value9up)](Diff.ofWith(left, right, Seq("Id", "SeQ"), Seq("mEtA", "iNfO")), expectedDiffWith8and9up, expectedSchemaWith("Id", "SeQ"))
-      assertIgnoredColumns[(String, Value8, Value9up)](Diff.default.diffWith(left, right, Seq("ID", "SEQ"), Seq("META", "INFO")), expectedDiffWith8and9up, expectedSchemaWith("ID", "SEQ"))
+      assertIgnoredColumns[(String, Value8, Value9up)](
+        left.diffWith(right, Seq("iD", "sEq"), Seq("MeTa", "InFo")),
+        expectedDiffWith8and9up,
+        expectedSchemaWith("iD", "sEq")
+      )
+      assertIgnoredColumns[(String, Value8, Value9up)](
+        Diff.ofWith(left, right, Seq("Id", "SeQ"), Seq("mEtA", "iNfO")),
+        expectedDiffWith8and9up,
+        expectedSchemaWith("Id", "SeQ")
+      )
+      assertIgnoredColumns[(String, Value8, Value9up)](
+        Diff.default.diffWith(left, right, Seq("ID", "SEQ"), Seq("META", "INFO")),
+        expectedDiffWith8and9up,
+        expectedSchemaWith("ID", "SEQ")
+      )
     }
   }
 
@@ -1532,26 +1906,44 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
       val left = left8.toDF("id", "seq", "value", "meta").as[Value8]
       val right = right9.toDF("ID", "SEQ", "VALUE", "INFO").as[Value9up]
 
-      doTestRequirement(left.diff(right, Seq("Id", "SeQ"), Seq("MeTa", "InFo")),
-        "The datasets do not have the same schema.\nLeft extra columns: id (IntegerType), seq (IntegerType), value (StringType), meta (StringType)\nRight extra columns: ID (IntegerType), SEQ (IntegerType), VALUE (StringType), INFO (StringType)")
-      doTestRequirement(Diff.of(left, right, Seq("Id", "SeQ"), Seq("MeTa", "InFo")),
-        "The datasets do not have the same schema.\nLeft extra columns: id (IntegerType), seq (IntegerType), value (StringType), meta (StringType)\nRight extra columns: ID (IntegerType), SEQ (IntegerType), VALUE (StringType), INFO (StringType)")
-      doTestRequirement(Diff.default.diff(left, right, Seq("Id", "SeQ"), Seq("MeTa", "InFo")),
-        "The datasets do not have the same schema.\nLeft extra columns: id (IntegerType), seq (IntegerType), value (StringType), meta (StringType)\nRight extra columns: ID (IntegerType), SEQ (IntegerType), VALUE (StringType), INFO (StringType)")
+      doTestRequirement(
+        left.diff(right, Seq("Id", "SeQ"), Seq("MeTa", "InFo")),
+        "The datasets do not have the same schema.\nLeft extra columns: id (IntegerType), seq (IntegerType), value (StringType), meta (StringType)\nRight extra columns: ID (IntegerType), SEQ (IntegerType), VALUE (StringType), INFO (StringType)"
+      )
+      doTestRequirement(
+        Diff.of(left, right, Seq("Id", "SeQ"), Seq("MeTa", "InFo")),
+        "The datasets do not have the same schema.\nLeft extra columns: id (IntegerType), seq (IntegerType), value (StringType), meta (StringType)\nRight extra columns: ID (IntegerType), SEQ (IntegerType), VALUE (StringType), INFO (StringType)"
+      )
+      doTestRequirement(
+        Diff.default.diff(left, right, Seq("Id", "SeQ"), Seq("MeTa", "InFo")),
+        "The datasets do not have the same schema.\nLeft extra columns: id (IntegerType), seq (IntegerType), value (StringType), meta (StringType)\nRight extra columns: ID (IntegerType), SEQ (IntegerType), VALUE (StringType), INFO (StringType)"
+      )
 
-      doTestRequirement(left8.diff(right9, Seq("Id", "SeQ"), Seq("MeTa", "InFo")),
-        "The datasets do not have the same schema.\nLeft extra columns: meta (StringType)\nRight extra columns: info (StringType)")
-      doTestRequirement(Diff.of(left8, right9, Seq("Id", "SeQ"), Seq("MeTa", "InFo")),
-        "The datasets do not have the same schema.\nLeft extra columns: meta (StringType)\nRight extra columns: info (StringType)")
-      doTestRequirement(Diff.default.diff(left8, right9, Seq("Id", "SeQ"), Seq("MeTa", "InFo")),
-        "The datasets do not have the same schema.\nLeft extra columns: meta (StringType)\nRight extra columns: info (StringType)")
+      doTestRequirement(
+        left8.diff(right9, Seq("Id", "SeQ"), Seq("MeTa", "InFo")),
+        "The datasets do not have the same schema.\nLeft extra columns: meta (StringType)\nRight extra columns: info (StringType)"
+      )
+      doTestRequirement(
+        Diff.of(left8, right9, Seq("Id", "SeQ"), Seq("MeTa", "InFo")),
+        "The datasets do not have the same schema.\nLeft extra columns: meta (StringType)\nRight extra columns: info (StringType)"
+      )
+      doTestRequirement(
+        Diff.default.diff(left8, right9, Seq("Id", "SeQ"), Seq("MeTa", "InFo")),
+        "The datasets do not have the same schema.\nLeft extra columns: meta (StringType)\nRight extra columns: info (StringType)"
+      )
 
-      doTestRequirement(left8.diff(right9, Seq("Id", "SeQ"), Seq("meta", "info")),
-        "Some id columns do not exist: Id, SeQ missing among id, seq, value")
-      doTestRequirement(Diff.of(left8, right9, Seq("Id", "SeQ"), Seq("meta", "info")),
-        "Some id columns do not exist: Id, SeQ missing among id, seq, value")
-      doTestRequirement(Diff.default.diff(left8, right9, Seq("Id", "SeQ"), Seq("meta", "info")),
-        "Some id columns do not exist: Id, SeQ missing among id, seq, value")
+      doTestRequirement(
+        left8.diff(right9, Seq("Id", "SeQ"), Seq("meta", "info")),
+        "Some id columns do not exist: Id, SeQ missing among id, seq, value"
+      )
+      doTestRequirement(
+        Diff.of(left8, right9, Seq("Id", "SeQ"), Seq("meta", "info")),
+        "Some id columns do not exist: Id, SeQ missing among id, seq, value"
+      )
+      doTestRequirement(
+        Diff.default.diff(left8, right9, Seq("Id", "SeQ"), Seq("meta", "info")),
+        "Some id columns do not exist: Id, SeQ missing among id, seq, value"
+      )
     }
   }
 

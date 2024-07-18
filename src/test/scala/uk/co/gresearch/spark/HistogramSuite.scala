@@ -63,34 +63,40 @@ class HistogramSuite extends AnyFunSuite with SparkTestSession {
     Seq(3, 0, 1, 0, 1, 0, 1),
     Seq(4, 0, 0, 1, 0, 0, 0)
   )
-  val expectedSchema: StructType = StructType(Seq(
-    StructField("id", IntegerType, nullable = false),
-    StructField("≤-200", LongType, nullable = true),
-    StructField("≤-100", LongType, nullable = true),
-    StructField("≤0", LongType, nullable = true),
-    StructField("≤100", LongType, nullable = true),
-    StructField("≤200", LongType, nullable = true),
-    StructField(">200", LongType, nullable = true)
-  ))
-  val expectedSchema2: StructType = StructType(Seq(
-    StructField("id", IntegerType, nullable = false),
-    StructField("title", StringType, nullable = true),
-    StructField("≤-200", LongType, nullable = true),
-    StructField("≤-100", LongType, nullable = true),
-    StructField("≤0", LongType, nullable = true),
-    StructField("≤100", LongType, nullable = true),
-    StructField("≤200", LongType, nullable = true),
-    StructField(">200", LongType, nullable = true)
-  ))
-  val expectedDoubleSchema: StructType = StructType(Seq(
-    StructField("id", IntegerType, nullable = false),
-    StructField("≤-200.0", LongType, nullable = true),
-    StructField("≤-100.0", LongType, nullable = true),
-    StructField("≤0.0", LongType, nullable = true),
-    StructField("≤100.0", LongType, nullable = true),
-    StructField("≤200.0", LongType, nullable = true),
-    StructField(">200.0", LongType, nullable = true)
-  ))
+  val expectedSchema: StructType = StructType(
+    Seq(
+      StructField("id", IntegerType, nullable = false),
+      StructField("≤-200", LongType, nullable = true),
+      StructField("≤-100", LongType, nullable = true),
+      StructField("≤0", LongType, nullable = true),
+      StructField("≤100", LongType, nullable = true),
+      StructField("≤200", LongType, nullable = true),
+      StructField(">200", LongType, nullable = true)
+    )
+  )
+  val expectedSchema2: StructType = StructType(
+    Seq(
+      StructField("id", IntegerType, nullable = false),
+      StructField("title", StringType, nullable = true),
+      StructField("≤-200", LongType, nullable = true),
+      StructField("≤-100", LongType, nullable = true),
+      StructField("≤0", LongType, nullable = true),
+      StructField("≤100", LongType, nullable = true),
+      StructField("≤200", LongType, nullable = true),
+      StructField(">200", LongType, nullable = true)
+    )
+  )
+  val expectedDoubleSchema: StructType = StructType(
+    Seq(
+      StructField("id", IntegerType, nullable = false),
+      StructField("≤-200.0", LongType, nullable = true),
+      StructField("≤-100.0", LongType, nullable = true),
+      StructField("≤0.0", LongType, nullable = true),
+      StructField("≤100.0", LongType, nullable = true),
+      StructField("≤200.0", LongType, nullable = true),
+      StructField(">200.0", LongType, nullable = true)
+    )
+  )
 
   test("histogram with no aggregate columns") {
     val histogram = ints.histogram(intThresholds, $"value")
@@ -110,12 +116,14 @@ class HistogramSuite extends AnyFunSuite with SparkTestSession {
     val histogram = ints.histogram(intThresholds, $"value", $"id", $"title")
     val actual = histogram.orderBy($"id").collect().toSeq.map(_.toSeq)
     assert(histogram.schema === expectedSchema2)
-    assert(actual === Seq(
-      Seq(1, "one", 0, 0, 0, 3, 0, 0),
-      Seq(2, "two", 0, 0, 0, 4, 0, 0),
-      Seq(3, "three", 0, 1, 0, 1, 0, 1),
-      Seq(4, "four", 0, 0, 1, 0, 0, 0)
-    ))
+    assert(
+      actual === Seq(
+        Seq(1, "one", 0, 0, 0, 3, 0, 0),
+        Seq(2, "two", 0, 0, 0, 4, 0, 0),
+        Seq(3, "three", 0, 1, 0, 1, 0, 1),
+        Seq(4, "four", 0, 0, 1, 0, 0, 0)
+      )
+    )
   }
 
   test("histogram with int values") {
@@ -156,18 +164,23 @@ class HistogramSuite extends AnyFunSuite with SparkTestSession {
   test("histogram with one threshold") {
     val histogram = ints.histogram(Seq(0), $"value", $"id")
     val actual = histogram.orderBy($"id").collect().toSeq.map(_.toSeq)
-    assert(histogram.schema === StructType(Seq(
-      StructField("id", IntegerType, nullable = false),
-      StructField("≤0", LongType, nullable = true),
-      StructField(">0", LongType, nullable = true)
-    ))
+    assert(
+      histogram.schema === StructType(
+        Seq(
+          StructField("id", IntegerType, nullable = false),
+          StructField("≤0", LongType, nullable = true),
+          StructField(">0", LongType, nullable = true)
+        )
+      )
     )
-    assert(actual === Seq(
-      Seq(1, 0, 3),
-      Seq(2, 0, 4),
-      Seq(3, 1, 2),
-      Seq(4, 1, 0)
-    ))
+    assert(
+      actual === Seq(
+        Seq(1, 0, 3),
+        Seq(2, 0, 4),
+        Seq(3, 1, 2),
+        Seq(4, 1, 0)
+      )
+    )
   }
 
   test("histogram with duplicate thresholds") {
@@ -182,9 +195,12 @@ class HistogramSuite extends AnyFunSuite with SparkTestSession {
       ints.histogram(Seq(0, -200, 100, -100, 200), $"does-not-exist", $"id")
     }
     assert(
+      // format: off
       exception.getMessage.startsWith("cannot resolve '`does-not-exist`' given input columns: [id, title, value]") ||
         exception.getMessage.startsWith("Column '`does-not-exist`' does not exist. Did you mean one of the following? [title, id, value]") ||
-        exception.getMessage.startsWith("[UNRESOLVED_COLUMN.WITH_SUGGESTION] A column or function parameter with name `does-not-exist` cannot be resolved. Did you mean one of the following? [`title`, `id`, `value`]")
+        exception.getMessage.startsWith("[UNRESOLVED_COLUMN.WITH_SUGGESTION] A column or function parameter with name `does-not-exist` cannot be resolved. Did you mean one of the following? [`title`, `id`, `value`]") ||
+        exception.getMessage.startsWith("[UNRESOLVED_COLUMN.WITH_SUGGESTION] A column, variable, or function parameter with name `does-not-exist` cannot be resolved. Did you mean one of the following? [`title`, `id`, `value`]")
+      // format: on
     )
   }
 
@@ -193,9 +209,12 @@ class HistogramSuite extends AnyFunSuite with SparkTestSession {
       ints.histogram(intThresholds, $"value", $"does-not-exist")
     }
     assert(
+      // format: off
       exception.getMessage.startsWith("cannot resolve '`does-not-exist`' given input columns: [") ||
-        exception.getMessage.startsWith("Column '`does-not-exist`' does not exist. Did you mean one of the following? [title, id, value, ≤-100, ≤-200, >200, ≤0, ≤100, ≤200]") ||
-        exception.getMessage.startsWith("[UNRESOLVED_COLUMN.WITH_SUGGESTION] A column or function parameter with name `does-not-exist` cannot be resolved. Did you mean one of the following? [`≤-100`, `≤-200`, `>200`, `title`, `≤0`]")
+        exception.getMessage.startsWith("Column '`does-not-exist`' does not exist. Did you mean one of the following? [") ||
+        exception.getMessage.startsWith("[UNRESOLVED_COLUMN.WITH_SUGGESTION] A column or function parameter with name `does-not-exist` cannot be resolved. Did you mean one of the following? [") ||
+        exception.getMessage.startsWith("[UNRESOLVED_COLUMN.WITH_SUGGESTION] A column, variable, or function parameter with name `does-not-exist` cannot be resolved. Did you mean one of the following? [")
+      // format: on
     )
   }
 

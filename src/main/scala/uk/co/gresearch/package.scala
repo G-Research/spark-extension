@@ -20,28 +20,28 @@ package object gresearch {
 
   trait ConditionalCall[T] {
     def call(f: T => T): T
-    def either[R](f: T => R): ConditionalCallOr[T,R]
+    def either[R](f: T => R): ConditionalCallOr[T, R]
   }
 
-  trait ConditionalCallOr[T,R] {
+  trait ConditionalCallOr[T, R] {
     def or(f: T => R): R
   }
 
   case class TrueCall[T](t: T) extends ConditionalCall[T] {
     override def call(f: T => T): T = f(t)
-    override def either[R](f: T => R): ConditionalCallOr[T,R] = TrueCallOr[T,R](f(t))
+    override def either[R](f: T => R): ConditionalCallOr[T, R] = TrueCallOr[T, R](f(t))
   }
 
   case class FalseCall[T](t: T) extends ConditionalCall[T] {
     override def call(f: T => T): T = t
-    override def either[R](f: T => R): ConditionalCallOr[T,R] = FalseCallOr[T,R](t)
+    override def either[R](f: T => R): ConditionalCallOr[T, R] = FalseCallOr[T, R](t)
   }
 
-  case class TrueCallOr[T,R](r: R) extends ConditionalCallOr[T,R] {
+  case class TrueCallOr[T, R](r: R) extends ConditionalCallOr[T, R] {
     override def or(f: T => R): R = r
   }
 
-  case class FalseCallOr[T,R](t: T) extends ConditionalCallOr[T,R] {
+  case class FalseCallOr[T, R](t: T) extends ConditionalCallOr[T, R] {
     override def or(f: T => R): R = f(t)
   }
 
@@ -71,16 +71,17 @@ package object gresearch {
      *
      * which either needs many temporary variables or duplicate code.
      *
-     * @param condition condition
-     * @return the function result
+     * @param condition
+     *   condition
+     * @return
+     *   the function result
      */
     def on(condition: Boolean): ConditionalCall[T] = {
       if (condition) TrueCall[T](t) else FalseCall[T](t)
     }
 
     /**
-     * Allows to call a function on the decorated instance conditionally.
-     * This is an alias for the `on` function.
+     * Allows to call a function on the decorated instance conditionally. This is an alias for the `on` function.
      *
      * This allows fluent code like
      *
@@ -103,8 +104,10 @@ package object gresearch {
      *
      * which either needs many temporary variables or duplicate code.
      *
-     * @param condition condition
-     * @return the function result
+     * @param condition
+     *   condition
+     * @return
+     *   the function result
      */
     def when(condition: Boolean): ConditionalCall[T] = on(condition)
 
@@ -131,8 +134,10 @@ package object gresearch {
      *
      * where the effective sequence of operations is not clear.
      *
-     * @param f function
-     * @return the function result
+     * @param f
+     *   function
+     * @return
+     *   the function result
      */
     def call[R](f: T => R): R = f(t)
   }

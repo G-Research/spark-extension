@@ -38,17 +38,19 @@ class DiffOptionsSuite extends AnyFunSuite with SparkTestSession {
   test("diff options left and right prefixes") {
     // test the copy method (constructor), not the fluent methods
     val default = DiffOptions.default
-    doTestRequirement(default.copy(leftColumnPrefix = ""),
-      "Left column prefix must not be empty")
-    doTestRequirement(default.copy(rightColumnPrefix = ""),
-      "Right column prefix must not be empty")
+    doTestRequirement(default.copy(leftColumnPrefix = ""), "Left column prefix must not be empty")
+    doTestRequirement(default.copy(rightColumnPrefix = ""), "Right column prefix must not be empty")
 
     val prefix = "prefix"
-    doTestRequirement(default.copy(leftColumnPrefix = prefix, rightColumnPrefix = prefix),
-      s"Left and right column prefix must be distinct: $prefix")
+    doTestRequirement(
+      default.copy(leftColumnPrefix = prefix, rightColumnPrefix = prefix),
+      s"Left and right column prefix must be distinct: $prefix"
+    )
     withSQLConf(SQLConf.CASE_SENSITIVE.key -> "false") {
-      doTestRequirement(default.copy(leftColumnPrefix = prefix.toLowerCase, rightColumnPrefix = prefix.toUpperCase),
-        s"Left and right column prefix must be distinct: $prefix")
+      doTestRequirement(
+        default.copy(leftColumnPrefix = prefix.toLowerCase, rightColumnPrefix = prefix.toUpperCase),
+        s"Left and right column prefix must be distinct: $prefix"
+      )
     }
     withSQLConf(SQLConf.CASE_SENSITIVE.key -> "true") {
       default.copy(leftColumnPrefix = prefix.toLowerCase, rightColumnPrefix = prefix.toUpperCase)
@@ -69,18 +71,30 @@ class DiffOptionsSuite extends AnyFunSuite with SparkTestSession {
     assert(emptyNochangeDiffValueOpts.nochangeDiffValue.isEmpty)
 
     Seq("value", "").foreach { value =>
-      doTestRequirement(default.copy(insertDiffValue = value, changeDiffValue = value),
-        s"Diff values must be distinct: List($value, $value, D, N)")
-      doTestRequirement(default.copy(insertDiffValue = value, deleteDiffValue = value),
-        s"Diff values must be distinct: List($value, C, $value, N)")
-      doTestRequirement(default.copy(insertDiffValue = value, nochangeDiffValue = value),
-        s"Diff values must be distinct: List($value, C, D, $value)")
-      doTestRequirement(default.copy(changeDiffValue = value, deleteDiffValue = value),
-        s"Diff values must be distinct: List(I, $value, $value, N)")
-      doTestRequirement(default.copy(changeDiffValue = value, nochangeDiffValue = value),
-        s"Diff values must be distinct: List(I, $value, D, $value)")
-      doTestRequirement(default.copy(deleteDiffValue = value, nochangeDiffValue = value),
-        s"Diff values must be distinct: List(I, C, $value, $value)")
+      doTestRequirement(
+        default.copy(insertDiffValue = value, changeDiffValue = value),
+        s"Diff values must be distinct: List($value, $value, D, N)"
+      )
+      doTestRequirement(
+        default.copy(insertDiffValue = value, deleteDiffValue = value),
+        s"Diff values must be distinct: List($value, C, $value, N)"
+      )
+      doTestRequirement(
+        default.copy(insertDiffValue = value, nochangeDiffValue = value),
+        s"Diff values must be distinct: List($value, C, D, $value)"
+      )
+      doTestRequirement(
+        default.copy(changeDiffValue = value, deleteDiffValue = value),
+        s"Diff values must be distinct: List(I, $value, $value, N)"
+      )
+      doTestRequirement(
+        default.copy(changeDiffValue = value, nochangeDiffValue = value),
+        s"Diff values must be distinct: List(I, $value, D, $value)"
+      )
+      doTestRequirement(
+        default.copy(deleteDiffValue = value, nochangeDiffValue = value),
+        s"Diff values must be distinct: List(I, C, $value, $value)"
+      )
     }
   }
 
@@ -177,11 +191,16 @@ class DiffOptionsSuite extends AnyFunSuite with SparkTestSession {
       DiffOptions.default
         .withComparator(EquivDiffComparator((left: Int, right: Int) => left.abs == right.abs), LongType, FloatType)
     }
-    assert(exceptionMulti.getMessage.contains("Comparator with input type int cannot be used for data type bigint, float"))
+    assert(
+      exceptionMulti.getMessage.contains("Comparator with input type int cannot be used for data type bigint, float")
+    )
   }
 
   test("fluent methods of diff options") {
-    assert(DiffMode.Default != DiffMode.LeftSide, "test assumption on default diff mode must hold, otherwise test is trivial")
+    assert(
+      DiffMode.Default != DiffMode.LeftSide,
+      "test assumption on default diff mode must hold, otherwise test is trivial"
+    )
 
     val cmp1 = new DiffComparator {
       override def equiv(left: Column, right: Column): Column = lit(true)
@@ -211,7 +230,21 @@ class DiffOptionsSuite extends AnyFunSuite with SparkTestSession {
     val dexpectedDefCmp = cmp1
     val expectedDtCmps = Map(IntegerType.asInstanceOf[DataType] -> cmp2)
     val expectedColCmps = Map("col1" -> cmp3)
-    val expected = DiffOptions("d", "l", "r", "i", "c", "d", "n", Some("change"), DiffMode.LeftSide, sparseMode = true, dexpectedDefCmp, expectedDtCmps, expectedColCmps)
+    val expected = DiffOptions(
+      "d",
+      "l",
+      "r",
+      "i",
+      "c",
+      "d",
+      "n",
+      Some("change"),
+      DiffMode.LeftSide,
+      sparseMode = true,
+      dexpectedDefCmp,
+      expectedDtCmps,
+      expectedColCmps
+    )
     assert(options === expected)
   }
 

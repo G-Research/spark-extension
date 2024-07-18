@@ -34,12 +34,15 @@ object Backticks {
    *   col(Backticks.column_name("a.column", "a.field"))  // produces "`a.column`.`a.field`"
    * }}}
    *
-   * @param string  a string
-   * @param strings more strings
+   * @param string
+   *   a string
+   * @param strings
+   *   more strings
    * @return
    */
   @scala.annotation.varargs
   def column_name(string: String, strings: String*): String = (string +: strings)
-    .map(s => if (s.contains(".") && !s.startsWith("`") && !s.endsWith("`")) s"`$s`" else s).mkString(".")
+    .map(s => if (s.contains(".") && !s.startsWith("`") && !s.endsWith("`")) s"`$s`" else s)
+    .mkString(".")
 
 }

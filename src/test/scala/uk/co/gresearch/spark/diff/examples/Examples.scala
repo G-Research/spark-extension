@@ -26,10 +26,12 @@ class Examples extends AnyFunSuite with SparkTestSession {
 
   test("issue") {
     import spark.implicits._
-    val originalDF = Seq((1,"gaurav","jaipur",550,70000),(2,"sunil","noida",600,80000),(3,"rishi","ahmedabad",510,65000))
-      .toDF("id","name","city","credit_score","credit_limit")
-    val changedDF= Seq((1,"gaurav","jaipur",550,70000),(2,"sunil","noida",650,90000),(4,"Joshua","cochin",612,85000))
-      .toDF("id","name","city","credit_score","credit_limit")
+    val originalDF =
+      Seq((1, "gaurav", "jaipur", 550, 70000), (2, "sunil", "noida", 600, 80000), (3, "rishi", "ahmedabad", 510, 65000))
+        .toDF("id", "name", "city", "credit_score", "credit_limit")
+    val changedDF =
+      Seq((1, "gaurav", "jaipur", 550, 70000), (2, "sunil", "noida", 650, 90000), (4, "Joshua", "cochin", 612, 85000))
+        .toDF("id", "name", "city", "credit_score", "credit_limit")
     val options = DiffOptions.default.withChangeColumn("changes")
     val diff = originalDF.diff(changedDF, options, "id")
     diff.show(false)
@@ -56,7 +58,7 @@ class Examples extends AnyFunSuite with SparkTestSession {
 
     {
       Seq(DiffMode.ColumnByColumn, DiffMode.SideBySide, DiffMode.LeftSide, DiffMode.RightSide).foreach { mode =>
-        Seq(false, true).foreach{ sparse =>
+        Seq(false, true).foreach { sparse =>
           val options = DiffOptions.default.withDiffMode(mode)
           left.diff(right, options, "id").orderBy("id").show(false)
         }

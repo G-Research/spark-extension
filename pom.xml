@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>uk.co.gresearch.spark</groupId>
   <artifactId>spark-extension_2.13</artifactId>
-  <version>2.5.0-3.3-SNAPSHOT</version>
+  <version>2.13.0-3.5-SNAPSHOT</version>
   <name>Spark Extension</name>
   <description>A library that provides useful extensions to Apache Spark.</description>
   <inceptionYear>2020</inceptionYear>
@@ -23,7 +23,7 @@
   <developers>
     <developer>
       <id>EnricoMi</id>
-      <name>Enico Minack</name>
+      <name>Enrico Minack</name>
       <email>github@enrico.minack.dev</email>
     </developer>
   </developers>
@@ -37,11 +37,18 @@
     <maven.compiler.source>${java.version}</maven.compiler.source>
     <maven.compiler.target>${java.version}</maven.compiler.target>
     <encoding>UTF-8</encoding>
-    <scala.compat.version>2.13</scala.compat.version>
-    <scala.version>${scala.compat.version}.8</scala.version>
+    <project.version>${project.version}</project.version>
+    <scala.major.version>2</scala.major.version>
+    <scala.minor.version>13</scala.minor.version>
+    <scala.patch.version>8</scala.patch.version>
+    <scala.compat.version>${scala.major.version}.${scala.minor.version}</scala.compat.version>
+    <scala.version>${scala.compat.version}.${scala.patch.version}</scala.version>
     <!-- keep in-sync with python/requirements-3.3_2.13.txt -->
-    <spark.compat.version>3.3</spark.compat.version>
-    <spark.version>${spark.compat.version}.1</spark.version>
+    <spark.major.version>3</spark.major.version>
+    <spark.minor.version>5</spark.minor.version>
+    <spark.patch.version>1</spark.patch.version>
+    <spark.compat.version>${spark.major.version}.${spark.minor.version}</spark.compat.version>
+    <spark.version>${spark.compat.version}.${spark.patch.version}</spark.version>
   </properties>
 
   <dependencies>
@@ -51,18 +58,27 @@
       <version>${scala.version}</version>
     </dependency>
 
+    <!-- pulls in spark-core, which is also a dependency, but referencing spark-core might break transitive dependencies -->
+    <!-- see https://github.com/apache/spark/pull/40933#issuecomment-1536609310 -->
     <dependency>
       <groupId>org.apache.spark</groupId>
-      <artifactId>spark-core_${scala.compat.version}</artifactId>
+      <artifactId>spark-sql_${scala.compat.version}</artifactId>
       <version>${spark.version}</version>
       <scope>provided</scope>
     </dependency>
 
     <dependency>
       <groupId>org.apache.spark</groupId>
-      <artifactId>spark-sql_${scala.compat.version}</artifactId>
+      <artifactId>spark-hive_${scala.compat.version}</artifactId>
       <version>${spark.version}</version>
       <scope>provided</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>com.github.scopt</groupId>
+      <artifactId>scopt_${scala.compat.version}</artifactId>
+      <!-- keep DIFF.md section "Diff Spark application" synced with this value -->
+      <version>4.1.0</version>
     </dependency>
 
     <!-- Test -->
@@ -77,7 +93,7 @@
     <dependency>
       <groupId>org.scalatest</groupId>
       <artifactId>scalatest_${scala.compat.version}</artifactId>
-      <version>3.2.14</version>
+      <version>3.3.0-SNAP4</version>
       <scope>test</scope>
     </dependency>
 
@@ -90,10 +106,16 @@
   </dependencies>
 
   <repositories>
+    <!-- the official source for Spark releases, mirrored to Maven central -->
+    <repository>
+      <id>apache releases</id>
+      <name>Apache Releases</name>
+      <url>https://repository.apache.org/content/repositories/releases/</url>
+    </repository>
     <!-- required to resolve Spark snapshot versions -->
     <repository>
-      <id>apache</id>
-      <name>Apache</name>
+      <id>apache snapshots</id>
+      <name>Apache Snapshots</name>
       <url>https://repository.apache.org/snapshots/</url>
     </repository>
     <!-- required to resolve Spark RC candidates -->
@@ -134,7 +156,7 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>build-helper-maven-plugin</artifactId>
-        <version>3.3.0</version>
+        <version>3.5.0</version>
         <executions>
           <execution>
             <phase>generate-sources</phase>
@@ -145,6 +167,22 @@
               <sources>
                 <source>src/main/scala-spark-${spark.compat.version}</source>
               </sources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>properties-maven-plugin</artifactId>
+        <version>1.2.1</version>
+        <executions>
+          <execution>
+            <phase>generate-resources</phase>
+            <goals>
+              <goal>write-project-properties</goal>
+            </goals>
+            <configuration>
+              <outputFile>${project.build.outputDirectory}/spark-extension-build.properties</outputFile>
             </configuration>
           </execution>
         </executions>
@@ -186,11 +224,48 @@
           </execution>
         </executions>
       </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>3.3.0</version>
+        <configuration>
+          <archive>
+            <manifest>
+              <addClasspath>true</addClasspath>
+              <mainClass>uk.co.gresearch.spark.diff.App</mainClass>
+            </manifest>
+          </archive>
+        </configuration>
+      </plugin>
+      <!-- scalafmt -->
+      <plugin>
+        <groupId>com.diffplug.spotless</groupId>
+        <artifactId>spotless-maven-plugin</artifactId>
+        <version>2.30.0</version>
+        <configuration>
+          <scala>
+            <scalafmt>
+              <version>3.7.17</version>
+              <file>${project.basedir}/.scalafmt.conf</file>
+            </scalafmt>
+          </scala>
+        </configuration>
+        <executions>
+          <execution>
+            <!-- Runs in compile phase to fail fast in case of formatting issues.-->
+            <id>spotless-check</id>
+            <phase>compile</phase>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
       <!-- run java tests -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
-        <version>3.0.0-M9</version>
+        <version>3.1.2</version>
         <configuration>
           <skipTests>false</skipTests>
         </configuration>
@@ -229,7 +304,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-gpg-plugin</artifactId>
-        <version>3.0.1</version>
+        <version>3.1.0</version>
         <executions>
           <execution>
             <id>sign-artifacts</id>
@@ -243,7 +318,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-source-plugin</artifactId>
-        <version>3.2.1</version>
+        <version>3.3.0</version>
         <executions>
           <execution>
             <id>attach-sources</id>
@@ -256,7 +331,7 @@
       <plugin>
         <groupId>net.alchim31.maven</groupId>
         <artifactId>scala-maven-plugin</artifactId>
-        <version>4.8.0</version>
+        <version>4.8.1</version>
         <executions>
           <execution>
             <id>attach-javadocs</id>
@@ -274,7 +349,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-report-plugin</artifactId>
-        <version>3.0.0-M9</version>
+        <version>3.1.2</version>
       </plugin>
     </plugins>
   </reporting>

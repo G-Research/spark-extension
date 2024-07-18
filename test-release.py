@@ -1,6 +1,7 @@
 from pyspark import SparkConf
 from pyspark.sql import SparkSession
 
+# noinspection PyUnresolvedReferences
 import gresearch.spark.diff
 
 conf = SparkConf().setAppName('integration test').setMaster('local[2]')

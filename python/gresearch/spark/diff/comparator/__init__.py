@@ -1,8 +1,24 @@
+#  Copyright 2022 G-Research
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
 import abc
 import dataclasses
 from dataclasses import dataclass
 
 from py4j.java_gateway import JVMView, JavaObject
+
+from pyspark.sql.types import DataType
 
 
 class DiffComparator(abc.ABC):
@@ -25,8 +41,16 @@ class DiffComparators:
         return EpsilonDiffComparator(epsilon)
 
     @staticmethod
+    def string(whitespace_agnostic: bool = True) -> 'StringDiffComparator':
+        return StringDiffComparator(whitespace_agnostic)
+
+    @staticmethod
     def duration(duration: str) -> 'DurationDiffComparator':
         return DurationDiffComparator(duration)
+
+    @staticmethod
+    def map(key_type: DataType, value_type: DataType, key_order_sensitive: bool = False) -> 'MapDiffComparator':
+        return MapDiffComparator(key_type, value_type, key_order_sensitive)
 
 
 class DefaultDiffComparator(DiffComparator):
@@ -62,6 +86,14 @@ class EpsilonDiffComparator(DiffComparator):
 
 
 @dataclass(frozen=True)
+class StringDiffComparator(DiffComparator):
+    whitespace_agnostic: bool
+
+    def _to_java(self, jvm: JVMView) -> JavaObject:
+        return jvm.uk.co.gresearch.spark.diff.DiffComparators.string(self.whitespace_agnostic)
+
+
+@dataclass(frozen=True)
 class DurationDiffComparator(DiffComparator):
     duration: str
     inclusive: bool = True
@@ -75,3 +107,18 @@ class DurationDiffComparator(DiffComparator):
     def _to_java(self, jvm: JVMView) -> JavaObject:
         jduration = jvm.java.time.Duration.parse(self.duration)
         return jvm.uk.co.gresearch.spark.diff.comparator.DurationDiffComparator(jduration, self.inclusive)
+
+
+@dataclass(frozen=True)
+class MapDiffComparator(DiffComparator):
+    key_type: DataType
+    value_type: DataType
+    key_order_sensitive: bool
+
+    def _to_java(self, jvm: JVMView) -> JavaObject:
+        from pyspark.sql import SparkSession
+
+        jfromjson = jvm.org.apache.spark.sql.types.__getattr__("DataType$").__getattr__("MODULE$").fromJson
+        jkeytype = jfromjson(self.key_type.json())
+        jvaluetype = jfromjson(self.value_type.json())
+        return jvm.uk.co.gresearch.spark.diff.DiffComparators.map(jkeytype, jvaluetype, self.key_order_sensitive)

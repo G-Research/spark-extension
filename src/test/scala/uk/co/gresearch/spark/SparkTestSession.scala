@@ -29,20 +29,12 @@ trait SparkTestSession extends SQLHelper {
       .appName("spark test example")
       .config("spark.sql.shuffle.partitions", 2)
       .config("spark.local.dir", ".")
+      .enableHiveSupport()
       .getOrCreate()
   }
 
   lazy val sc: SparkContext = spark.sparkContext
 
   lazy val sql: SQLContext = spark.sqlContext
-
-  /**
-   * Sets all SQL configurations specified in `pairs`, calls `f`, and then restores all SQL
-   * configurations.
-   */
-  protected override def withSQLConf(pairs: (String, String)*)(f: => Unit): Unit = {
-    SparkSession.setActiveSession(spark)
-    super.withSQLConf(pairs: _*)(f)
-  }
 
 }

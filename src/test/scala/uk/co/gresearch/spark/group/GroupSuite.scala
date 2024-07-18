@@ -1,3 +1,19 @@
+/*
+ * Copyright 2022 G-Research
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package uk.co.gresearch.spark.group
 
 import org.scalatest.funspec.AnyFunSpec
@@ -63,16 +79,22 @@ class GroupSuite extends AnyFunSpec {
       def testUnconsumedKey(unconsumedKey: K, func: () => Iterator[(K, V)]): Unit = {
         // we expect all tuples (k, Some(v)), except for k == unconsumedKey, where we expect (k, None)
         // here we consume all groups (it.toList), which is tested elsewhere to work
-        val expected = new GroupedIterator(func()).map {
-          case (key, it) if key == unconsumedKey => it.toList; (key, Iterator(None))
-          case (key, it) => (key, it.map(Some(_)))
-        }.flatMap { case (k, it) => it.map(v => (k, v)) }.toList
+        val expected = new GroupedIterator(func())
+          .map {
+            case (key, it) if key == unconsumedKey => it.toList; (key, Iterator(None))
+            case (key, it)                         => (key, it.map(Some(_)))
+          }
+          .flatMap { case (k, it) => it.map(v => (k, v)) }
+          .toList
 
         // here we do not consume the group with key `unconsumedKey`
-        val actual = new GroupedIterator(func()).map {
-          case (key, _) if key == unconsumedKey => (key, Iterator(None))
-          case (key, it) => (key, it.map(Some(_)))
-        }.flatMap { case (k, it) => it.map(v => (k, v)) }.toList
+        val actual = new GroupedIterator(func())
+          .map {
+            case (key, _) if key == unconsumedKey => (key, Iterator(None))
+            case (key, it)                        => (key, it.map(Some(_)))
+          }
+          .flatMap { case (k, it) => it.map(v => (k, v)) }
+          .toList
 
         assert(actual === expected)
       }
@@ -119,16 +141,22 @@ class GroupSuite extends AnyFunSpec {
         // we expect all tuples (k, v), except for k == unconsumedKey,
         // where we expect only the first tuple with k == partiallyConsumedKey
         // here we consume all groups (it.toList), which is tested elsewhere to work
-        val expected = new GroupedIterator(func()).map {
-          case (key, it) if key == partiallyConsumedKey => (key, Iterator(it.toList.head))
-          case (key, it) => (key, it)
-        }.flatMap { case (k, it) => it.map(v => (k, v)) }.toList
+        val expected = new GroupedIterator(func())
+          .map {
+            case (key, it) if key == partiallyConsumedKey => (key, Iterator(it.toList.head))
+            case (key, it)                                => (key, it)
+          }
+          .flatMap { case (k, it) => it.map(v => (k, v)) }
+          .toList
 
         // here we only consume the first element of the group with key `unconsumedKey`
-        val actual = new GroupedIterator(func()).map {
-          case (key, it) if key == partiallyConsumedKey => (key, Iterator(it.next()))
-          case (key, it) => (key, it)
-        }.flatMap { case (k, it) => it.map(v => (k, v)) }.toList
+        val actual = new GroupedIterator(func())
+          .map {
+            case (key, it) if key == partiallyConsumedKey => (key, Iterator(it.next()))
+            case (key, it)                                => (key, it)
+          }
+          .flatMap { case (k, it) => it.map(v => (k, v)) }
+          .toList
 
         assert(actual === expected)
       }
@@ -162,8 +190,8 @@ class GroupSuite extends AnyFunSpec {
       // this consumes all group iterators
       it("and fully consumed groups") {
         val expected = func().toList
-        val actual = new GroupedIterator(func()).flatMap {
-          case (k, it) => it.map(v => (k, v))
+        val actual = new GroupedIterator(func()).flatMap { case (k, it) =>
+          it.map(v => (k, v))
         }.toList
         assert(actual === expected)
       }
@@ -195,7 +223,7 @@ class GroupSuite extends AnyFunSpec {
     }
 
     describe("should iterate only over current key") {
-      def test[K : Ordering, V](it: Seq[(K, V)], expectedValues: Seq[V]): Unit = {
+      def test[K: Ordering, V](it: Seq[(K, V)], expectedValues: Seq[V]): Unit = {
         val git = new GroupIterator[K, V](it.iterator.buffered)
         assert(git.toList === expectedValues)
       }

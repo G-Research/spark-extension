@@ -3,6 +3,88 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [2.12.0] - 2024-04-26
+
+## Fixes
+
+- Diff change column should respect comparators (#238)
+
+## Changed
+
+- Make create_temporary_dir work with pyspark-extension only (#222).
+  This allows [installing PIP packages and Poetry projects](PYSPARK-DEPS.md)
+  via pure Python spark-extension package (Maven package not required any more).
+- Add map diff comparator to Python API (#226)
+
+## [2.11.0] - 2024-01-04
+
+### Added
+
+- Add count_null aggregate function (#206)
+- Support reading parquet schema (#208)
+- Add more columns to reading parquet metadata (#209, #211)
+- Provide groupByKey shortcuts for groupBy.as (#213)
+- Allow to install PIP packages into PySpark job (#215)
+- Allow to install Poetry projects into PySpark job (#216)
+
+## [2.10.0] - 2023-09-27
+
+### Fixed
+
+- Update setup.py to include parquet methods in python package (#191)
+
+### Added
+
+- Add --statistics option to diff app (#189)
+- Add --filter option to diff app (#190)
+
+## [2.9.0] - 2023-08-23
+
+### Added
+
+- Add key order sensitive map comparator (#187)
+
+### Changed
+
+- Use dataset encoder rather than implicit value encoder for implicit dataset extension class (#183)
+
+### Fixed
+
+- Fix key-sensitivity in map comparator (#186)
+
+## [2.8.0] - 2023-05-24
+
+### Added
+
+- Add method to set and automatically unset Spark job description. (#172)
+- Add column function that converts between .Net (C#, F#, Visual Basic) `DateTime.Ticks` and Spark timestamp / Unix epoch timestamps. (#153)
+
+## [2.7.0] - 2023-05-05
+
+### Added
+
+- Spark app to diff files or tables and write result back to file or table. (#160)
+- Add null value count to `parquetBlockColumns` and `parquet_block_columns`. (#162)
+- Add `parallelism` argument to Parquet metadata methods. (#164)
+
+### Changed
+
+- Change data type of column name in `parquetBlockColumns` and `parquet_block_columns` to array of strings.
+  Cast to string to get earlier behaviour (string column name). (#162)
+
+## [2.6.0] - 2023-04-11
+
+### Added
+
+-  Add reader for parquet metadata. (#154)
+
+## [2.5.0] - 2023-03-23
+
+### Added
+
+- Add whitespace agnostic diff comparator. (#137)
+- Add Python whl package build. (#151)
+
 ## [2.4.0] - 2022-12-08
 
 ### Added

@@ -1,0 +1,36 @@
+name: Build JVM
+
+on:
+  workflow_call:
+
+jobs:
+  build:
+    name: Build (Spark ${{ matrix.spark-version }} Scala ${{ matrix.scala-version }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - spark-compat-version: '3.5'
+            scala-compat-version: '2.12'
+            scala-version: '2.12.18'
+            spark-version: '3.5.2'
+
+          - spark-compat-version: '3.5'
+            scala-compat-version: '2.13'
+            scala-version: '2.13.8'
+            spark-version: '3.5.2'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build
+        uses: ./.github/actions/build
+        with:
+          spark-version: ${{ matrix.spark-version }}
+          scala-version: ${{ matrix.scala-version }}
+          spark-compat-version: ${{ matrix.spark-compat-version }}
+          scala-compat-version: ${{ matrix.scala-compat-version }}
+          java-compat-version: '8'

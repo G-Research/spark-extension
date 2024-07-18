@@ -1,3 +1,19 @@
+/*
+ * Copyright 2022 G-Research
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package uk.co.gresearch.spark
 
 import org.apache.spark.sql.functions.{col, struct}
@@ -7,54 +23,50 @@ import uk.co.gresearch.ExtendedAny
 package object group {
 
   /**
-   * This is a Dataset of key-value tuples, that provide a flatMap function over the individual groups,
-   * while providing a sorted iterator over group values.
+   * This is a Dataset of key-value tuples, that provide a flatMap function over the individual groups, while providing
+   * a sorted iterator over group values.
    *
-   * The key-value Dataset given the constructor has to be partitioned by the key
-   * and sorted within partitions by the key and value.
+   * The key-value Dataset given the constructor has to be partitioned by the key and sorted within partitions by the
+   * key and value.
    *
-   * @param ds the properly partitioned and sorted dataset
-   * @tparam K type of the keys with ordering and encoder
-   * @tparam V type of the values with encoder
+   * @param ds
+   *   the properly partitioned and sorted dataset
+   * @tparam K
+   *   type of the keys with ordering and encoder
+   * @tparam V
+   *   type of the values with encoder
    */
-  case class SortedGroupByDataset[K: Ordering : Encoder, V: Encoder] private (ds: Dataset[(K, V)]) {
+  case class SortedGroupByDataset[K: Ordering: Encoder, V: Encoder] private (ds: Dataset[(K, V)]) {
+
     /**
-     * (Scala-specific)
-     * Applies the given function to each group of data.  For each unique group, the function will
-     * be passed the group key and a sorted iterator that contains all of the elements in the group.
-     * The function can return an iterator containing elements of an arbitrary type which will be
-     * returned as a new [[Dataset]].
+     * (Scala-specific) Applies the given function to each group of data. For each unique group, the function will be
+     * passed the group key and a sorted iterator that contains all of the elements in the group. The function can
+     * return an iterator containing elements of an arbitrary type which will be returned as a new [[Dataset]].
      *
-     * This function does not support partial aggregation, and as a result requires shuffling all
-     * the data in the [[Dataset]]. If an application intends to perform an aggregation over each
-     * key, it is best to use the reduce function or an
-     * `org.apache.spark.sql.expressions#Aggregator`.
+     * This function does not support partial aggregation, and as a result requires shuffling all the data in the
+     * [[Dataset]]. If an application intends to perform an aggregation over each key, it is best to use the reduce
+     * function or an `org.apache.spark.sql.expressions#Aggregator`.
      *
-     * Internally, the implementation will spill to disk if any given group is too large to fit into
-     * memory.  However, users must take care to avoid materializing the whole iterator for a group
-     * (for example, by calling `toList`) unless they are sure that this is possible given the memory
-     * constraints of their cluster.
+     * Internally, the implementation will spill to disk if any given group is too large to fit into memory. However,
+     * users must take care to avoid materializing the whole iterator for a group (for example, by calling `toList`)
+     * unless they are sure that this is possible given the memory constraints of their cluster.
      */
     def flatMapSortedGroups[W: Encoder](func: (K, Iterator[V]) => TraversableOnce[W]): Dataset[W] =
       ds.mapPartitions(new GroupedIterator(_).flatMap(v => func(v._1, v._2)))
 
     /**
-     * (Scala-specific)
-     * Applies the given function to each group of data.  For each unique group, the function s will
-     * be passed the group key to create a state instance, while the function func will be passed
-     * that state instance and group values in sequence according to the sort order in the groups.
-     * The function func can return an iterator containing elements of an arbitrary type which will
-     * be returned as a new [[Dataset]].
+     * (Scala-specific) Applies the given function to each group of data. For each unique group, the function s will be
+     * passed the group key to create a state instance, while the function func will be passed that state instance and
+     * group values in sequence according to the sort order in the groups. The function func can return an iterator
+     * containing elements of an arbitrary type which will be returned as a new [[Dataset]].
      *
-     * This function does not support partial aggregation, and as a result requires shuffling all
-     * the data in the [[Dataset]]. If an application intends to perform an aggregation over each
-     * key, it is best to use the reduce function or an
-     * `org.apache.spark.sql.expressions#Aggregator`.
+     * This function does not support partial aggregation, and as a result requires shuffling all the data in the
+     * [[Dataset]]. If an application intends to perform an aggregation over each key, it is best to use the reduce
+     * function or an `org.apache.spark.sql.expressions#Aggregator`.
      *
-     * Internally, the implementation will spill to disk if any given group is too large to fit into
-     * memory.  However, users must take care to avoid materializing the whole iterator for a group
-     * (for example, by calling `toList`) unless they are sure that this is possible given the memory
-     * constraints of their cluster.
+     * Internally, the implementation will spill to disk if any given group is too large to fit into memory. However,
+     * users must take care to avoid materializing the whole iterator for a group (for example, by calling `toList`)
+     * unless they are sure that this is possible given the memory constraints of their cluster.
      */
     def flatMapSortedGroups[S, W: Encoder](s: K => S)(func: (S, V) => TraversableOnce[W]): Dataset[W] = {
       ds.mapPartitions(new GroupedIterator(_).flatMap { case (k, it) =>
@@ -65,19 +77,24 @@ package object group {
   }
 
   object SortedGroupByDataset {
-    def apply[K: Ordering : Encoder, V: Encoder](ds: Dataset[V],
-                                                 groupColumns: Seq[Column],
-                                                 orderColumns: Seq[Column],
-                                                 partitions: Option[Int]): SortedGroupByDataset[K, V] = {
+    def apply[K: Ordering: Encoder, V](
+        ds: Dataset[V],
+        groupColumns: Seq[Column],
+        orderColumns: Seq[Column],
+        partitions: Option[Int]
+    ): SortedGroupByDataset[K, V] = {
+      // make ds encoder implicitly available
+      implicit val valueEncoder: Encoder[V] = ds.encoder
+
       // multiple group columns are turned into a tuple,
       // while a single group column is taken as is
       val keyColumn =
-      if (groupColumns.length == 1)
-        groupColumns.head
-      else
-        struct(groupColumns: _*)
+        if (groupColumns.length == 1)
+          groupColumns.head
+        else
+          struct(groupColumns: _*)
 
-      // all columns are turned into a single colum as a struct
+      // all columns are turned into a single column as a struct
       val valColumn = struct(col("*"))
 
       // repartition by group columns with given number of partitions (if given)
@@ -96,13 +113,19 @@ package object group {
       SortedGroupByDataset(grouped)
     }
 
-    def apply[K: Ordering : Encoder, V: Encoder, O: Encoder](ds: Dataset[V],
-                                                             key: V => K,
-                                                             order: V => O,
-                                                             partitions: Option[Int],
-                                                             reverse: Boolean): SortedGroupByDataset[K, V] = {
-      implicit val kvEncoder: Encoder[(K, V)] = Encoders.tuple(implicitly[Encoder[K]], implicitly[Encoder[V]])
-      implicit val kvoEncoder: Encoder[(K, V, O)] = Encoders.tuple(implicitly[Encoder[K]], implicitly[Encoder[V]], implicitly[Encoder[O]])
+    def apply[K: Ordering: Encoder, V, O: Encoder](
+        ds: Dataset[V],
+        key: V => K,
+        order: V => O,
+        partitions: Option[Int],
+        reverse: Boolean
+    ): SortedGroupByDataset[K, V] = {
+      // prepare encoder needed for this exercise
+      val keyEncoder: Encoder[K] = implicitly[Encoder[K]]
+      implicit val valueEncoder: Encoder[V] = ds.encoder
+      val orderEncoder: Encoder[O] = implicitly[Encoder[O]]
+      implicit val kvEncoder: Encoder[(K, V)] = Encoders.tuple(keyEncoder, valueEncoder)
+      implicit val kvoEncoder: Encoder[(K, V, O)] = Encoders.tuple(keyEncoder, valueEncoder, orderEncoder)
 
       // materialise the key and order class for each value
       val kvo = ds.map(v => (key(v), v, order(v)))

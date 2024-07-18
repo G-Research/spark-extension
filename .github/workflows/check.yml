@@ -1,0 +1,118 @@
+name: Check
+
+on:
+  workflow_call:
+
+jobs:
+  lint:
+    name: Scala lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Cache Maven packages
+        if: github.event_name != 'merge_group'
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-mvn-lint-${{ hashFiles('pom.xml') }}
+
+      - name: Setup JDK ${{ inputs.java-compat-version }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: '11'
+          distribution: 'zulu'
+
+      - name: Check
+        id: check
+        run: |
+          mvn --batch-mode --update-snapshots spotless:check
+        shell: bash
+
+      - name: Changes
+        if: failure() && steps.check.outcome == 'failure'
+        run: |
+          mvn --batch-mode --update-snapshots spotless:apply
+          git diff
+        shell: bash
+
+  config:
+    name: Configure compat
+    runs-on: ubuntu-latest
+    outputs:
+      major-version: ${{ steps.versions.outputs.major-version }}
+      release-version: ${{ steps.versions.outputs.release-version }}
+      release-major-version: ${{ steps.versions.outputs.release-major-version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get versions
+        id: versions
+        run: |
+          version=$(grep -m1 version pom.xml | sed -e "s/<[^>]*>//g" -e "s/ //g")
+          echo "version: $version"
+          echo "major-version: ${version/.*/}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "major-version=${version/.*/}" >> "$GITHUB_OUTPUT"
+          release_version=$(git tag | grep "^v" | sort --version-sort | tail -n1 | sed "s/^v//")
+          echo "release-version: $release_version"
+          echo "release-major-version: ${release_version/.*/}"
+          echo "release-version=$release_version" >> "$GITHUB_OUTPUT"
+          echo "release-major-version=${release_version/.*/}" >> "$GITHUB_OUTPUT"
+        shell: bash
+
+  compat:
+    name: Compat (Spark ${{ matrix.spark-compat-version }} Scala ${{ matrix.scala-compat-version }})
+    needs: config
+    runs-on: ubuntu-latest
+    if: needs.config.outputs.major-version == needs.config.outputs.release-major-version
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - spark-compat-version: '3.0'
+            spark-version: '3.0.3'
+            scala-compat-version: '2.12'
+            scala-version: '2.12.10'
+          - spark-compat-version: '3.1'
+            spark-version: '3.1.3'
+            scala-compat-version: '2.12'
+            scala-version: '2.12.10'
+          - spark-compat-version: '3.2'
+            spark-version: '3.2.4'
+            scala-compat-version: '2.12'
+            scala-version: '2.12.15'
+          - spark-compat-version: '3.3'
+            spark-version: '3.3.3'
+            scala-compat-version: '2.12'
+            scala-version: '2.12.15'
+          - spark-compat-version: '3.4'
+            scala-compat-version: '2.12'
+            scala-version: '2.12.17'
+            spark-version: '3.4.2'
+          - spark-compat-version: '3.5'
+            scala-compat-version: '2.12'
+            scala-version: '2.12.18'
+            spark-version: '3.5.0'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check
+        uses: ./.github/actions/check-compat
+        with:
+          spark-version: ${{ matrix.spark-version }}
+          scala-version: ${{ matrix.scala-version }}
+          spark-compat-version: ${{ matrix.spark-compat-version }}
+          scala-compat-version: ${{ matrix.scala-compat-version }}
+          package-version: ${{ needs.config.outputs.release-version }}

@@ -1,0 +1,271 @@
+name: Publish release
+
+on:
+  workflow_dispatch:
+    inputs:
+      versions:
+        required: true
+        type: string
+        description: 'Example: {"include": [{"params": {"spark-version": "3.0.3","scala-version": "2.12.10"}}]}'
+        default: '{"include": [{"params": {"spark-version": "3.0.3","scala-version": "2.12.10"}},{"params": {"spark-version": "3.1.3","scala-version": "2.12.10"}},{"params": { "spark-version": "3.2.4","scala-version": "2.12.15"}},{"params": {"spark-version": "3.3.4","scala-version": "2.12.15"}},{"params": {"spark-version": "3.4.2","scala-version": "2.12.17"}},{"params": {"spark-version": "3.5.0","scala-version": "2.12.18"}},{"params": {"spark-version": "3.2.4","scala-version": "2.13.5"}},{"params": {"spark-version": "3.3.4","scala-version": "2.13.8"}},{"params": {"spark-version": "3.4.2","scala-version": "2.13.8"}},{"params": {"spark-version": "3.5.0","scala-version": "2.13.8"}}]}'
+      github_release_latest:
+        description: 'Make the published GitHub release as the latest'
+        required: false
+        default: true
+        type: boolean
+
+env:
+  PYTHON_VERSION: "3.10"
+
+jobs:
+
+  prepare-release:
+    name: Prepare release
+    runs-on: ubuntu-latest
+    if: ${{ !github.event.repository.fork }}
+    permissions:
+      contents: write # required to push to a branch 
+    outputs:
+      RELEASE_TAG: ${{ steps.update-versions.outputs.release_tag_version }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check if this is a SNAPSHOT version
+        id: check-snapshot
+        run: |
+          if ! grep -q "<version>.*-SNAPSHOT</version>" pom.xml
+          then
+            echo "Version in pom.xml is not a SNAPSHOT version, cannot test all versions"
+            exit 1
+          fi
+
+      - name: Update versions
+        id: update-versions
+        run: |
+
+          # check for unreleased entry in CHANGELOG.md
+          readarray -t changes < <(grep -A 100 "^## \[UNRELEASED\] - YYYY-MM-DD" CHANGELOG.md | grep -B 100 --max-count=1 -E "^## \[[0-9.]+\]" | grep "^-")
+          if [ ${#changes[@]} -eq 0 ]
+          then
+            echo "Did not find any changes in CHANGELOG.md under '## [UNRELEASED] - YYYY-MM-DD'"
+            exit 1
+          fi
+
+          # get latest and release version
+          latest=$(grep --max-count=1 "<version>.*</version>" README.md | sed -E -e "s/\s*<[^>]+>//g" -e "s/-[0-9.]+//g")
+          version=$(grep --max-count=1 "<version>.*</version>" pom.xml | sed -E -e "s/\s*<[^>]+>//g" -e "s/-SNAPSHOT//" -e "s/-[0-9.]+//g")
+
+          # update change
+          echo "Releasing ${#changes[@]} changes as version $version:"
+          for (( i=0; i<${#changes[@]}; i++ )); do echo "${changes[$i]}" ; done
+          sed -i "s/## \[UNRELEASED\] - YYYY-MM-DD/## [$version] - $(date +%Y-%m-%d)/" CHANGELOG.md
+          sed -i -e "s/$latest-/$version-/g" -e "s/$latest\./$version./g" README.md PYSPARK-DEPS.md python/README.md
+          ./set-version.sh $version
+
+          # commit changes to local repo
+          git config --global user.name "$(git --no-pager log --format=format:'%an' -n 1)"
+          git config --global user.email "$(git --no-pager log --format=format:'%ae' -n 1)"
+          echo "Committing release to local git"
+          git add pom.xml python/setup.py CHANGELOG.md README.md python/README.md
+          git commit -m "Releasing $version"
+          git tag -a "v${version}" -m "Release v${version}"
+
+          # updating master and pushing a tag for the release
+          echo "Pushing release commit and tag to origin"
+          git push origin master "v${version}" --tags
+
+          # share release version to next job
+          echo "release_tag_version=v${version}" >> "$GITHUB_OUTPUT"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  maven-release:
+    name: Publish maven release
+    runs-on: ubuntu-latest
+    needs: [prepare-release]
+    environment: release # secret GPG_PRIVATE_KEY is protected 
+    permissions:
+      contents: write # required to push to a branch
+      id-token: write # required for PiPy publish
+    outputs:
+      RELEASE_NAME: ${{ steps.release-notes.outputs.release_name }}
+      RELEASE_NOTES_PATH: ${{ steps.release-notes.outputs.release_notes_path }}
+    strategy:
+      fail-fast: false
+      matrix: ${{fromJson(github.event.inputs.versions)}}
+
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{needs.prepare-release.outputs.RELEASE_TAG}}
+
+      - name: Set up JDK 8
+        uses: actions/setup-java@v4
+        with:
+          java-version: '8'
+          distribution: 'corretto'
+
+      - name: Set up Maven Central Repository
+        uses: actions/setup-java@99b8673ff64fbf99d8d325f52d9a5bdedb8483e9
+        with:
+          java-version: '8'
+          distribution: 'corretto'
+          server-id: ossrh
+          server-username: MAVEN_USERNAME
+          server-password: MAVEN_PASSWORD
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: MAVEN_GPG_PASSPHRASE
+
+      - uses: actions/setup-python@v5 
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache Maven packages
+        id: cache-maven
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-mvn-build-${{ matrix.params.spark-version }}-${{ matrix.params.scala-version }}-${{ hashFiles('pom.xml') }}
+          restore-keys: ${{ runner.os }}-mvn-build-${{ matrix.params.spark-version }}-${{ matrix.params.scala-version }}-
+      
+      - name: Cache Pip packages
+        id: cache-pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-whl-${{ env.PYTHON_VERSION }}-${{ matrix.params.spark-version }}
+
+      - name: Publish maven artifacts
+        id: publish-maven
+        run: |
+          ./set-version.sh ${{ matrix.params.spark-version }} ${{ matrix.params.scala-version }}
+          mvn clean deploy -Dsign
+        env:
+          MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE}}
+
+      - name: Prepare PyPi package
+        id: prepare-pypi-package
+        if: ${{ matrix.params.scala-version }} == 2.12*
+        run: |
+          echo "Scala version starts with '2.12'"
+          ./build-whl.sh
+
+      - name: Publish package distributions to Test PyPI
+        id: publish-test-pypi
+        uses: pypa/gh-action-pypi-publish@release/v1
+        if: ${{ matrix.params.scala-version }} == 2.12*
+        with:
+          user: ${{ secrets.TEST_PYPI_USERNAME }}
+          password: ${{ secrets.TEST_PYPI_PASSWORD }}
+          repository-url: https://test.pypi.org/legacy/
+          packages-dir: python/dist
+          verbose: true
+
+      - name: Publish package distributions to PyPI
+        id: publish-pypi
+        uses: pypa/gh-action-pypi-publish@release/v1
+        if: ${{ matrix.params.scala-version }} == 2.12*
+        with:
+          user: ${{ secrets.PYPI_USERNAME }}
+          password: ${{ secrets.PYPI_PASSWORD }}
+          packages-dir: python/dist
+          verbose: true
+
+      - name: Extract release notes
+        id: release-notes
+        run: |
+          awk '/^## /{if(seen==1)exit; seen++} seen' CHANGELOG.md > ./release-notes.txt
+
+          # Grab release name
+          name=$(grep -m 1 "^## " CHANGELOG.md | sed "s/^## //")
+          echo "release_name=$name" >> $GITHUB_OUTPUT
+          
+          # provide release notes file path as output
+          echo "release_notes_path=release-notes.txt" >> $GITHUB_OUTPUT
+
+  github-release:
+    name: Publish GitHub release
+    runs-on: ubuntu-latest
+    needs: [prepare-release,maven-release]
+    environment: release
+    permissions:
+      contents: write # required to push to a branch
+
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{needs.prepare-release.outputs.RELEASE_TAG}}
+
+      - name: Publish GitHub release
+        uses: ncipollo/release-action@2c591bcc8ecdcd2db72b97d6147f871fcd833ba5
+        id: github-release
+        with:
+          name: ${{ needs.maven-release.outputs.RELEASE_NAME }}
+          bodyFile: ${{ needs.maven-release.outputs.RELEASE_NOTES_PATH }}
+          makeLatest: ${{ inputs.github_release_latest }}
+          tag: ${{ needs.prepare-release.outputs.RELEASE_TAG }}
+          token: ${{ github.token }}
+
+      - name: Bump version for SNAPSHOT
+        id: bump-version
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+
+          # define function to bump version
+          function next_version {
+            local version=$1
+            local branch=$2
+          
+            patch=${version/*./}
+            majmin=${version%.${patch}}
+          
+            if [[ $branch == "master" ]]
+            then
+              # minor version bump
+              if [[ $version != *".0" ]]
+              then
+                echo "version is patch version, should be M.m.0: $version" >&2
+                exit 1
+              fi
+              maj=${version/.*/}
+              min=${majmin#${maj}.}
+              next=${maj}.$((min+1)).0
+              echo "$next"
+            else
+              # patch version bump
+              next=${majmin}.$((patch+1))
+              echo "$next"
+            fi
+          }
+          
+          # get release and next version
+          version=$(grep --max-count=1 "<version>.*</version>" pom.xml | sed -E -e "s/\s*<[^>]+>//g")
+          pkg_version="${version/-*/}"
+          branch=$(git rev-parse --abbrev-ref HEAD)
+          next_pkg_version="$(next_version "$pkg_version" "$branch")"
+          
+          # bump the version
+          echo "Bump version to $next_pkg_version"
+          ./set-version.sh $next_pkg_version-SNAPSHOT
+          
+          # commit changes to local repo
+          git config --global user.name "$(git --no-pager log --format=format:'%an' -n 1)"
+          git config --global user.email "$(git --no-pager log --format=format:'%ae' -n 1)"
+
+          echo "Committing release to local git"
+          git commit -a -m "Post-release version bump to $next_pkg_version"
+          
+          # push version bump to origin
+          echo "Pushing release commit to origin"
+          git push origin "master"
+          # NOTE: This push will not trigger a CI as we are using GITHUB_TOKEN to push
+          # More info on: https://docs.github.com/en/actions/using-workflows/triggering-a-workflow#triggering-a-workflow-from-a-workflow

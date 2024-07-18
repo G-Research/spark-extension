@@ -1,0 +1,84 @@
+name: 'Build Whl'
+author: 'EnricoMi'
+description: 'A GitHub Action that builds pyspark-extension package'
+
+inputs:
+  spark-version:
+    description: Spark version, e.g. 3.4.0 or 3.4.0-SNAPSHOT
+    required: true
+  scala-version:
+    description: Scala version, e.g. 2.12.15
+    required: true
+  spark-compat-version:
+    description: Spark compatibility version, e.g. 3.4
+    required: true
+  scala-compat-version:
+    description: Scala compatibility version, e.g. 2.12
+    required: true
+  python-version:
+    description: Python version, e.g. 3.8
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+  - name: Set versions in pom.xml
+    run: |
+      ./set-version.sh ${{ inputs.spark-version }} ${{ inputs.scala-version }}
+      git diff
+    shell: bash
+
+  - name: Fetch Binaries Artifact
+    uses: actions/download-artifact@v4
+    with:
+      name: Binaries-${{ inputs.spark-compat-version }}-${{ inputs.scala-compat-version }}
+      path: .
+
+  - name: Cache Maven packages
+    if: github.event_name != 'merge_group'
+    uses: actions/cache@v4
+    with:
+      path: ~/.m2/repository
+      key: ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-${{ hashFiles('pom.xml') }}
+      restore-keys: ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-
+
+  - name: Cache Pip packages
+    if: github.event_name != 'merge_group'
+    uses: actions/cache@v4
+    with:
+      path: ~/.cache/pip
+      key: ${{ runner.os }}-pip-whl-${{ inputs.python-version }}-${{ inputs.spark-version }}
+
+  - name: Setup Python
+    uses: actions/setup-python@v5
+    with:
+      python-version: ${{ inputs.python-version }}
+
+  - name: Install Python dependencies
+    run: |
+      python -m pip install --upgrade pip build twine
+    shell: bash
+
+  - name: Build whl
+    run: |
+      ./build-whl.sh
+    shell: bash
+
+  - name: Test whl
+    run: |
+      twine check python/dist/*
+      pip install pyspark==${{ inputs.spark-version }}
+      pip install python/dist/*.whl
+      python test-release.py
+    shell: bash
+
+  - name: Upload whl
+    uses: actions/upload-artifact@v4
+    with:
+      name: Whl (Spark ${{ inputs.spark-compat-version }} Scala ${{ inputs.scala-compat-version }})
+      path: |
+        python/dist/*.whl
+
+branding:
+  icon: 'check-circle'
+  color: 'green'

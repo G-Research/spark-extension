@@ -1,17 +1,17 @@
 # Releasing Spark Extension
 
-This provides instructions on how to release a version of `spark-extension`. We release this libarary
+This provides instructions on how to release a version of `spark-extension`. We release this library
 for a number of Spark and Scala environments, but all from the same git tag. Release for the environment
 that is set in the `pom.xml` and create a tag. On success, release from that tag for all other environments
 as described below.
 
 Use the `release.sh` script to test and release all versions. Or execute the following steps manually.
 
-## Testing master for all  environments
+## Testing master for all environments
 
 The following steps release a snapshot and test it. Test all versions listed [further down](#releasing-master-for-other-environments).
 
-- Set the version with `./set-version.sh`, e.g. `./set-version.sh 3.0.0 2.11.12`
+- Set the version with `./set-version.sh`, e.g. `./set-version.sh 3.4.0 2.12.17`
 - Release a snapshot (make sure the version in the `pom.xml` file ends with `SNAPSHOT`): `mvn clean deploy`
 - Test the released snapshot: `./test-release.sh`
 
@@ -20,17 +20,17 @@ The following steps release a snapshot and test it. Test all versions listed [fu
 Follow this procedure to release a new version:
 
 - Add a new entry to `CHANGELOG.md` listing all notable changes of this release.
-  Use the heading `## [VERSION] - YYYY-MM-dd`, e.g. `## [1.0.0] - 2020-03-12`.
-- Remove the `-SNAPSHOT` suffix from `<version>` in the [`pom.xml`](pom.xml) file, e.g. `1.1.0-SNAPSHOT` → `1.1.0`.
-- Update the versions in the `README.md` file to the version of your `pom.xml` to reflect the latest version,
-  e.g. replace all `1.0.0-3.1` with `1.1.0-3.1`.
+  Use the heading `## [VERSION] - YYYY-MM-dd`, e.g. `## [1.1.0] - 2020-03-12`.
+- Remove the `-SNAPSHOT` suffix from the version, e.g. `./set-version 1.1.0`.
+- Update the versions in the `README.md` and `python/README.md` file to the version of your `pom.xml` to reflect the latest version,
+  e.g. replace all `1.0.0-3.1` with `1.1.0-3.1` and `1.0.0.3.1` with `1.1.0.3.1`, respectively.
 - Commit the change to your local git repository, use a commit message like `Releasing 1.1.0`. Do not push to github yet.
 - Tag that commit with a version tag like `v1.1.0` and message like `Release v1.1.0`. Do not push to github yet.
 - Release the version with `mvn clean deploy`. This will be put into a staging repository and not automatically released (due to `<autoReleaseAfterClose>false</autoReleaseAfterClose>` in your [`pom.xml`](pom.xml) file).
 - Inspect and test the staged version. Use `./test-release.sh` or the `spark-examples` project for that. If you are happy with everything:
   - Push the commit and tag to origin.
   - Release the package with `mvn nexus-staging:release`.
-  - Bump the version to the next [minor version](https://semver.org/) in `pom.xml` and append the `-SNAPSHOT` suffix again, e.g. `1.1.0` → `1.2.0-SNAPSHOT`.
+  - Bump the version to the next [minor version](https://semver.org/) and append the `-SNAPSHOT` suffix again: `./set-version 1.2.0-SNAPSHOT`.
   - Commit this change to your local git repository, use a commit message like `Post-release version bump to 1.2.0`.
   - Push all local commits to origin.
 - Otherwise drop it with `mvn nexus-staging:drop`. Remove the last two commits from your local history.
@@ -39,17 +39,17 @@ Follow this procedure to release a new version:
 
 Once you have released the new version, release from the same tag for all other Spark and Scala environments as well:
 - Release for these environments, one of these has been released above, that should be the tagged version:
+
 |Spark|Scala|
 |:----|:----|
-|3.0  |2.12.10 (and 2.13.1)|
-|3.1  |2.12.10 (and 2.13.4)|
 |3.2  |2.12.15 and 2.13.5|
 |3.3  |2.12.15 and 2.13.8|
-|3.4  |2.12.16 and 2.13.8|
+|3.4  |2.12.17 and 2.13.8|
+|3.5  |2.12.17 and 2.13.8|
 - Always use the latest Spark version per Spark minor version
 - Release process:
   - Checkout the release tag, e.g. `git checkout v1.0.0`
-  - Set the version in the `pom.xml` file via `set-version.sh`, e.g. `./set-version.sh 3.0.0 2.12.10`
+  - Set the version in the `pom.xml` file via `set-version.sh`, e.g. `./set-version.sh 3.4.0 2.12.17`
   - Review the `pom.xml` file changes: `git diff pom.xml`
   - Release the version with `mvn clean deploy`
   - Inspect and test the staged version. Use `./test-release.sh` or the `spark-examples` project for that.
@@ -78,17 +78,17 @@ This is very similar to [releasing from master](#releasing-from-master),
 but the version increment occurs on [patch level](https://semver.org/):
 
 - Add a new entry to `CHANGELOG.md` listing all notable changes of this release.
-  Use the heading `## [VERSION] - YYYY-MM-dd`, e.g. `## [1.0.0] - 2020-03-12`.
-- Remove the `-SNAPSHOT` suffix from `<version>` in the [`pom.xml`](pom.xml) file, e.g. `1.1.1-SNAPSHOT` → `1.1.1`.
-- Update the versions in the `README.md` file to the version of your `pom.xml` to reflect the latest version,
-  e.g. replace all `1.0.0-3.1` with `1.1.0-3.1`.
+  Use the heading `## [VERSION] - YYYY-MM-dd`, e.g. `## [1.1.1] - 2020-03-12`.
+- Remove the `-SNAPSHOT` suffix from the version, e.g. `./set-version 1.1.1`.
+- Update the versions in the `README.md` and `python/README.md` file to the version of your `pom.xml` to reflect the latest version,
+  e.g. replace all `1.1.0-3.1` with `1.1.1-3.1` and `1.1.0.3.1` with `1.1.1.3.1`, respectively.
 - Commit the change to your local git repository, use a commit message like `Releasing 1.1.1`. Do not push to github yet.
-- Tag that commit with a version tag like `v1.1.0` and message like `Release v1.1.1`. Do not push to github yet.
+- Tag that commit with a version tag like `v1.1.1` and message like `Release v1.1.1`. Do not push to github yet.
 - Release the version with `mvn clean deploy`. This will be put into a staging repository and not automatically released (due to `<autoReleaseAfterClose>false</autoReleaseAfterClose>` in your [`pom.xml`](pom.xml) file).
-- Inspect and test the staged version. Use `spark-examples` for that. If you are happy with everything:
+- Inspect and test the staged version. Use `./test-release.sh` or the `spark-examples` project for that. If you are happy with everything:
   - Push the commit and tag to origin.
   - Release the package with `mvn nexus-staging:release`.
-  - Bump the version to the next [patch version](https://semver.org/) in `pom.xml` and append the `-SNAPSHOT` suffix again, e.g. `1.1.1` → `1.1.2-SNAPSHOT`.
+  - Bump the version to the next [patch version](https://semver.org/) and append the `-SNAPSHOT` suffix again: `./set-version 1.1.2-SNAPSHOT`.
   - Commit this change to your local git repository, use a commit message like `Post-release version bump to 1.1.2`.
   - Push all local commits to origin.
 - Otherwise drop it with `mvn nexus-staging:drop`. Remove the last two commits from your local history.

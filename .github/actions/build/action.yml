@@ -12,6 +12,12 @@ inputs:
   spark-compat-version:
     description: Spark compatibility version, e.g. 3.4
     required: true
+  scala-compat-version:
+    description: Scala compatibility version, e.g. 2.12
+    required: true
+  java-compat-version:
+    description: Java compatibility version, e.g. 8
+    required: true
 
 runs:
   using: 'composite'
@@ -23,33 +29,37 @@ runs:
     shell: bash
 
   - name: Cache Maven packages
-    uses: actions/cache@v3
+    if: github.event_name != 'merge_group'
+    uses: actions/cache@v4
     with:
       path: ~/.m2/repository
       key: ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-${{ hashFiles('pom.xml') }}
       restore-keys: ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-
 
-  - name: Setup JDK 1.8
-    uses: actions/setup-java@v3
+  - name: Setup JDK ${{ inputs.java-compat-version }}
+    uses: actions/setup-java@v4
     with:
-      java-version: '8'
+      java-version: ${{ inputs.java-compat-version }}
       distribution: 'zulu'
 
   - name: Build
+    env:
+      JDK_JAVA_OPTIONS: --add-exports java.base/sun.nio.ch=ALL-UNNAMED --add-exports java.base/sun.util.calendar=ALL-UNNAMED
     run: |
-      mvn --batch-mode --update-snapshots clean compile test-compile
-      mvn --batch-mode package -DskipTests -Dmaven.test.skip=true
-      mvn --batch-mode install -DskipTests -Dmaven.test.skip=true -Dgpg.skip
+      mvn --batch-mode --update-snapshots -Dspotless.check.skip clean compile test-compile
+      mvn --batch-mode package -Dspotless.check.skip -DskipTests -Dmaven.test.skip=true
+      mvn --batch-mode install -Dspotless.check.skip -DskipTests -Dmaven.test.skip=true -Dgpg.skip
     shell: bash
 
   - name: Upload Binaries
-    uses: actions/upload-artifact@v3
+    uses: actions/upload-artifact@v4
     with:
-      name: Binaries-${{ inputs.spark-compat-version }}-${{ inputs.scala-version }}
+      name: Binaries-${{ inputs.spark-compat-version }}-${{ inputs.scala-compat-version }}
       path: |
         *
         !.*
         !target/*-javadoc.jar
+        !target/*-sources.jar
         !target/site
 
 branding:

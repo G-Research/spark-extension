@@ -38,33 +38,35 @@ runs:
     shell: bash
 
   - name: Fetch Binaries Artifact
-    uses: actions/download-artifact@v3
+    uses: actions/download-artifact@v4
     with:
-      name: Binaries-${{ inputs.spark-compat-version }}-${{ inputs.scala-version }}
+      name: Binaries-${{ inputs.spark-compat-version }}-${{ inputs.scala-compat-version }}
       path: .
 
   - name: Cache Maven packages
-    uses: actions/cache@v3
+    if: github.event_name != 'merge_group'
+    uses: actions/cache@v4
     with:
       path: ~/.m2/repository
       key: ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-${{ hashFiles('pom.xml') }}
       restore-keys: ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-
 
   - name: Setup JDK 1.8
-    uses: actions/setup-java@v3
+    uses: actions/setup-java@v4
     with:
       java-version: '8'
       distribution: 'zulu'
 
   - name: Cache Pip packages
-    uses: actions/cache@v3
+    if: github.event_name != 'merge_group'
+    uses: actions/cache@v4
     with:
       path: ~/.cache/pip
       key: ${{ runner.os }}-pip-test-${{ inputs.python-version }}-${{ hashFiles(format('python/requirements-{0}_{1}.txt', inputs.spark-compat-version, inputs.scala-compat-version)) }}
       restore-keys: ${{ runner.os }}-pip-test-${{ inputs.python-version }}-
 
   - name: Setup Python
-    uses: actions/setup-python@v4
+    uses: actions/setup-python@v5
     with:
       python-version: ${{ inputs.python-version }}
 
@@ -79,32 +81,51 @@ runs:
       python -m pip install --upgrade pip
       pip install pypandoc
       pip install -r python/requirements-${{ inputs.spark-compat-version }}_${{ inputs.scala-compat-version }}.txt
-      pip install pytest unittest-xml-reporting
+      pip install -r python/test/requirements.txt
 
       SPARK_HOME=$(python -c "import pyspark; import os; print(os.path.dirname(pyspark.__file__))")
       echo "SPARK_HOME=$SPARK_HOME" | tee -a "$GITHUB_ENV"
+    shell: bash
+
+  - name: Prepare poetry tests
+    run: |
+      # install poetry in venv
+      python -m venv .poetry-venv
+      .poetry-venv/bin/python -m pip install poetry
+      # env var needed by poetry tests
+      echo "POETRY_PYTHON=$PWD/.poetry-venv/bin/python" | tee -a "$GITHUB_ENV"
+
+      # clone example poetry project
+      git clone https://github.com/Textualize/rich.git .rich
+      cd .rich
+      git reset --hard 20024635c06c22879fd2fd1e380ec4cccd9935dd
+      # env var needed by poetry tests
+      echo "RICH_SOURCES=$PWD" | tee -a "$GITHUB_ENV"
     shell: bash
 
   - name: Python Unit Tests
     env:
       PYTHONPATH: python:python/test
     run: |
-      python -m pytest python/test --junit-xml test-results/pytest.xml
+      python -m pytest python/test --junit-xml test-results/pytest-$(date +%s.%N)-$RANDOM.xml
     shell: bash
 
   - name: Install Spark Extension
-    run: mvn --batch-mode install -DskipTests -Dmaven.test.skip=true -Dgpg.skip
+    run: mvn --batch-mode --update-snapshots install -Dspotless.check.skip -DskipTests -Dmaven.test.skip=true -Dgpg.skip
     shell: bash
 
   - name: Python Integration Tests
+    env:
+      PYTHONPATH: python:python/test
     run: |
-      find python/test -name 'test*.py' | while read test
+      find python/test -name 'test*.py' > tests
+      while read test
       do
-        if ! $SPARK_HOME/bin/spark-submit --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION "$test" test-results
+        if ! $SPARK_HOME/bin/spark-submit --master "local[2]" --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION "$test" test-results
         then
           state="fail"
         fi
-      done
+      done < tests
       if [[ "$state" == "fail" ]]; then exit 1; fi
     shell: bash
 
@@ -120,7 +141,7 @@ runs:
 
   - name: Upload Test Results
     if: always()
-    uses: actions/upload-artifact@v3
+    uses: actions/upload-artifact@v4
     with:
       name: Python Test Results (Spark ${{ inputs.spark-version }} Scala ${{ inputs.scala-version }} Python ${{ inputs.python-version }})
       path: test-results/*.xml

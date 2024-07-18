@@ -16,7 +16,7 @@
 
 package uk.co.gresearch.spark
 
-import org.apache.spark.sql.{DataFrame, Dataset, Row}
+import org.apache.spark.sql.{DataFrame, Dataset, KeyValueGroupedDataset, Row}
 import org.scalatest.funspec.AnyFunSpec
 import uk.co.gresearch.spark.GroupBySortedSuite.{valueRowToTuple, valueToTuple}
 import uk.co.gresearch.spark.group.SortedGroupByDataset
@@ -33,10 +33,11 @@ case class State(init: Int) {
   }
 }
 
-class GroupBySortedSuite extends AnyFunSpec with SparkTestSession {
+class GroupBySuite extends AnyFunSpec with SparkTestSession {
 
   import spark.implicits._
 
+  // format: off
   val ds: Dataset[Val] = Seq(
     Val(1, 1, 1.1),
     Val(1, 2, 1.2),
@@ -49,6 +50,35 @@ class GroupBySortedSuite extends AnyFunSpec with SparkTestSession {
 
     Val(3, 1, 3.1),
   ).reverse.toDS().repartition(3).cache()
+  // format: on
+
+  val df: DataFrame = ds.toDF()
+
+  it("should ds.groupByKey") {
+    testGroupBy(ds.groupByKey($"id"))
+    testGroupBy(ds.groupByKey("id"))
+  }
+
+  it("should df.groupByKey") {
+    testGroupBy(df.groupByKey($"id"))
+    testGroupBy(df.groupByKey("id"))
+  }
+
+  def testGroupBy[T](ds: KeyValueGroupedDataset[Int, T]): Unit = {
+    val actual = ds
+      .mapGroups { (key, it) => (key, it.length) }
+      .collect()
+      .sortBy(v => v._1)
+
+    val expected = Seq(
+      // (key, group length)
+      (1, 4),
+      (2, 3),
+      (3, 1),
+    )
+
+    assert(actual === expected)
+  }
 
   describe("ds.groupBySorted") {
     testGroupByIdSortBySeq(ds.groupBySorted($"id")($"seq", $"value"))
@@ -62,11 +92,11 @@ class GroupBySortedSuite extends AnyFunSpec with SparkTestSession {
     testGroupByIdSortBySeq(ds.groupByKeySorted(v => v.id)(v => (v.seq, v.value)))
     testGroupByIdSortBySeqDesc(ds.groupByKeySorted(v => v.id)(v => (v.seq, v.value), reverse = true))
     testGroupByIdSortBySeqWithPartitionNum(ds.groupByKeySorted(v => v.id, partitions = Some(10))(v => (v.seq, v.value)))
-    testGroupByIdSortBySeqDescWithPartitionNum(ds.groupByKeySorted(v => v.id, partitions = Some(10))(v => (v.seq, v.value), reverse = true))
+    testGroupByIdSortBySeqDescWithPartitionNum(
+      ds.groupByKeySorted(v => v.id, partitions = Some(10))(v => (v.seq, v.value), reverse = true)
+    )
     testGroupByIdSeqSortByValue(ds.groupByKeySorted(v => (v.id, v.seq))(v => v.value))
   }
-
-  val df: DataFrame = ds.toDF()
 
   describe("df.groupBySorted") {
     testGroupByIdSortBySeq(df.groupBySorted($"id")($"seq", $"value"))
@@ -78,15 +108,19 @@ class GroupBySortedSuite extends AnyFunSpec with SparkTestSession {
 
   describe("df.groupByKeySorted") {
     testGroupByIdSortBySeq(df.groupByKeySorted(v => v.getInt(0))(v => (v.getInt(1), v.getDouble(2))))
-    testGroupByIdSortBySeqDesc(df.groupByKeySorted(v => v.getInt(0))(v => (v.getInt(1), v.getDouble(2)), reverse = true))
-    testGroupByIdSortBySeqWithPartitionNum(df.groupByKeySorted(v => v.getInt(0), partitions = Some(10))(v => (v.getInt(1), v.getDouble(2))))
-    testGroupByIdSortBySeqDescWithPartitionNum(df.groupByKeySorted(v => v.getInt(0), partitions = Some(10))(v => (v.getInt(1), v.getDouble(2)), reverse = true))
+    testGroupByIdSortBySeqDesc(
+      df.groupByKeySorted(v => v.getInt(0))(v => (v.getInt(1), v.getDouble(2)), reverse = true)
+    )
+    testGroupByIdSortBySeqWithPartitionNum(
+      df.groupByKeySorted(v => v.getInt(0), partitions = Some(10))(v => (v.getInt(1), v.getDouble(2)))
+    )
+    testGroupByIdSortBySeqDescWithPartitionNum(
+      df.groupByKeySorted(v => v.getInt(0), partitions = Some(10))(v => (v.getInt(1), v.getDouble(2)), reverse = true)
+    )
     testGroupByIdSeqSortByValue(df.groupByKeySorted(v => (v.getInt(0), v.getInt(1)))(v => v.getDouble(2)))
   }
 
-
-  def testGroupByIdSortBySeq[T](ds: SortedGroupByDataset[Int, T])
-                               (implicit asTuple: T => (Int, Int, Double)): Unit = {
+  def testGroupByIdSortBySeq[T](ds: SortedGroupByDataset[Int, T])(implicit asTuple: T => (Int, Int, Double)): Unit = {
 
     it("should flatMapSortedGroups") {
       val actual = ds
@@ -94,6 +128,7 @@ class GroupBySortedSuite extends AnyFunSpec with SparkTestSession {
         .collect()
         .sortBy(v => (v._1, v._2))
 
+      // format: off
       val expected = Seq(
         // (key, group index, value)
         (1, 0, (1, 1, 1.1)),
@@ -107,6 +142,7 @@ class GroupBySortedSuite extends AnyFunSpec with SparkTestSession {
 
         (3, 0, (3, 1, 3.1)),
       )
+      // format: on
 
       assert(actual === expected)
     }
@@ -117,6 +153,7 @@ class GroupBySortedSuite extends AnyFunSpec with SparkTestSession {
         .collect()
         .sortBy(v => (v._1._1, v._1._2))
 
+      // format: off
       val expected = Seq(
         // (value, state)
         ((1, 1, 1.1), 1 + 1),
@@ -130,20 +167,23 @@ class GroupBySortedSuite extends AnyFunSpec with SparkTestSession {
 
         ((3, 1, 3.1), 3 + 1),
       )
+      // format: on
 
       assert(actual === expected)
     }
 
   }
 
-  def testGroupByIdSortBySeqDesc[T](ds: SortedGroupByDataset[Int, T])
-                                   (implicit asTuple: T => (Int, Int, Double)): Unit = {
+  def testGroupByIdSortBySeqDesc[T](
+      ds: SortedGroupByDataset[Int, T]
+  )(implicit asTuple: T => (Int, Int, Double)): Unit = {
     it("should flatMapSortedGroups reverse") {
       val actual = ds
         .flatMapSortedGroups((key, it) => it.zipWithIndex.map(v => (key, v._2, asTuple(v._1))))
         .collect()
         .sortBy(v => (v._1, v._2))
 
+      // format: off
       val expected = Seq(
         // (key, group index, value)
         (1, 0, (1, 3, 1.31)),
@@ -157,14 +197,16 @@ class GroupBySortedSuite extends AnyFunSpec with SparkTestSession {
 
         (3, 0, (3, 1, 3.1)),
       )
+      // format: on
 
       assert(actual === expected)
     }
 
   }
 
-  def testGroupByIdSortBySeqWithPartitionNum[T](ds: SortedGroupByDataset[Int, T], partitions: Int = 10)
-                                               (implicit asTuple: T => (Int, Int, Double)): Unit = {
+  def testGroupByIdSortBySeqWithPartitionNum[T](ds: SortedGroupByDataset[Int, T], partitions: Int = 10)(implicit
+      asTuple: T => (Int, Int, Double)
+  ): Unit = {
 
     it("should flatMapSortedGroups with partition num") {
       val grouped = ds
@@ -173,6 +215,7 @@ class GroupBySortedSuite extends AnyFunSpec with SparkTestSession {
         .collect()
         .sortBy(v => (v._1, v._2))
 
+      // format: off
       val expected = Seq(
         // (key, group index, value)
         (1, 0, (1, 1, 1.1)),
@@ -186,6 +229,7 @@ class GroupBySortedSuite extends AnyFunSpec with SparkTestSession {
 
         (3, 0, (3, 1, 3.1)),
       )
+      // format: on
 
       val partitionSizes = grouped.mapPartitions(it => Iterator.single(it.length)).collect()
       assert(partitionSizes.length === partitions)
@@ -195,8 +239,9 @@ class GroupBySortedSuite extends AnyFunSpec with SparkTestSession {
 
   }
 
-  def testGroupByIdSortBySeqDescWithPartitionNum[T](ds: SortedGroupByDataset[Int, T], partitions: Int = 10)
-                                                   (implicit asTuple: T => (Int, Int, Double)): Unit = {
+  def testGroupByIdSortBySeqDescWithPartitionNum[T](ds: SortedGroupByDataset[Int, T], partitions: Int = 10)(implicit
+      asTuple: T => (Int, Int, Double)
+  ): Unit = {
     it("should flatMapSortedGroups with partition num and reverse") {
       val grouped = ds
         .flatMapSortedGroups((key, it) => it.zipWithIndex.map(v => (key, v._2, asTuple(v._1))))
@@ -204,6 +249,7 @@ class GroupBySortedSuite extends AnyFunSpec with SparkTestSession {
         .collect()
         .sortBy(v => (v._1, v._2))
 
+      // format: off
       val expected = Seq(
         // (key, group index, value)
         (1, 0, (1, 3, 1.31)),
@@ -217,6 +263,7 @@ class GroupBySortedSuite extends AnyFunSpec with SparkTestSession {
 
         (3, 0, (3, 1, 3.1)),
       )
+      // format: on
 
       val partitionSizes = grouped.mapPartitions(it => Iterator.single(it.length)).collect()
       assert(partitionSizes.length === partitions)
@@ -225,8 +272,9 @@ class GroupBySortedSuite extends AnyFunSpec with SparkTestSession {
     }
   }
 
-  def testGroupByIdSeqSortByValue[T](ds: SortedGroupByDataset[(Int, Int), T])
-                                    (implicit asTuple: T => (Int, Int, Double)): Unit = {
+  def testGroupByIdSeqSortByValue[T](
+      ds: SortedGroupByDataset[(Int, Int), T]
+  )(implicit asTuple: T => (Int, Int, Double)): Unit = {
 
     it("should flatMapSortedGroups with tuple key") {
       val actual = ds
@@ -234,6 +282,7 @@ class GroupBySortedSuite extends AnyFunSpec with SparkTestSession {
         .collect()
         .sortBy(v => (v._1, v._2))
 
+      // format: off
       val expected = Seq(
         // (key, group index, value)
         ((1, 1), 0, (1, 1, 1.1)),
@@ -251,6 +300,7 @@ class GroupBySortedSuite extends AnyFunSpec with SparkTestSession {
 
         ((3, 1), 0, (3, 1, 3.1)),
       )
+      // format: on
 
       assert(actual === expected)
     }
@@ -261,6 +311,7 @@ class GroupBySortedSuite extends AnyFunSpec with SparkTestSession {
         .collect()
         .sortBy(v => (v._1._1, v._1._2))
 
+      // format: off
       val expected = Seq(
         // (value, state)
         ((1, 1, 1.1), 1 + 1),
@@ -274,6 +325,7 @@ class GroupBySortedSuite extends AnyFunSpec with SparkTestSession {
 
         ((3, 1, 3.1), 3 + 1),
       )
+      // format: on
 
       assert(actual === expected)
     }
@@ -281,7 +333,6 @@ class GroupBySortedSuite extends AnyFunSpec with SparkTestSession {
   }
 
 }
-
 
 object GroupBySortedSuite {
   implicit def valueToTuple(value: Val): (Int, Int, Double) = (value.id, value.seq, value.value)

@@ -1,0 +1,38 @@
+name: Test Python
+
+on:
+  workflow_call:
+
+jobs:
+  # pyspark is not available for snapshots or scala other than 2.12
+  # we would have to compile spark from sources for this, not worth it
+  test:
+    name: Test (Spark ${{ matrix.spark-version }} Scala ${{ matrix.scala-version }} Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        spark-compat-version: ['3.5']
+        python-version: ['3.8', '3.9', '3.10']
+
+        include:
+          - spark-compat-version: '3.5'
+            spark-version: '3.5.2'
+            scala-compat-version: '2.12'
+            scala-version: '2.12.18'
+            url: 'https://dist.apache.org/repos/dist/dev/spark/v3.5.2-rc1-bin/pyspark-3.5.2.tar.gz'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Test
+        uses: ./.github/actions/test-python
+        with:
+          spark-version: ${{ matrix.spark-version }}
+          scala-version: ${{ matrix.scala-version }}
+          spark-compat-version: ${{ matrix.spark-compat-version }}
+          scala-compat-version: ${{ matrix.scala-compat-version }}
+          python-version: ${{ matrix.python-version }}
+          pyspark-url: ${{ matrix.url }}
