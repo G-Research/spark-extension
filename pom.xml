@@ -98,14 +98,9 @@
     </repository>
     <!-- required to resolve Spark RC candidates -->
     <repository>
-      <id>apache-spark-3.3.2-rc1</id>
-      <name>Apache Spark 3.3.2 RC1</name>
-      <url>https://repository.apache.org/content/repositories/orgapachespark-1433/</url>
-    </repository>
-    <repository>
-      <id>apache-spark-3.4.0-rc3</id>
-      <name>Apache Spark 3.4.0 RC3</name>
-      <url>https://repository.apache.org/content/repositories/orgapachespark-1437/</url>
+      <id>apache-spark-3.5.2-rc1</id>
+      <name>Apache Spark 3.5.2 RC1</name>
+      <url>https://repository.apache.org/content/repositories/orgapachespark-1457/</url>
     </repository>
   </repositories>
 
