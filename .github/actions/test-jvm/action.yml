@@ -47,11 +47,11 @@ runs:
   - name: Setup Spark Binaries
     if: ( ! contains(inputs.spark-version, '-SNAPSHOT') )
     env:
-      SPARK_PACKAGE: spark-${{ inputs.spark-version }}/spark-${{ inputs.spark-version }}-bin-hadoop${{ inputs.hadoop-version }}${{ inputs.scala-compat-version == '2.13' && '-scala2.13' || '' }}.tgz
+      SPARK_PACKAGE: spark-${{ inputs.spark-version }}-bin-hadoop${{ inputs.hadoop-version }}${{ inputs.scala-compat-version == '2.13' && '-scala2.13' || '' }}.tgz
     run: |
       if [[ ! -e ~/spark ]]
       then
-        wget --progress=dot:giga "https://www.apache.org/dyn/closer.lua/spark/${SPARK_PACKAGE}?action=download" -O - | tar -xzC "${{ runner.temp }}"
+        wget --progress=dot:giga "https://dist.apache.org/repos/dist/dev/spark/v3.5.2-rc1-bin/${SPARK_PACKAGE}" -O - | tar -xzC "${{ runner.temp }}"
         archive=$(basename "${SPARK_PACKAGE}") bash -c "mv -v "${{ runner.temp }}/\${archive/%.tgz/}" ~/spark"
       fi
       echo "SPARK_HOME=$(cd ~/spark; pwd)" >> $GITHUB_ENV

@@ -118,6 +118,12 @@
       <name>Apache Snapshots</name>
       <url>https://repository.apache.org/snapshots/</url>
     </repository>
+    <!-- required to resolve Spark RC candidates -->
+    <repository>
+      <id>apache-spark-3.5.2-rc1</id>
+      <name>Apache Spark 3.5.2 RC1</name>
+      <url>https://repository.apache.org/content/repositories/orgapachespark-1457/</url>
+    </repository>
   </repositories>
 
   <distributionManagement>
