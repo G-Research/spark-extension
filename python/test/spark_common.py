@@ -80,7 +80,9 @@ class SparkTest(unittest.TestCase):
     def get_spark_session(cls) -> SparkSession:
         builder = SparkSession.builder
 
-        if 'PYSPARK_GATEWAY_PORT' in os.environ:
+        if 'TEST_SPARK_CONNECT_SERVER' in os.environ:
+            builder.remote(os.environ['TEST_SPARK_CONNECT_SERVER'])
+        elif 'PYSPARK_GATEWAY_PORT' in os.environ:
             logging.info('Running inside existing Spark environment')
         else:
             logging.info('Setting up Spark environment')
