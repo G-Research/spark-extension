@@ -18,6 +18,7 @@ from typing import Optional, Dict, Mapping, Any, Callable
 
 from py4j.java_gateway import JavaObject, JVMView
 from pyspark.sql import DataFrame
+from pyspark.sql.connect.dataframe import DataFrame as ConnectDataFrame
 from pyspark.sql.types import DataType
 
 from gresearch.spark import _to_seq, _to_map
@@ -492,3 +493,9 @@ DataFrame.diffwith = diffwith
 
 DataFrame.diff_with_options = diff_with_options
 DataFrame.diffwith_with_options = diffwith_with_options
+
+ConnectDataFrame.diff = diff
+ConnectDataFrame.diffwith = diffwith
+
+ConnectDataFrame.diff_with_options = diff_with_options
+ConnectDataFrame.diffwith_with_options = diffwith_with_options

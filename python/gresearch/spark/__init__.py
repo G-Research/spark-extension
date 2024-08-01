@@ -29,6 +29,7 @@ from pyspark.context import SparkContext
 from pyspark.files import SparkFiles
 from pyspark.sql import DataFrame
 from pyspark.sql.column import Column, _to_java_column
+from pyspark.sql.connect.dataframe import DataFrame as ConnectDataFrame
 from pyspark.sql.context import SQLContext
 from pyspark.sql.functions import col, count, lit, when
 from pyspark.sql.session import SparkSession
@@ -292,6 +293,7 @@ def histogram(self: DataFrame,
 
 
 DataFrame.histogram = histogram
+ConnectDataFrame.histogram = histogram
 
 
 class UnpersistHandle:
@@ -343,6 +345,7 @@ def session_or_ctx(self: DataFrame) -> Union[SparkSession, SQLContext]:
 
 
 DataFrame.with_row_numbers = with_row_numbers
+ConnectDataFrame.with_row_numbers = with_row_numbers
 DataFrame.session_or_ctx = session_or_ctx
 
 
