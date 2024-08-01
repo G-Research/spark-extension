@@ -16,12 +16,13 @@ from typing import Optional
 
 from py4j.java_gateway import JavaObject
 from pyspark.sql import DataFrameReader, DataFrame
+from pyspark.sql.connect.readwriter import DataFrameReader as ConnectDataFrameReader
 
-from gresearch.spark import _to_seq
+from gresearch.spark import _get_jvm, _to_seq
 
 
 def _jreader(reader: DataFrameReader) -> JavaObject:
-    jvm = reader._spark._jvm
+    jvm = _get_jvm(reader)
     return jvm.uk.co.gresearch.spark.parquet.__getattr__("package$").__getattr__("MODULE$").ExtendedDataFrameReader(reader._jreader)
 
 
@@ -52,7 +53,7 @@ def parquet_metadata(self: DataFrameReader, *paths: str, parallelism: Optional[i
     :param parallelism: number of partitions of returned DataFrame
     :return: dataframe with Parquet metadata
     """
-    jvm = self._spark._jvm
+    jvm = _get_jvm(self)
     if parallelism is None:
         jdf = _jreader(self).parquetMetadata(_to_seq(jvm, list(paths)))
     else:
@@ -87,7 +88,7 @@ def parquet_schema(self: DataFrameReader, *paths: str, parallelism: Optional[int
     :param parallelism: number of partitions of returned DataFrame
     :return: dataframe with Parquet metadata
     """
-    jvm = self._spark._jvm
+    jvm = _get_jvm(self)
     if parallelism is None:
         jdf = _jreader(self).parquetSchema(_to_seq(jvm, list(paths)))
     else:
@@ -119,7 +120,7 @@ def parquet_blocks(self: DataFrameReader, *paths: str, parallelism: Optional[int
     :param parallelism: number of partitions of returned DataFrame
     :return: dataframe with Parquet metadata
     """
-    jvm = self._spark._jvm
+    jvm = _get_jvm(self)
     if parallelism is None:
         jdf = _jreader(self).parquetBlocks(_to_seq(jvm, list(paths)))
     else:
@@ -155,7 +156,7 @@ def parquet_block_columns(self: DataFrameReader, *paths: str, parallelism: Optio
     :param parallelism: number of partitions of returned DataFrame
     :return: dataframe with Parquet metadata
     """
-    jvm = self._spark._jvm
+    jvm = _get_jvm(self)
     if parallelism is None:
         jdf = _jreader(self).parquetBlockColumns(_to_seq(jvm, list(paths)))
     else:
@@ -191,7 +192,7 @@ def parquet_partitions(self: DataFrameReader, *paths: str, parallelism: Optional
     :param parallelism: number of partitions of returned DataFrame
     :return: dataframe with Parquet metadata
     """
-    jvm = self._spark._jvm
+    jvm = _get_jvm(self)
     if parallelism is None:
         jdf = _jreader(self).parquetPartitions(_to_seq(jvm, list(paths)))
     else:
@@ -204,3 +205,9 @@ DataFrameReader.parquet_schema = parquet_schema
 DataFrameReader.parquet_blocks = parquet_blocks
 DataFrameReader.parquet_block_columns = parquet_block_columns
 DataFrameReader.parquet_partitions = parquet_partitions
+
+ConnectDataFrameReader.parquet_metadata = parquet_metadata
+ConnectDataFrameReader.parquet_schema = parquet_schema
+ConnectDataFrameReader.parquet_blocks = parquet_blocks
+ConnectDataFrameReader.parquet_block_columns = parquet_block_columns
+ConnectDataFrameReader.parquet_partitions = parquet_partitions

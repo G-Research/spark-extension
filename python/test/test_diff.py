@@ -18,11 +18,13 @@ from py4j.java_gateway import JavaObject
 from pyspark.sql import Row
 from pyspark.sql.functions import col, when
 from pyspark.sql.types import IntegerType, LongType, StringType, DateType
+from unittest import skipIf
 
 from gresearch.spark.diff import Differ, DiffOptions, DiffMode, DiffComparators
 from spark_common import SparkTest
 
 
+@skipIf(SparkTest.is_spark_connect, "Spark Connect does not provide access to the JVM, required by Diff")
 class DiffTest(SparkTest):
 
     expected_diff = None

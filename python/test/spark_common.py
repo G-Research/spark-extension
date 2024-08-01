@@ -93,6 +93,7 @@ class SparkTest(unittest.TestCase):
         return builder.getOrCreate()
 
     spark: SparkSession = None
+    is_spark_connect: bool = 'TEST_SPARK_CONNECT_SERVER' in os.environ
 
     @classmethod
     def setUpClass(cls):

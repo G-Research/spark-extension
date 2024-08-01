@@ -18,9 +18,10 @@ from typing import Optional, Dict, Mapping, Any, Callable
 
 from py4j.java_gateway import JavaObject, JVMView
 from pyspark.sql import DataFrame
+from pyspark.sql.connect.dataframe import DataFrame as ConnectDataFrame
 from pyspark.sql.types import DataType
 
-from gresearch.spark import _to_seq, _to_map
+from gresearch.spark import _get_jvm, _to_seq, _to_map
 from gresearch.spark.diff.comparator import DiffComparator, DiffComparators, DefaultDiffComparator
 
 
@@ -333,7 +334,7 @@ class Differ:
         :return: the diff DataFrame
         :rtype DataFrame
         """
-        jvm = left._sc._jvm
+        jvm = _get_jvm(left)
         jdiffer = self._to_java(jvm)
         jdf = jdiffer.diff(left._jdf, right._jdf, _to_seq(jvm, list(id_columns)))
         return DataFrame(jdf, left.session_or_ctx())
@@ -354,7 +355,7 @@ class Differ:
         :return: the diff DataFrame
         :rtype DataFrame
         """
-        jvm = left._sc._jvm
+        jvm = _get_jvm(left)
         jdiffer = self._to_java(jvm)
         jdf = jdiffer.diffWith(left._jdf, right._jdf, _to_seq(jvm, list(id_columns)))
         df = DataFrame(jdf, left.sql_ctx)
@@ -489,6 +490,10 @@ def diffwith_with_options(self: DataFrame, other: DataFrame, options: DiffOption
 
 DataFrame.diff = diff
 DataFrame.diffwith = diffwith
-
 DataFrame.diff_with_options = diff_with_options
 DataFrame.diffwith_with_options = diffwith_with_options
+
+ConnectDataFrame.diff = diff
+ConnectDataFrame.diffwith = diffwith
+ConnectDataFrame.diff_with_options = diff_with_options
+ConnectDataFrame.diffwith_with_options = diffwith_with_options

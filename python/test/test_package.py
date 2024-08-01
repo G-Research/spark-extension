@@ -105,6 +105,7 @@ class PackageTest(SparkTest):
             [row.asDict() for row in expected.collect()]
         )
 
+    @skipIf(SparkTest.is_spark_connect, "Spark Connect does not provide access to the JVM, required by dotnet ticks")
     def test_dotnet_ticks_to_timestamp(self):
         for column in ["tick", self.ticks.tick]:
             with self.subTest(column=column):
@@ -112,6 +113,7 @@ class PackageTest(SparkTest):
                 expected = self.ticks.join(self.timestamps, "id").orderBy('id')
                 self.compare_dfs(expected, timestamps)
 
+    @skipIf(SparkTest.is_spark_connect, "Spark Connect does not provide access to the JVM, required by dotnet ticks")
     def test_dotnet_ticks_to_unix_epoch(self):
         for column in ["tick", self.ticks.tick]:
             with self.subTest(column=column):
@@ -119,6 +121,7 @@ class PackageTest(SparkTest):
                 expected = self.ticks.join(self.unix, "id").orderBy('id')
                 self.compare_dfs(expected, timestamps)
 
+    @skipIf(SparkTest.is_spark_connect, "Spark Connect does not provide access to the JVM, required by dotnet ticks")
     def test_dotnet_ticks_to_unix_epoch_nanos(self):
         self.maxDiff = None
         for column in ["tick", self.ticks.tick]:
@@ -127,6 +130,7 @@ class PackageTest(SparkTest):
                 expected = self.ticks.join(self.unix_nanos, "id").orderBy('id')
                 self.compare_dfs(expected, timestamps)
 
+    @skipIf(SparkTest.is_spark_connect, "Spark Connect does not provide access to the JVM, required by dotnet ticks")
     def test_timestamp_to_dotnet_ticks(self):
         if self.spark.version.startswith('3.0.'):
             self.skipTest('timestamp_to_dotnet_ticks not supported by Spark 3.0')
@@ -136,6 +140,7 @@ class PackageTest(SparkTest):
                 expected = self.timestamps.join(self.ticks_from_timestamp, "id").orderBy('id')
                 self.compare_dfs(expected, timestamps)
 
+    @skipIf(SparkTest.is_spark_connect, "Spark Connect does not provide access to the JVM, required by dotnet ticks")
     def test_unix_epoch_dotnet_ticks(self):
         for column in ["unix", self.unix.unix]:
             with self.subTest(column=column):
@@ -143,6 +148,7 @@ class PackageTest(SparkTest):
                 expected = self.unix.join(self.ticks, "id").orderBy('id')
                 self.compare_dfs(expected, timestamps)
 
+    @skipIf(SparkTest.is_spark_connect, "Spark Connect does not provide access to the JVM, required by dotnet ticks")
     def test_unix_epoch_nanos_to_dotnet_ticks(self):
         for column in ["unix_nanos", self.unix_nanos.unix_nanos]:
             with self.subTest(column=column):
@@ -159,6 +165,7 @@ class PackageTest(SparkTest):
         ).collect()
         self.assertEqual([Row(ids=7, nanos=6, null_ids=0, null_nanos=1)], actual)
 
+    @skipIf(SparkTest.is_spark_connect, "Spark Connect does not provide access to the JVM, required by create_temp_dir")
     def test_create_temp_dir(self):
         from pyspark import SparkFiles
 
@@ -166,6 +173,7 @@ class PackageTest(SparkTest):
         self.assertTrue(dir.startswith(SparkFiles.getRootDirectory()))
 
     @skipIf(__version__.startswith('3.0.'), 'install_pip_package not supported for Spark 3.0')
+    @skipIf(SparkTest.is_spark_connect, "Spark Connect does not provide access to the JVM, required by install_pip_package")
     def test_install_pip_package(self):
         self.spark.sparkContext.setLogLevel("INFO")
         with self.assertRaises(ImportError):
@@ -189,16 +197,19 @@ class PackageTest(SparkTest):
         self.assertEqual(expected, actual)
 
     @skipIf(__version__.startswith('3.0.'), 'install_pip_package not supported for Spark 3.0')
+    @skipIf(SparkTest.is_spark_connect, "Spark Connect does not provide access to the JVM, required by install_pip_package")
     def test_install_pip_package_unknown_argument(self):
         with self.assertRaises(CalledProcessError):
             self.spark.install_pip_package("--unknown", "argument")
 
     @skipIf(__version__.startswith('3.0.'), 'install_pip_package not supported for Spark 3.0')
+    @skipIf(SparkTest.is_spark_connect, "Spark Connect does not provide access to the JVM, required by install_pip_package")
     def test_install_pip_package_package_not_found(self):
         with self.assertRaises(CalledProcessError):
             self.spark.install_pip_package("pyspark-extension==abc")
 
     @skipUnless(__version__.startswith('3.0.'), 'install_pip_package not supported for Spark 3.0')
+    @skipIf(SparkTest.is_spark_connect, "Spark Connect does not provide access to the JVM, required by install_pip_package")
     def test_install_pip_package_not_supported(self):
         with self.assertRaises(NotImplementedError):
             self.spark.install_pip_package("emoji")
@@ -209,6 +220,7 @@ class PackageTest(SparkTest):
                                                  f'virtual env python with poetry required')
     @skipIf(RICH_SOURCES_ENV not in os.environ, f'Environment variable {RICH_SOURCES_ENV} pointing to '
                                                 f'rich project sources required')
+    @skipIf(SparkTest.is_spark_connect, "Spark Connect does not provide access to the JVM, required by install_poetry_project")
     def test_install_poetry_project(self):
         self.spark.sparkContext.setLogLevel("INFO")
         with self.assertRaises(ImportError):
@@ -244,6 +256,7 @@ class PackageTest(SparkTest):
                                                  f'virtual env python with poetry required')
     @skipIf(RICH_SOURCES_ENV not in os.environ, f'Environment variable {RICH_SOURCES_ENV} pointing to '
                                                 f'rich project sources required')
+    @skipIf(SparkTest.is_spark_connect, "Spark Connect does not provide access to the JVM, required by install_poetry_project")
     def test_install_poetry_project_wrong_arguments(self):
         rich_path = os.environ[RICH_SOURCES_ENV]
         poetry_python = os.environ[POETRY_PYTHON_ENV]
@@ -254,6 +267,7 @@ class PackageTest(SparkTest):
             self.spark.install_poetry_project(rich_path, poetry_python="non-existing-python")
 
     @skipUnless(__version__.startswith('3.0.'), 'install_poetry_project not supported for Spark 3.0')
+    @skipIf(SparkTest.is_spark_connect, "Spark Connect does not provide access to the JVM, required by install_poetry_project")
     def test_install_poetry_project_not_supported(self):
         with self.assertRaises(NotImplementedError):
             self.spark.install_poetry_project("./rich")
