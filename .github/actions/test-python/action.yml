@@ -112,7 +112,22 @@ runs:
       find python/test -name 'test*.py' > tests
       while read test
       do
-        if ! $SPARK_HOME/bin/spark-submit --master "local[2]" --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION "$test" test-results
+        if ! $SPARK_HOME/bin/spark-submit --master "local[2]" --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION "$test" test-results-submit
+        then
+          state="fail"
+        fi
+      done < tests
+      if [[ "$state" == "fail" ]]; then exit 1; fi
+    shell: bash
+
+  - name: Python Integration Tests (Spark Connect)
+    env:
+      PYTHONPATH: python:python/test
+    run: |
+      find python/test -name 'test*.py' > tests
+      while read test
+      do
+        if ! $SPARK_HOME/bin/spark-submit --master "local[2]" --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION "$test" test-results-connect
         then
           state="fail"
         fi
@@ -135,7 +150,10 @@ runs:
     uses: actions/upload-artifact@v4
     with:
       name: Python Test Results (Spark ${{ inputs.spark-version }} Scala ${{ inputs.scala-version }} Python ${{ inputs.python-version }})
-      path: test-results/*.xml
+      path: |
+        test-results/*.xml
+        test-results-submit/*.xml
+        test-results-connect/*.xml
 
 branding:
   icon: 'check-circle'
