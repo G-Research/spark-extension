@@ -37,7 +37,6 @@ from pyspark.storagelevel import StorageLevel
 try:
     from pyspark.sql.connect.dataframe import DataFrame as ConnectDataFrame
     from pyspark.sql.connect.readwriter import DataFrameReader as ConnectDataFrameReader
-    from pyspark.sql.connect.session import SparkContext as ConnectSparkContext
     from pyspark.sql.connect.session import SparkSession as ConnectSparkSession
     has_connect = True
 except ModuleNotFoundError:
@@ -49,7 +48,7 @@ if TYPE_CHECKING:
 
 def _get_jvm(obj: Any) -> JVMView:
     # helper method to assert the JVM is accessible and provide a useful error message
-    if has_connect and isinstance(obj, (ConnectDataFrame, ConnectDataFrameReader, ConnectSparkSession, ConnectSparkContext)):
+    if has_connect and isinstance(obj, (ConnectDataFrame, ConnectDataFrameReader, ConnectSparkSession)):
         raise RuntimeError('This feature is not supported for Spark Connect. Please use a classic Spark client. https://github.com/G-Research/spark-extension#spark-connect-server')
     if isinstance(obj, DataFrame):
         return _get_jvm(obj._sc)
@@ -448,7 +447,6 @@ SparkContext.create_temporary_dir = create_temporary_dir
 
 if has_connect:
     ConnectSparkSession.create_temporary_dir = create_temporary_dir
-    ConnectSparkContext.create_temporary_dir = create_temporary_dir
 
 
 def install_pip_package(spark: Union[SparkSession, SparkContext], *package_or_pip_option: str) -> None:
@@ -486,7 +484,6 @@ SparkContext.install_pip_package = install_pip_package
 
 if has_connect:
     ConnectSparkSession.install_pip_package = install_pip_package
-    ConnectSparkContext.install_pip_package = install_pip_package
 
 
 def install_poetry_project(spark: Union[SparkSession, SparkContext],
@@ -567,4 +564,3 @@ SparkContext.install_poetry_project = install_poetry_project
 
 if has_connect:
     ConnectSparkSession.install_poetry_project = install_poetry_project
-    ConnectSparkContext.install_poetry_project = install_poetry_project
