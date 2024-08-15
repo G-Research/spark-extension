@@ -22,7 +22,7 @@ from gresearch.spark import _get_jvm, _to_seq
 try:
     from pyspark.sql.connect.readwriter import DataFrameReader as ConnectDataFrameReader
     has_connect = True
-except ModuleNotFoundError:
+except ImportError:
     has_connect = False
 
 

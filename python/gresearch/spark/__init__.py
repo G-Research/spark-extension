@@ -39,7 +39,7 @@ try:
     from pyspark.sql.connect.readwriter import DataFrameReader as ConnectDataFrameReader
     from pyspark.sql.connect.session import SparkSession as ConnectSparkSession
     has_connect = True
-except ModuleNotFoundError:
+except ImportError:
     has_connect = False
 
 if TYPE_CHECKING:
