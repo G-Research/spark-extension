@@ -16,9 +16,14 @@ from typing import Optional
 
 from py4j.java_gateway import JavaObject
 from pyspark.sql import DataFrameReader, DataFrame
-from pyspark.sql.connect.readwriter import DataFrameReader as ConnectDataFrameReader
 
 from gresearch.spark import _get_jvm, _to_seq
+
+try:
+    from pyspark.sql.connect.readwriter import DataFrameReader as ConnectDataFrameReader
+    has_connect = True
+except ModuleNotFoundError:
+    has_connect = False
 
 
 def _jreader(reader: DataFrameReader) -> JavaObject:
@@ -206,8 +211,9 @@ DataFrameReader.parquet_blocks = parquet_blocks
 DataFrameReader.parquet_block_columns = parquet_block_columns
 DataFrameReader.parquet_partitions = parquet_partitions
 
-ConnectDataFrameReader.parquet_metadata = parquet_metadata
-ConnectDataFrameReader.parquet_schema = parquet_schema
-ConnectDataFrameReader.parquet_blocks = parquet_blocks
-ConnectDataFrameReader.parquet_block_columns = parquet_block_columns
-ConnectDataFrameReader.parquet_partitions = parquet_partitions
+if has_connect:
+    ConnectDataFrameReader.parquet_metadata = parquet_metadata
+    ConnectDataFrameReader.parquet_schema = parquet_schema
+    ConnectDataFrameReader.parquet_blocks = parquet_blocks
+    ConnectDataFrameReader.parquet_block_columns = parquet_block_columns
+    ConnectDataFrameReader.parquet_partitions = parquet_partitions
