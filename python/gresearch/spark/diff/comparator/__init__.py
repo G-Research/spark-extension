@@ -18,12 +18,14 @@ from dataclasses import dataclass
 
 from py4j.java_gateway import JVMView, JavaObject
 
+from pyspark.sql import Column
+from pyspark.sql.functions import abs, greatest, lit
 from pyspark.sql.types import DataType
 
 
 class DiffComparator(abc.ABC):
     @abc.abstractmethod
-    def _to_java(self, jvm: JVMView) -> JavaObject:
+    def equiv(self, left: Column, right: Column) -> Column:
         pass
 
 
@@ -53,14 +55,15 @@ class DiffComparators:
         return MapDiffComparator(key_type, value_type, key_order_sensitive)
 
 
-class DefaultDiffComparator(DiffComparator):
+class NullSafeEqualDiffComparator(DiffComparator):
+    def equiv(self, left: Column, right: Column) -> Column:
+        return left.eqNullSafe(right)
+
+
+class DefaultDiffComparator(NullSafeEqualDiffComparator):
+    # for testing only
     def _to_java(self, jvm: JVMView) -> JavaObject:
         return jvm.uk.co.gresearch.spark.diff.DiffComparators.default()
-
-
-class NullSafeEqualDiffComparator(DiffComparator):
-    def _to_java(self, jvm: JVMView) -> JavaObject:
-        return jvm.uk.co.gresearch.spark.diff.DiffComparators.nullSafeEqual()
 
 
 @dataclass(frozen=True)
@@ -81,16 +84,25 @@ class EpsilonDiffComparator(DiffComparator):
     def as_exclusive(self) -> 'EpsilonDiffComparator':
         return dataclasses.replace(self, inclusive=False)
 
-    def _to_java(self, jvm: JVMView) -> JavaObject:
-        return jvm.uk.co.gresearch.spark.diff.comparator.EpsilonDiffComparator(self.epsilon, self.relative, self.inclusive)
+    def equiv(self, left: Column, right: Column) -> Column:
+        threshold = greatest(abs(left), abs(right)) * self.epsilon if self.relative else lit(self.epsilon)
+
+        def inclusive_epsilon(diff: Column) -> Column:
+            return diff.__le__(threshold)
+
+        def exclusive_epsilon(diff: Column) -> Column:
+            return diff.__lt__(threshold)
+
+        in_epsilon = inclusive_epsilon if self.inclusive else exclusive_epsilon
+        return left.isNull() & right.isNull() | left.isNotNull() & right.isNotNull() & in_epsilon(abs(left - right))
 
 
 @dataclass(frozen=True)
 class StringDiffComparator(DiffComparator):
     whitespace_agnostic: bool
 
-    def _to_java(self, jvm: JVMView) -> JavaObject:
-        return jvm.uk.co.gresearch.spark.diff.DiffComparators.string(self.whitespace_agnostic)
+    def equiv(self, left: Column, right: Column) -> Column:
+        return left.eqNullSafe(right)
 
 
 @dataclass(frozen=True)
@@ -104,9 +116,8 @@ class DurationDiffComparator(DiffComparator):
     def as_exclusive(self) -> 'DurationDiffComparator':
         return dataclasses.replace(self, inclusive=False)
 
-    def _to_java(self, jvm: JVMView) -> JavaObject:
-        jduration = jvm.java.time.Duration.parse(self.duration)
-        return jvm.uk.co.gresearch.spark.diff.comparator.DurationDiffComparator(jduration, self.inclusive)
+    def equiv(self, left: Column, right: Column) -> Column:
+        return left.eqNullSafe(right)
 
 
 @dataclass(frozen=True)
@@ -115,10 +126,5 @@ class MapDiffComparator(DiffComparator):
     value_type: DataType
     key_order_sensitive: bool
 
-    def _to_java(self, jvm: JVMView) -> JavaObject:
-        from pyspark.sql import SparkSession
-
-        jfromjson = jvm.org.apache.spark.sql.types.__getattr__("DataType$").__getattr__("MODULE$").fromJson
-        jkeytype = jfromjson(self.key_type.json())
-        jvaluetype = jfromjson(self.value_type.json())
-        return jvm.uk.co.gresearch.spark.diff.DiffComparators.map(jkeytype, jvaluetype, self.key_order_sensitive)
+    def equiv(self, left: Column, right: Column) -> Column:
+        return left.eqNullSafe(right)

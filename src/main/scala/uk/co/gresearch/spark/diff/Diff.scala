@@ -145,7 +145,7 @@ class Differ(options: DiffOptions) {
 
   private def getChangeColumn(
       existsColumnName: String,
-      valueVolumnsWithComparator: Seq[(String, DiffComparator)],
+      valueColumnsWithComparator: Seq[(String, DiffComparator)],
       left: Dataset[_],
       right: Dataset[_]
   ): Option[Column] = {
@@ -153,7 +153,7 @@ class Differ(options: DiffOptions) {
       .map(changeColumn =>
         when(left(existsColumnName).isNull || right(existsColumnName).isNull, lit(null))
           .otherwise(
-            Some(valueVolumnsWithComparator)
+            Some(valueColumnsWithComparator)
               .filter(_.nonEmpty)
               .map(columns =>
                 concat(
@@ -271,14 +271,14 @@ class Differ(options: DiffOptions) {
     val pkColumns = if (idColumns.isEmpty) columns else idColumns
     val valueColumns = columns.diffCaseSensitivity(pkColumns)
     val valueStructFields = left.schema.fields.map(f => f.name -> f).toMap
-    val valueVolumnsWithComparator = valueColumns.map(c => c -> options.comparatorFor(valueStructFields(c)))
+    val valueColumnsWithComparator = valueColumns.map(c => c -> options.comparatorFor(valueStructFields(c)))
 
     val existsColumnName = distinctPrefixFor(left.columns) + "exists"
     val leftWithExists = left.withColumn(existsColumnName, lit(1))
     val rightWithExists = right.withColumn(existsColumnName, lit(1))
     val joinCondition =
       pkColumns.map(c => leftWithExists(backticks(c)) <=> rightWithExists(backticks(c))).reduce(_ && _)
-    val unChanged = valueVolumnsWithComparator
+    val unChanged = valueColumnsWithComparator
       .map { case (c, cmp) =>
         cmp.equiv(leftWithExists(backticks(c)), rightWithExists(backticks(c)))
       }
@@ -294,7 +294,7 @@ class Differ(options: DiffOptions) {
         .as(options.diffColumn)
 
     val diffColumns = getDiffColumns(pkColumns, valueColumns, left, right, ignoreColumns).map(_._2)
-    val changeColumn = getChangeColumn(existsColumnName, valueVolumnsWithComparator, leftWithExists, rightWithExists)
+    val changeColumn = getChangeColumn(existsColumnName, valueColumnsWithComparator, leftWithExists, rightWithExists)
       // turn this column into a sequence of one or none column so we can easily concat it below with diffActionColumn and diffColumns
       .map(Seq(_))
       .getOrElse(Seq.empty[Column])

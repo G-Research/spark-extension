@@ -16,7 +16,7 @@ import re
 
 from py4j.java_gateway import JavaObject
 from pyspark.sql import Row
-from pyspark.sql.functions import col, when
+from pyspark.sql.functions import col, when, abs
 from pyspark.sql.types import IntegerType, LongType, StringType, DateType
 from unittest import skipIf
 
@@ -24,7 +24,6 @@ from gresearch.spark.diff import Differ, DiffOptions, DiffMode, DiffComparators
 from spark_common import SparkTest
 
 
-@skipIf(SparkTest.is_spark_connect, "Spark Connect does not provide access to the JVM, required by Diff")
 class DiffTest(SparkTest):
 
     expected_diff = None
@@ -280,6 +279,7 @@ class DiffTest(SparkTest):
         diff = Differ(options).diff(self.left_df, self.right_df, 'id').orderBy('id').collect()
         self.assertEqual(self.expected_diff_in_sparse_mode, diff)
 
+    @skipIf(SparkTest.is_spark_connect, "Spark Connect does not provide access to the JVM")
     def test_diff_options_default(self):
         jvm = self.spark._jvm
         joptions = jvm.uk.co.gresearch.spark.diff.DiffOptions.default()
@@ -304,6 +304,7 @@ class DiffTest(SparkTest):
             else:
                 self.assertEqual(expected, actual, '{} == {} ?'.format(attr, const))
 
+    @skipIf(SparkTest.is_spark_connect, "Spark Connect does not provide access to the JVM")
     def test_diff_mode_consts(self):
         jvm = self.spark._jvm
         jmodes = jvm.uk.co.gresearch.spark.diff.DiffMode
@@ -376,16 +377,33 @@ class DiffTest(SparkTest):
         self.assertEqual(without_change.diff_mode, DiffMode.SideBySide)
         self.assertEqual(without_change.sparse_mode, True)
 
-    def test_diff_with_comparators(self):
+    def test_diff_with_epsilon_comparator(self):
+        # relative inclusive epsilon
         options = DiffOptions() \
-            .with_column_name_comparator(DiffComparators.epsilon(0.1).as_relative(), 'val')
-
+            .with_column_name_comparator(DiffComparators.epsilon(0.1).as_relative().as_inclusive(), 'val')
         diff = self.left_df.diff_with_options(self.right_df, options, 'id').orderBy('id').collect()
         expected = self.spark.createDataFrame(self.expected_diff) \
             .withColumn("diff", when(col("id") == 1, "N").otherwise(col("diff"))) \
             .collect()
-
         self.assertEqual(expected, diff)
+
+        # relative exclusive epsilon
+        options = DiffOptions() \
+            .with_column_name_comparator(DiffComparators.epsilon(0.0909).as_relative().as_exclusive(), 'val')
+        diff = self.left_df.diff_with_options(self.right_df, options, 'id').orderBy('id').collect()
+        self.assertEqual(self.expected_diff, diff)
+
+        # absolute inclusive epsilon
+        options = DiffOptions() \
+            .with_column_name_comparator(DiffComparators.epsilon(0.10000000000000009).as_absolute().as_inclusive(), 'val')
+        diff = self.left_df.diff_with_options(self.right_df, options, 'id').orderBy('id').collect()
+        self.assertEqual(expected, diff)
+
+        # absolute exclusive epsilon
+        options = DiffOptions() \
+            .with_column_name_comparator(DiffComparators.epsilon(0.10000000000000009).as_absolute().as_exclusive(), 'val')
+        diff = self.left_df.diff_with_options(self.right_df, options, 'id').orderBy('id').collect()
+        self.assertEqual(self.expected_diff, diff)
 
     def test_diff_options_with_duplicate_comparators(self):
         options = DiffOptions() \
@@ -409,17 +427,6 @@ class DiffTest(SparkTest):
 
         with self.assertRaisesRegex(ValueError, "A comparator for column names col1, col2 exists already."):
             options.with_column_name_comparator(DiffComparators.default(), 'col1', 'col2')
-
-    def test_diff_comparators(self):
-        jvm = self.spark.sparkContext._jvm
-        self.assertIsNotNone(DiffComparators.default()._to_java(jvm))
-        self.assertIsNotNone(DiffComparators.nullSafeEqual()._to_java(jvm))
-        self.assertIsNotNone(DiffComparators.epsilon(0.01)._to_java(jvm))
-        self.assertIsNotNone(DiffComparators.string()._to_java(jvm))
-        if jvm.uk.co.gresearch.spark.diff.comparator.DurationDiffComparator.isSupportedBySpark():
-            self.assertIsNotNone(DiffComparators.duration('PT24H')._to_java(jvm))
-        self.assertIsNotNone(DiffComparators.map(IntegerType(), LongType())._to_java(jvm))
-        self.assertIsNotNone(DiffComparators.map(IntegerType(), LongType(), True)._to_java(jvm))
 
 
 if __name__ == '__main__':
