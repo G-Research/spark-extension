@@ -47,6 +47,12 @@ if TYPE_CHECKING:
 
 
 def _get_jvm(obj: Any) -> JVMView:
+    if obj is None:
+        if SparkContext._active_spark_context is None:
+            raise RuntimeError("This method must be called inside an active Spark session")
+        else:
+            raise ValueError("Cannot provide access to JVM from None")
+
     # helper method to assert the JVM is accessible and provide a useful error message
     if has_connect and isinstance(obj, (ConnectDataFrame, ConnectDataFrameReader, ConnectSparkSession)):
         raise RuntimeError('This feature is not supported for Spark Connect. Please use a classic Spark client. https://github.com/G-Research/spark-extension#spark-connect-server')

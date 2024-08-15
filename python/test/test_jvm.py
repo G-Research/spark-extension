@@ -84,7 +84,7 @@ class PackageTest(SparkTest):
             with self.subTest(label):
                 with self.assertRaises(RuntimeError) as e:
                     func("id")
-                self.assertEqual((EXPECTED_UNSUPPORTED_MESSAGE, ), e.exception.args)
+                self.assertEqual(("This method must be called inside an active Spark session", ), e.exception.args)
 
     @skipUnless(SparkTest.is_spark_connect, "Spark connect client tests")
     def test_histogram(self):
@@ -103,12 +103,12 @@ class PackageTest(SparkTest):
         with self.assertRaises(RuntimeError) as e:
             with job_description("job description"):
                 pass
-        self.assertEqual((EXPECTED_UNSUPPORTED_MESSAGE, ), e.exception.args)
+        self.assertEqual(("This method must be called inside an active Spark session", ), e.exception.args)
 
         with self.assertRaises(RuntimeError) as e:
             with append_description("job description"):
                 pass
-        self.assertEqual((EXPECTED_UNSUPPORTED_MESSAGE, ), e.exception.args)
+        self.assertEqual(("This method must be called inside an active Spark session", ), e.exception.args)
 
     @skipUnless(SparkTest.is_spark_connect, "Spark connect client tests")
     def test_create_temp_dir(self):
