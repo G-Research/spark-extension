@@ -45,7 +45,7 @@ if TYPE_CHECKING:
 def _get_jvm(obj: Any) -> JVMView:
     # helper method to assert the JVM is accessible and provide a useful error message
     if isinstance(obj, (ConnectDataFrame, ConnectDataFrameReader, ConnectSparkSession, ConnectSparkContext)):
-        raise RuntimeError('This feature is not supported for Spark Connect. Please use a classic Spark client.')
+        raise RuntimeError('This feature is not supported for Spark Connect. Please use a classic Spark client. https://github.com/G-Research/spark-extension#spark-connect-server')
     if isinstance(obj, DataFrame):
         return _get_jvm(obj._sc)
     if isinstance(obj, DataFrameReader):

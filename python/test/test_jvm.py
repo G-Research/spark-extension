@@ -22,7 +22,8 @@ from gresearch.spark.diff import *
 from gresearch.spark.parquet import *
 from spark_common import SparkTest
 
-EXPECTED_UNSUPPORTED_MESSAGE = "This feature is not supported for Spark Connect. Please use a classic Spark client."
+EXPECTED_UNSUPPORTED_MESSAGE = "This feature is not supported for Spark Connect. Please use a classic Spark client. " \
+                               "https://github.com/G-Research/spark-extension#spark-connect-server"
 
 
 class PackageTest(SparkTest):
