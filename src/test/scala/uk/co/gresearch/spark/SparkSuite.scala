@@ -764,8 +764,17 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
     }
   }
 
+  test("distinct prefix for") {
+    assert(distinctPrefixFor(Seq.empty[String]) === "_")
+    assert(distinctPrefixFor(Seq("a")) === "_")
+    assert(distinctPrefixFor(Seq("abc")) === "_")
+    assert(distinctPrefixFor(Seq("a", "bc", "def")) === "_")
+    assert(distinctPrefixFor(Seq("_a")) === "__")
+    assert(distinctPrefixFor(Seq("_abc")) === "__")
+    assert(distinctPrefixFor(Seq("a", "_bc", "__def")) === "___")
+  }
+
   test("Spark temp dir") {
-    import uk.co.gresearch.spark.createTemporaryDir
     val dir = createTemporaryDir("test")
     assert(Paths.get(dir).toAbsolutePath.toString.startsWith(SparkFiles.getRootDirectory()))
   }

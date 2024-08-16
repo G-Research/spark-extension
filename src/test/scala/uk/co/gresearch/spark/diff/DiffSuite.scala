@@ -28,6 +28,7 @@ case class Value(id: Int, value: Option[String])
 case class Value2(id: Int, seq: Option[Int], value: Option[String])
 case class Value3(id: Int, left_value: String, right_value: String, value: String)
 case class Value4(id: Int, diff: String)
+case class Value4b(id: Int, change: String)
 case class Value5(first_id: Int, id: String)
 case class Value6(id: Int, label: String)
 case class Value7(id: Int, value: Option[String], label: Option[String])
@@ -331,16 +332,6 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
 
   lazy val expectedDiffWith8and9up: Seq[(String, Value8, Value9up)] =
     expectedDiffWith8and9.map(t => t.copy(_3 = Option(t._3).map(v => Value9up(v.id, v.seq, v.value, v.info)).orNull))
-
-  test("distinct prefix for") {
-    assert(distinctPrefixFor(Seq.empty[String]) === "_")
-    assert(distinctPrefixFor(Seq("a")) === "_")
-    assert(distinctPrefixFor(Seq("abc")) === "_")
-    assert(distinctPrefixFor(Seq("a", "bc", "def")) === "_")
-    assert(distinctPrefixFor(Seq("_a")) === "__")
-    assert(distinctPrefixFor(Seq("_abc")) === "__")
-    assert(distinctPrefixFor(Seq("a", "_bc", "__def")) === "___")
-  }
 
   test("diff dataframe with duplicate columns") {
     val df = Seq(1).toDF("id").select($"id", $"id")
@@ -725,6 +716,11 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
       "The column prefixes 'a' and 'b', together with these non-id columns " +
         "must not produce the diff column name 'a_value': value"
     )
+    doTestRequirement(
+      left.diff(right, options.withDiffColumn("b_value"), "id"),
+      "The column prefixes 'a' and 'b', together with these non-id columns " +
+        "must not produce the diff column name 'b_value': value"
+    )
   }
 
   test("diff with left-side mode where non-id column would produce diff column name") {
@@ -739,7 +735,7 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
 
   test("diff with right-side mode where non-id column would produce diff column name") {
     val options = DiffOptions.default
-      .withDiffColumn("a_value")
+      .withDiffColumn("b_value")
       .withLeftColumnPrefix("a")
       .withRightColumnPrefix("b")
       .withDiffMode(DiffMode.RightSide)
@@ -758,6 +754,11 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
         left.diff(right, options, "id"),
         "The column prefixes 'A' and 'B', together with these non-id columns " +
           "must not produce the diff column name 'a_value': value"
+      )
+      doTestRequirement(
+        left.diff(right, options.withDiffColumn("b_value"), "id"),
+        "The column prefixes 'A' and 'B', together with these non-id columns " +
+          "must not produce the diff column name 'b_value': value"
       )
     }
   }
@@ -804,6 +805,57 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
       assert(actual.columns === expectedColumns)
       assert(actual.collect() === expectedDiff)
     }
+  }
+
+  test("diff with id column change in T") {
+    val left = Seq(Value4b(1, "change")).toDS()
+    val right = Seq(Value4b(1, "Change")).toDS()
+
+    val options = DiffOptions.default.withChangeColumn("change")
+
+    doTestRequirement(left.diff(right, options), "The id columns must not contain the change column name 'change': id, change")
+    doTestRequirement(left.diff(right, options, "change"), "The id columns must not contain the change column name 'change': change")
+    doTestRequirement(
+      left.diff(right, options, "change", "id"),
+      "The id columns must not contain the change column name 'change': change, id"
+    )
+
+    withSQLConf(SQLConf.CASE_SENSITIVE.key -> "false") {
+      doTestRequirement(
+        left
+          .withColumnRenamed("change", "Change")
+          .diff(right.withColumnRenamed("change", "Change"), options, "Change", "id"),
+        "The id columns must not contain the change column name 'change': Change, id"
+      )
+    }
+
+    withSQLConf(SQLConf.CASE_SENSITIVE.key -> "true") {
+      left
+        .withColumnRenamed("change", "Change")
+        .diff(right.withColumnRenamed("change", "Change"), options, "Change", "id")
+    }
+  }
+
+  test("diff with non-id column change in T") {
+    val left = Seq(Value4b(1, "change")).toDS()
+    val right = Seq(Value4b(1, "Change")).toDS()
+
+    val options = DiffOptions.default.withChangeColumn("change")
+
+    val actual = left.diff(right, options, "id")
+    val expectedColumns = Seq(
+      "diff",
+      "change",
+      "id",
+      "left_change",
+      "right_change"
+    )
+    val expectedDiff = Seq(
+      Row("C", Seq("change"), 1, "change", "Change")
+    )
+
+    assert(actual.columns === expectedColumns)
+    assert(actual.collect() === expectedDiff)
   }
 
   test("diff where non-id column produces change column name") {

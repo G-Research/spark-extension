@@ -11,20 +11,21 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+import contextlib
 import re
 
 from py4j.java_gateway import JavaObject
 from pyspark.sql import Row
 from pyspark.sql.functions import col, when, abs
-from pyspark.sql.types import IntegerType, LongType, StringType, DateType
+from pyspark.sql.types import IntegerType, LongType, StringType, DateType, StructField, StructType, FloatType, DoubleType
+from pyspark.testing.sqlutils import SQLTestUtils
 from unittest import skipIf
 
 from gresearch.spark.diff import Differ, DiffOptions, DiffMode, DiffComparators
 from spark_common import SparkTest
 
 
-class DiffTest(SparkTest):
+class DiffTest(SparkTest, SQLTestUtils):
 
     expected_diff = None
 
@@ -60,6 +61,25 @@ class DiffTest(SparkTest):
             diff_row('C', 5, 5.0, None, 'five', None),
             diff_row('I', 6, None, 6.0, None, 'six'),
             diff_row('D', 7, 7.0, None, 'seven', None),
+        ]
+        diff_change_row = Row('diff', 'change', 'id', 'left_val', 'right_val', 'left_label', 'right_label')
+        cls.expected_diff_change = [
+            diff_change_row('C', ['val'], 1, 1.0, 1.1, 'one', 'one'),
+            diff_change_row('C', ['label'], 2, 2.0, 2.0, 'two', 'Two'),
+            diff_change_row('N', [], 3, 3.0, 3.0, 'three', 'three'),
+            diff_change_row('C', ['val', 'label'], 4, None, 4.0, None, 'four'),
+            diff_change_row('C', ['val', 'label'], 5, 5.0, None, 'five', None),
+            diff_change_row('I', None, 6, None, 6.0, None, 'six'),
+            diff_change_row('D', None, 7, 7.0, None, 'seven', None),
+        ]
+        cls.expected_diff_reversed = [
+            diff_row('C', 1, 1.1, 1.0, 'one', 'one'),
+            diff_row('C', 2, 2.0, 2.0, 'Two', 'two'),
+            diff_row('N', 3, 3.0, 3.0, 'three', 'three'),
+            diff_row('C', 4, 4.0, None, 'four', None),
+            diff_row('C', 5, None, 5.0, None, 'five'),
+            diff_row('D', 6, 6.0, None, 'six', None),
+            diff_row('I', 7, None, 7.0, None, 'seven'),
         ]
         cls.expected_diff_ignored = [
             diff_row('C', 1, 1.0, 1.1, 'one', 'one'),
@@ -167,6 +187,299 @@ class DiffTest(SparkTest):
             diff_in_sparse_mode_row('I', 6, None, 6.0, None, 'six'),
             diff_in_sparse_mode_row('D', 7, 7.0, None, 'seven', None),
         ]
+
+    def test_check_schema(self):
+        @contextlib.contextmanager
+        def test_requirement(error_message: str):
+            with self.assertRaises(ValueError) as e:
+                yield
+            self.assertEqual((error_message, ), e.exception.args)
+
+        with self.subTest("duplicate columns"):
+            with test_requirement("The datasets have duplicate columns.\n"
+                                  "Left column names: id, id\nRight column names: id, id"):
+                self.left_df.select("id", "id").diff(self.right_df.select("id", "id"), "id")
+
+        with self.subTest("case-sensitive id column"):
+            with test_requirement("Some id columns do not exist: ID missing among id, val, label"):
+                with self.sql_conf({"spark.sql.caseSensitive": "true"}):
+                    self.left_df.diff(self.right_df, "ID")
+
+        left = self.left_df.withColumnRenamed("val", "diff")
+        right = self.right_df.withColumnRenamed("val", "diff")
+
+        with self.subTest("id column 'diff'"):
+            with test_requirement("The id columns must not contain the diff column name 'diff': id, diff, label"):
+                left.diff(right)
+            with test_requirement("The id columns must not contain the diff column name 'diff': diff"):
+                left.diff(right, "diff")
+            with test_requirement("The id columns must not contain the diff column name 'diff': diff, id"):
+                left.diff(right, "diff", "id")
+
+            with self.sql_conf({"spark.sql.caseSensitive": "false"}):
+                with test_requirement("The id columns must not contain the diff column name 'diff': Diff, id"):
+                    left.withColumnRenamed("diff", "Diff") \
+                        .diff(right.withColumnRenamed("diff", "Diff"), "Diff", "id")
+
+            with self.sql_conf({"spark.sql.caseSensitive": "true"}):
+                left.withColumnRenamed("diff", "Diff") \
+                    .diff(right.withColumnRenamed("diff", "Diff"), "Diff", "id")
+
+        with self.subTest("non-id column 'diff"):
+            actual = left.diff(right, "id")
+            expected_columns = ["diff", "id", "left_diff", "right_diff", "left_label", "right_label"]
+            self.assertEqual(actual.columns, expected_columns)
+            self.assertEqual(actual.collect(), self.expected_diff)
+
+        with self.subTest("non-id column produces diff column name"):
+            options = DiffOptions() \
+                .with_diff_column("a_val") \
+                .with_left_column_prefix("a") \
+                .with_right_column_prefix("b")
+
+            with test_requirement("The column prefixes 'a' and 'b', together with these non-id columns " +
+                                  "must not produce the diff column name 'a_val': val, label"):
+                self.left_df.diff_with_options(self.right_df, options, "id")
+            with test_requirement("The column prefixes 'a' and 'b', together with these non-id columns " +
+                                  "must not produce the diff column name 'b_val': val, label"):
+                self.left_df.diff_with_options(self.right_df, options.with_diff_column("b_val"), "id")
+
+        with self.subTest("non-id column would produce diff column name unless in left-side mode"):
+            options = DiffOptions() \
+                .with_diff_column("a_val") \
+                .with_left_column_prefix("a") \
+                .with_right_column_prefix("b") \
+                .with_diff_mode(DiffMode.LeftSide)
+            self.left_df.diff_with_options(self.right_df, options, "id")
+
+        with self.subTest("non-id column would produce diff column name unless in right-side mode"):
+            options = DiffOptions() \
+                .with_diff_column("b_val") \
+                .with_left_column_prefix("a") \
+                .with_right_column_prefix("b") \
+                .with_diff_mode(DiffMode.RightSide)
+            self.left_df.diff_with_options(self.right_df, options, "id")
+
+        with self.sql_conf({"spark.sql.caseSensitive": "false"}):
+            with self.subTest("case-insensitive non-id column produces diff column name"):
+                options = DiffOptions() \
+                    .with_diff_column("a_val") \
+                    .with_left_column_prefix("A") \
+                    .with_right_column_prefix("b")
+                with test_requirement("The column prefixes 'A' and 'b', together with these non-id columns " +
+                                      "must not produce the diff column name 'a_val': val, label"):
+                    self.left_df.diff_with_options(self.right_df, options, "id")
+
+            with self.subTest("case-insensitive non-id column would produce diff column name unless in left-side mode"):
+                options = DiffOptions() \
+                    .with_diff_column("a_val") \
+                    .with_left_column_prefix("A") \
+                    .with_right_column_prefix("B") \
+                    .with_diff_mode(DiffMode.LeftSide)
+                self.left_df.diff_with_options(self.right_df, options, "id")
+
+            with self.subTest("case-insensitive non-id column would produce diff column name unless in right-side mode"):
+                options = DiffOptions() \
+                    .with_diff_column("b_val") \
+                    .with_left_column_prefix("A") \
+                    .with_right_column_prefix("B") \
+                    .with_diff_mode(DiffMode.RightSide)
+                self.left_df.diff_with_options(self.right_df, options, "id")
+
+        with self.sql_conf({"spark.sql.caseSensitive": "true"}):
+            with self.subTest("case-sensitive non-id column produces non-conflicting diff column name"):
+                options = DiffOptions() \
+                    .with_diff_column("a_val") \
+                    .with_left_column_prefix("A") \
+                    .with_right_column_prefix("B") \
+
+                actual = self.left_df.diff_with_options(self.right_df, options, "id").orderBy("id")
+                expected_columns = ["a_val", "id", "A_val", "B_val", "A_label", "B_label"]
+                self.assertEqual(actual.columns, expected_columns)
+                self.assertEqual(actual.collect(), self.expected_diff)
+
+        left = self.left_df.withColumnRenamed("val", "change")
+        right = self.right_df.withColumnRenamed("val", "change")
+
+        with self.subTest("id column 'change'"):
+            options = DiffOptions() \
+                .with_change_column("change")
+            with test_requirement("The id columns must not contain the change column name 'change': id, change, label"):
+                left.diff_with_options(right, options)
+            with test_requirement("The id columns must not contain the change column name 'change': change"):
+                left.diff_with_options(right, options, "change")
+            with test_requirement("The id columns must not contain the change column name 'change': change, id"):
+                left.diff_with_options(right, options, "change", "id")
+
+            with self.sql_conf({"spark.sql.caseSensitive": "false"}):
+                with test_requirement("The id columns must not contain the change column name 'change': Change, id"):
+                    left.withColumnRenamed("change", "Change") \
+                        .diff_with_options(right.withColumnRenamed("change", "Change"), options, "Change", "id")
+
+            with self.sql_conf({"spark.sql.caseSensitive": "true"}):
+                left.withColumnRenamed("change", "Change") \
+                    .diff_with_options(right.withColumnRenamed("change", "Change"), options, "Change", "id")
+
+        with self.subTest("non-id column 'change"):
+            actual = left.diff_with_options(right, options, "id")
+            expected_columns = ["diff", "change", "id", "left_change", "right_change", "left_label", "right_label"]
+            diff_change_row = Row(*expected_columns)
+            expected_diff = [
+                diff_change_row('C', ['change'], 1, 1.0, 1.1, 'one', 'one'),
+                diff_change_row('C', ['label'], 2, 2.0, 2.0, 'two', 'Two'),
+                diff_change_row('N', [], 3, 3.0, 3.0, 'three', 'three'),
+                diff_change_row('C', ['change', 'label'], 4, None, 4.0, None, 'four'),
+                diff_change_row('C', ['change', 'label'], 5, 5.0, None, 'five', None),
+                diff_change_row('I', None, 6, None, 6.0, None, 'six'),
+                diff_change_row('D', None, 7, 7.0, None, 'seven', None),
+            ]
+            self.assertEqual(actual.columns, expected_columns)
+            self.assertEqual(actual.collect(), expected_diff)
+
+        with self.subTest("non-id column produces change column name"):
+            options = DiffOptions() \
+                .with_change_column("a_val") \
+                .with_left_column_prefix("a") \
+                .with_right_column_prefix("b")
+            with test_requirement("The column prefixes 'a' and 'b', together with these non-id columns " +
+                                  "must not produce the change column name 'a_val': val, label"):
+                self.left_df.diff_with_options(self.right_df, options, "id")
+
+        with self.sql_conf({"spark.sql.caseSensitive": "false"}):
+            with self.subTest("case-insensitive non-id column produces change column name"):
+                options = DiffOptions() \
+                    .with_change_column("a_val") \
+                    .with_left_column_prefix("A") \
+                    .with_right_column_prefix("B")
+                with test_requirement("The column prefixes 'A' and 'B', together with these non-id columns " +
+                                      "must not produce the change column name 'a_val': val, label"):
+                    self.left_df.diff_with_options(self.right_df, options, "id")
+
+        with self.sql_conf({"spark.sql.caseSensitive": "true"}):
+            with self.subTest("case-sensitive non-id column produces non-conflicting change column name"):
+                options = DiffOptions() \
+                    .with_change_column("a_val") \
+                    .with_left_column_prefix("A") \
+                    .with_right_column_prefix("B")
+                actual = self.left_df.diff_with_options(self.right_df, options, "id").orderBy("id")
+                expected_columns = ["diff", "a_val", "id", "A_val", "B_val", "A_label", "B_label"]
+                self.assertEqual(actual.columns, expected_columns)
+                self.assertEqual(actual.collect(), self.expected_diff_change)
+
+        left = self.left_df.select(col("id").alias("first_id"), col("val").alias("id"), "label")
+        right = self.right_df.select(col("id").alias("first_id"), col("val").alias("id"), "label")
+        with self.subTest("non-id column produces id column name"):
+            options = DiffOptions() \
+                .with_left_column_prefix("first") \
+                .with_right_column_prefix("second")
+            with test_requirement("The column prefixes 'first' and 'second', together with these non-id columns " +
+                                  "must not produce any id column name 'first_id': id, label"):
+                left.diff_with_options(right, options, "first_id")
+
+        with self.sql_conf({"spark.sql.caseSensitive": "false"}):
+            with self.subTest("case-insensitive non-id column produces id column name"):
+                options = DiffOptions() \
+                    .with_left_column_prefix("FIRST") \
+                    .with_right_column_prefix("SECOND")
+                with test_requirement("The column prefixes 'FIRST' and 'SECOND', together with these non-id columns " +
+                                      "must not produce any id column name 'first_id': id, label"):
+                    left.diff_with_options(right, options, "first_id")
+
+        with self.sql_conf({"spark.sql.caseSensitive": "true"}):
+            with self.subTest("case-sensitive non-id column produces non-conflicting id column name"):
+                options = DiffOptions() \
+                    .with_left_column_prefix("FIRST") \
+                    .with_right_column_prefix("SECOND")
+                actual = left.diff_with_options(right, options, "first_id").orderBy("first_id")
+                expected_columns = ["diff", "first_id", "FIRST_id", "SECOND_id", "FIRST_label", "SECOND_label"]
+                self.assertEqual(actual.columns, expected_columns)
+                self.assertEqual(actual.collect(), self.expected_diff)
+
+        with self.subTest("empty schema"):
+            with test_requirement("The schema must not be empty"):
+                self.left_df.select().diff(self.right_df.select())
+
+        with self.subTest("empty schema after ignored columns"):
+            with test_requirement("The schema except ignored columns must not be empty"):
+                self.left_df.select("id", "val").diff(self.right_df.select("id", "label"), [], ["id", "val", "label"])
+
+        with self.subTest("different types"):
+            with test_requirement("The datasets do not have the same schema.\n" +
+                                  "Left extra columns: val (double)\n" +
+                                  "Right extra columns: val (string)"):
+                self.left_df.select("id", "val").diff(self.right_df.select("id", col("label").alias("val")))
+
+        with self.subTest("ignore columns with different types"):
+            actual = self.left_df.select("id", "val").diff(self.right_df.select("id", col("label").alias("val")), [], ["val"])
+            expected_schema = [
+                ("diff", StringType()),
+                ("id", LongType()),
+                ("left_val", DoubleType()),
+                ("right_val", StringType()),
+            ]
+            self.assertEqual([(f.name, f.dataType) for f in actual.schema], expected_schema)
+
+        with self.subTest("diff with different column names"):
+            with test_requirement("The datasets do not have the same schema.\n" +
+                                  "Left extra columns: val (double)\n" +
+                                  "Right extra columns: label (string)"):
+                self.left_df.select("id", "val").diff(self.right_df.select("id", "label"))
+
+        left = self.left_df.select("id", "val", "label")
+        right = self.right_df.select(col("id").alias("ID"), col("val").alias("VaL"), "label")
+        with self.sql_conf({"spark.sql.caseSensitive": "false"}):
+            with self.subTest("case-insensitive column names"):
+                actual = left.diff(right, "id").orderBy("id")
+                reverse = right.diff(left, "id").orderBy("id")
+                self.assertEqual(actual.columns, ["diff", "id", "left_val", "right_VaL", "left_label", "right_label"])
+                self.assertEqual(actual.collect(), self.expected_diff)
+                self.assertEqual(reverse.columns, ["diff", "id", "left_VaL", "right_val", "left_label", "right_label"])
+                self.assertEqual(reverse.collect(), self.expected_diff_reversed)
+
+        with self.sql_conf({"spark.sql.caseSensitive": "true"}):
+            with self.subTest("case-sensitive column names"):
+                with test_requirement("The datasets do not have the same schema.\n" +
+                                      "Left extra columns: id (long), val (double)\n" +
+                                      "Right extra columns: ID (long), VaL (double)"):
+                    left.diff(right, "id")
+
+        with self.subTest("non-existing id column"):
+            with test_requirement("Some id columns do not exist: does not exists missing among id, val, label"):
+                self.left_df.diff(self.right_df, "does not exists")
+
+        with self.subTest("different number of columns"):
+            with test_requirement("The number of columns doesn't match.\n" +
+                                  "Left column names (2): id, val\n" +
+                                  "Right column names (3): id, val, label"):
+                self.left_df.select("id", "val").diff(self.right_df, "id")
+
+        with self.subTest("different number of columns after ignoring columns"):
+            left = self.left_df.select("id", "val", col("label").alias("meta"))
+            right = self.right_df.select("id", col("label").alias("seq"), "val")
+            with test_requirement("The number of columns doesn't match.\n" +
+                                  "Left column names except ignored columns (2): id, val\n" +
+                                  "Right column names except ignored columns (3): id, seq, val"):
+                left.diff(right, ["id"], ["meta"])
+
+        with self.subTest("diff column name in value columns in left-side diff mode"):
+            options = DiffOptions().with_diff_column("val").with_diff_mode(DiffMode.LeftSide)
+            with test_requirement("The left non-id columns must not contain the diff column name 'val': val, label"):
+                self.left_df.diff_with_options(self.right_df, options, "id")
+
+        with self.subTest("diff column name in value columns in right-side diff mode"):
+            options = DiffOptions().with_diff_column("val").with_diff_mode(DiffMode.RightSide)
+            with test_requirement("The right non-id columns must not contain the diff column name 'val': val, label"):
+                self.left_df.diff_with_options(self.right_df, options, "id")
+
+        with self.subTest("change column name in value columns in left-side diff mode"):
+            options = DiffOptions().with_change_column("val").with_diff_mode(DiffMode.LeftSide)
+            with test_requirement("The left non-id columns must not contain the change column name 'val': val, label"):
+                self.left_df.diff_with_options(self.right_df, options, "id")
+
+        with self.subTest("change column name in value columns in right-side diff mode"):
+            options = DiffOptions().with_change_column("val").with_diff_mode(DiffMode.RightSide)
+            with test_requirement("The right non-id columns must not contain the change column name 'val': val, label"):
+                self.left_df.diff_with_options(self.right_df, options, "id")
 
     def test_dataframe_diff(self):
         diff = self.left_df.diff(self.right_df, 'id').orderBy('id').collect()
@@ -316,6 +629,21 @@ class DiffTest(SparkTest):
                     expected = getattr(jmodes, attr)()
                     self.assertEqual(expected.toString(), actual.name, actual.name)
         self.assertIsNotNone(DiffMode.Default.name, jmodes.Default().toString())
+
+    def test_diff_options_comparator_for(self):
+        cmp1 = DiffComparators.default()
+        cmp2 = DiffComparators.epsilon(0.01)
+        cmp3 = DiffComparators.string()
+
+        opts = DiffOptions() \
+            .with_column_name_comparator(cmp1, "abc", "def") \
+            .with_data_type_comparator(cmp2, LongType()) \
+            .with_default_comparator(cmp3)
+
+        self.assertEqual(opts.comparator_for(StructField("abc", IntegerType())), cmp1)
+        self.assertEqual(opts.comparator_for(StructField("def", LongType())), cmp1)
+        self.assertEqual(opts.comparator_for(StructField("ghi", LongType())), cmp2)
+        self.assertEqual(opts.comparator_for(StructField("jkl", IntegerType())), cmp3)
 
     def test_diff_fluent_setters(self):
         cmp1 = DiffComparators.default()
