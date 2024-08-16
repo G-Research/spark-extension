@@ -2,27 +2,27 @@
 
 This project provides extensions to the [Apache Spark project](https://spark.apache.org/) in Scala and Python:
 
-**[Diff](DIFF.md)[*](#spark-connect-server):** A `diff` transformation and application for `Dataset`s that computes the differences between
+**[Diff](DIFF.md) [<sup>[*]</sup>](#spark-connect-server):** A `diff` transformation and application for `Dataset`s that computes the differences between
 two datasets, i.e. which rows to _add_, _delete_ or _change_ to get from one dataset to the other.
 
 **[SortedGroups](GROUPS.md):** A `groupByKey` transformation that groups rows by a key while providing
 a **sorted** iterator for each group. Similar to `Dataset.groupByKey.flatMapGroups`, but with order guarantees
 for the iterator.
 
-**[Histogram](HISTOGRAM.md)[*](#spark-connect-server):** A `histogram` transformation that computes the histogram DataFrame for a value column.
+**[Histogram](HISTOGRAM.md) [<sup>[*]</sup>](#spark-connect-server):** A `histogram` transformation that computes the histogram DataFrame for a value column.
 
-**[Global Row Number](ROW_NUMBER.md)[*](#spark-connect-server):** A `withRowNumbers` transformation that provides the global row number w.r.t.
+**[Global Row Number](ROW_NUMBER.md) [<sup>[*]</sup>](#spark-connect-server):** A `withRowNumbers` transformation that provides the global row number w.r.t.
 the current order of the Dataset, or any given order. In contrast to the existing SQL function `row_number`, which
 requires a window spec, this transformation provides the row number across the entire Dataset without scaling problems.
 
 **[Partitioned Writing](PARTITIONING.md):** The `writePartitionedBy` action writes your `Dataset` partitioned and
 efficiently laid out with a single operation.
 
-**[Inspect Parquet files](PARQUET.md)[*](#spark-connect-server):** The structure of Parquet files (the metadata, not the data stored in Parquet) can be inspected similar to [parquet-tools](https://pypi.org/project/parquet-tools/)
+**[Inspect Parquet files](PARQUET.md) [<sup>[*]</sup>](#spark-connect-server):** The structure of Parquet files (the metadata, not the data stored in Parquet) can be inspected similar to [parquet-tools](https://pypi.org/project/parquet-tools/)
 or [parquet-cli](https://pypi.org/project/parquet-cli/) by reading from a simple Spark data source.
 This simplifies identifying why some Parquet files cannot be split by Spark into scalable partitions.
 
-**[Install Python packages into PySpark job](PYSPARK-DEPS.md)[*](#spark-connect-server):** Install Python dependencies via PIP or Poetry programatically into your running PySpark job (PySpark ≥ 3.1.0):
+**[Install Python packages into PySpark job](PYSPARK-DEPS.md) [<sup>[*]</sup>](#spark-connect-server):** Install Python dependencies via PIP or Poetry programatically into your running PySpark job (PySpark ≥ 3.1.0):
 
 ```python
 # noinspection PyUnresolvedReferences
@@ -84,7 +84,7 @@ This is a handy way to ensure column names with special characters like dots (`.
 **Count null values:** `count_null(e: Column)`: an aggregation function like `count` that counts null values in column `e`.
 This is equivalent to calling `count(when(e.isNull, lit(1)))`.
 
-**.Net DateTime.Ticks[*](#spark-connect-server):** Convert .Net (C#, F#, Visual Basic) `DateTime.Ticks` into Spark timestamps, seconds and nanoseconds.
+**.Net DateTime.Ticks[<sup>[*]</sup>](#spark-connect-server):** Convert .Net (C#, F#, Visual Basic) `DateTime.Ticks` into Spark timestamps, seconds and nanoseconds.
 
 <details>
 <summary>Available methods:</summary>
@@ -117,7 +117,7 @@ unix_epoch_nanos_to_dotnet_ticks(column_or_name)
 ```
 </details>
 
-**Spark temporary directory[*](#spark-connect-server)**: Create a temporary directory that will be removed on Spark application shutdown.
+**Spark temporary directory[<sup>[*]</sup>](#spark-connect-server)**: Create a temporary directory that will be removed on Spark application shutdown.
 
 <details>
 <summary>Examples:</summary>
@@ -138,7 +138,7 @@ dir = spark.create_temporary_dir("prefix")
 ```
 </details>
 
-**Spark job description[*](#spark-connect-server):** Set Spark job description for all Spark jobs within a context.
+**Spark job description[<sup>[*]</sup>](#spark-connect-server):** Set Spark job description for all Spark jobs within a context.
 
 <details>
 <summary>Examples:</summary>
