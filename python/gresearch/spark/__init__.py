@@ -425,12 +425,18 @@ if has_connect:
     ConnectDataFrame.with_row_numbers = with_row_numbers
 
 
+def session(self: DataFrame) -> SparkSession:
+    return self.sparkSession if hasattr(self, 'sparkSession') else self.sql_ctx.sparkSession
+
+
 def session_or_ctx(self: DataFrame) -> Union[SparkSession, SQLContext]:
     return self.sparkSession if hasattr(self, 'sparkSession') else self.sql_ctx
 
 
+DataFrame.session = session
 DataFrame.session_or_ctx = session_or_ctx
 if has_connect:
+    ConnectDataFrame.session = session
     ConnectDataFrame.session_or_ctx = session_or_ctx
 
 
