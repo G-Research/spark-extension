@@ -254,3 +254,7 @@ spark.read.parquet_blocks("/path/to/parquet", parallelism=100)
 spark.read.parquet_block_columns("/path/to/parquet", parallelism=100)
 spark.read.parquet_partitions("/path/to/parquet", parallelism=100)
 ```
+
+## Known Issues
+
+Note that this feature is not supported in Python when connected with a [Spark Connect server](README.md#spark-connect-server).

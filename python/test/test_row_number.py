@@ -12,12 +12,15 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+from unittest import skipIf
+
 from pyspark.storagelevel import StorageLevel
 
 from spark_common import SparkTest
 import gresearch.spark
 
 
+@skipIf(SparkTest.is_spark_connect, "Spark Connect does not provide access to the JVM, required by RowNumber")
 class RowNumberTest(SparkTest):
 
     @classmethod

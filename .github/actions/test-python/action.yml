@@ -15,6 +15,9 @@ inputs:
   spark-compat-version:
     description: Spark compatibility version, e.g. 3.4
     required: true
+  hadoop-version:
+    description: Hadoop version, e.g. 2.7 or 2
+    required: true
   scala-compat-version:
     description: Scala compatibility version, e.g. 2.12
     required: true
@@ -39,6 +42,26 @@ runs:
     with:
       name: Binaries-${{ inputs.spark-compat-version }}-${{ inputs.scala-compat-version }}
       path: .
+
+  - name: Cache Spark Binaries
+    uses: actions/cache@v4
+    if: inputs.scala-compat-version == '2.12' && ! contains(inputs.spark-version, '-SNAPSHOT')
+    with:
+      path: ~/spark
+      key: ${{ runner.os }}-spark-binaries-${{ inputs.spark-version }}-${{ inputs.scala-compat-version }}
+
+  - name: Setup Spark Binaries
+    if: inputs.scala-compat-version == '2.12' && ! contains(inputs.spark-version, '-SNAPSHOT')
+    env:
+      SPARK_PACKAGE: spark-${{ inputs.spark-version }}/spark-${{ inputs.spark-version }}-bin-hadoop${{ inputs.hadoop-version }}${{ inputs.scala-compat-version == '2.13' && '-scala2.13' || '' }}.tgz
+    run: |
+      if [[ ! -e ~/spark ]]
+      then
+        wget --progress=dot:giga "https://www.apache.org/dyn/closer.lua/spark/${SPARK_PACKAGE}?action=download" -O - | tar -xzC "${{ runner.temp }}"
+        archive=$(basename "${SPARK_PACKAGE}") bash -c "mv -v "${{ runner.temp }}/\${archive/%.tgz/}" ~/spark"
+      fi
+      echo "SPARK_BIN_HOME=$(cd ~/spark; pwd)" >> $GITHUB_ENV
+    shell: bash
 
   - name: Cache Maven packages
     if: github.event_name != 'merge_group'
@@ -105,6 +128,34 @@ runs:
     run: mvn --batch-mode --update-snapshots install -Dspotless.check.skip -DskipTests -Dmaven.test.skip=true -Dgpg.skip
     shell: bash
 
+  - name: Start Spark Connect
+    id: spark-connect
+    if: (inputs.spark-compat-version == '3.4' || inputs.spark-compat-version == '3.5' || startsWith('4.', inputs.spark-compat-version)) && inputs.scala-compat-version == '2.12' && ! contains(inputs.spark-version, '-SNAPSHOT')
+    run: |
+      $SPARK_BIN_HOME/sbin/start-connect-server.sh --packages org.apache.spark:spark-connect_${{ inputs.scala-compat-version }}:${{ inputs.spark-version }}
+    shell: bash
+
+  - name: Python Unit Tests (Spark Connect)
+    if: steps.spark-connect.outcome == 'success'
+    env:
+      PYTHONPATH: python:python/test
+      TEST_SPARK_CONNECT_SERVER: sc://localhost:15002
+    run: |
+      pip install pyspark[connect]
+      python -m pytest python/test --junit-xml test-results-connect/pytest-$(date +%s.%N)-$RANDOM.xml
+    shell: bash
+
+  - name: Stop Spark Connect
+    if: always() && steps.spark-connect.outcome == 'success'
+    run: |
+      $SPARK_BIN_HOME/sbin/stop-connect-server.sh
+      echo "::group::Spark Connect server log"
+      # thoughs started in $SPARK_BIN_HOME/sbin, logs go to $SPARK_HOME/logs
+      ls -lah $SPARK_HOME/logs || true
+      cat $SPARK_HOME/logs/spark-*-org.apache.spark.sql.connect.service.SparkConnectServer-*.out || true
+      echo "::endgroup::"
+    shell: bash
+
   - name: Python Integration Tests
     env:
       PYTHONPATH: python:python/test
@@ -112,7 +163,7 @@ runs:
       find python/test -name 'test*.py' > tests
       while read test
       do
-        if ! $SPARK_HOME/bin/spark-submit --master "local[2]" --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION "$test" test-results
+        if ! $SPARK_HOME/bin/spark-submit --master "local[2]" --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION "$test" test-results-submit
         then
           state="fail"
         fi
@@ -135,7 +186,10 @@ runs:
     uses: actions/upload-artifact@v4
     with:
       name: Python Test Results (Spark ${{ inputs.spark-version }} Scala ${{ inputs.scala-version }} Python ${{ inputs.python-version }})
-      path: test-results/*.xml
+      path: |
+        test-results/*.xml
+        test-results-submit/*.xml
+        test-results-connect/*.xml
 
 branding:
   icon: 'check-circle'

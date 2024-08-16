@@ -12,6 +12,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+from unittest import skipIf
+
 from pyspark import TaskContext, SparkContext
 from typing import Optional
 
@@ -19,6 +21,7 @@ from spark_common import SparkTest
 from gresearch.spark import job_description, append_job_description
 
 
+@skipIf(SparkTest.is_spark_connect, "Spark Connect does not provide access to the JVM, required by JobDescription")
 class JobDescriptionTest(SparkTest):
 
     def _assert_job_description(self, expected: Optional[str]):

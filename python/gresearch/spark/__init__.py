@@ -27,15 +27,44 @@ from py4j.java_gateway import JVMView, JavaObject
 from pyspark import __version__
 from pyspark.context import SparkContext
 from pyspark.files import SparkFiles
-from pyspark.sql import DataFrame
+from pyspark.sql import DataFrame, DataFrameReader, SQLContext
 from pyspark.sql.column import Column, _to_java_column
 from pyspark.sql.context import SQLContext
 from pyspark.sql.functions import col, count, lit, when
 from pyspark.sql.session import SparkSession
 from pyspark.storagelevel import StorageLevel
 
+try:
+    from pyspark.sql.connect.dataframe import DataFrame as ConnectDataFrame
+    from pyspark.sql.connect.readwriter import DataFrameReader as ConnectDataFrameReader
+    from pyspark.sql.connect.session import SparkSession as ConnectSparkSession
+    has_connect = True
+except ImportError:
+    has_connect = False
+
 if TYPE_CHECKING:
     from pyspark.sql._typing import ColumnOrName
+
+
+def _get_jvm(obj: Any) -> JVMView:
+    if obj is None:
+        if SparkContext._active_spark_context is None:
+            raise RuntimeError("This method must be called inside an active Spark session")
+        else:
+            raise ValueError("Cannot provide access to JVM from None")
+
+    # helper method to assert the JVM is accessible and provide a useful error message
+    if has_connect and isinstance(obj, (ConnectDataFrame, ConnectDataFrameReader, ConnectSparkSession)):
+        raise RuntimeError('This feature is not supported for Spark Connect. Please use a classic Spark client. https://github.com/G-Research/spark-extension#spark-connect-server')
+    if isinstance(obj, DataFrame):
+        return _get_jvm(obj._sc)
+    if isinstance(obj, DataFrameReader):
+        return _get_jvm(obj._spark)
+    if isinstance(obj, SparkSession):
+        return _get_jvm(obj.sparkContext)
+    if isinstance(obj, (SparkContext, SQLContext)):
+        return obj._jvm
+    raise RuntimeError(f'Unsupported class: {type(obj)}')
 
 
 def _to_seq(jvm: JVMView, list: List[Any]) -> JavaObject:
@@ -72,11 +101,8 @@ def dotnet_ticks_to_timestamp(tick_column: Union[str, Column]) -> Column:
     if not isinstance(tick_column, (str, Column)):
         raise ValueError(f"Given column must be a column name (str) or column instance (Column): {type(tick_column)}")
 
-    sc = SparkContext._active_spark_context
-    if sc is None or sc._jvm is None:
-        raise RuntimeError("This method must be called inside an active Spark session")
-
-    func = sc._jvm.uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$").dotNetTicksToTimestamp
+    jvm = _get_jvm(SparkContext._active_spark_context)
+    func = jvm.uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$").dotNetTicksToTimestamp
     return Column(func(_to_java_column(tick_column)))
 
 
@@ -105,11 +131,8 @@ def dotnet_ticks_to_unix_epoch(tick_column: Union[str, Column]) -> Column:
     if not isinstance(tick_column, (str, Column)):
         raise ValueError(f"Given column must be a column name (str) or column instance (Column): {type(tick_column)}")
 
-    sc = SparkContext._active_spark_context
-    if sc is None or sc._jvm is None:
-        raise RuntimeError("This method must be called inside an active Spark session")
-
-    func = sc._jvm.uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$").dotNetTicksToUnixEpoch
+    jvm = _get_jvm(SparkContext._active_spark_context)
+    func = jvm.uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$").dotNetTicksToUnixEpoch
     return Column(func(_to_java_column(tick_column)))
 
 
@@ -138,11 +161,8 @@ def dotnet_ticks_to_unix_epoch_nanos(tick_column: Union[str, Column]) -> Column:
     if not isinstance(tick_column, (str, Column)):
         raise ValueError(f"Given column must be a column name (str) or column instance (Column): {type(tick_column)}")
 
-    sc = SparkContext._active_spark_context
-    if sc is None or sc._jvm is None:
-        raise RuntimeError("This method must be called inside an active Spark session")
-
-    func = sc._jvm.uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$").dotNetTicksToUnixEpochNanos
+    jvm = _get_jvm(SparkContext._active_spark_context)
+    func = jvm.uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$").dotNetTicksToUnixEpochNanos
     return Column(func(_to_java_column(tick_column)))
 
 
@@ -170,11 +190,8 @@ def timestamp_to_dotnet_ticks(timestamp_column: Union[str, Column]) -> Column:
     if not isinstance(timestamp_column, (str, Column)):
         raise ValueError(f"Given column must be a column name (str) or column instance (Column): {type(timestamp_column)}")
 
-    sc = SparkContext._active_spark_context
-    if sc is None or sc._jvm is None:
-        raise RuntimeError("This method must be called inside an active Spark session")
-
-    func = sc._jvm.uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$").timestampToDotNetTicks
+    jvm = _get_jvm(SparkContext._active_spark_context)
+    func = jvm.uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$").timestampToDotNetTicks
     return Column(func(_to_java_column(timestamp_column)))
 
 
@@ -204,11 +221,8 @@ def unix_epoch_to_dotnet_ticks(unix_column: Union[str, Column]) -> Column:
     if not isinstance(unix_column, (str, Column)):
         raise ValueError(f"Given column must be a column name (str) or column instance (Column): {type(unix_column)}")
 
-    sc = SparkContext._active_spark_context
-    if sc is None or sc._jvm is None:
-        raise RuntimeError("This method must be called inside an active Spark session")
-
-    func = sc._jvm.uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$").unixEpochToDotNetTicks
+    jvm = _get_jvm(SparkContext._active_spark_context)
+    func = jvm.uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$").unixEpochToDotNetTicks
     return Column(func(_to_java_column(unix_column)))
 
 
@@ -239,11 +253,8 @@ def unix_epoch_nanos_to_dotnet_ticks(unix_column: Union[str, Column]) -> Column:
     if not isinstance(unix_column, (str, Column)):
         raise ValueError(f"Given column must be a column name (str) or column instance (Column): {type(unix_column)}")
 
-    sc = SparkContext._active_spark_context
-    if sc is None or sc._jvm is None:
-        raise RuntimeError("This method must be called inside an active Spark session")
-
-    func = sc._jvm.uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$").unixEpochNanosToDotNetTicks
+    jvm = _get_jvm(SparkContext._active_spark_context)
+    func = jvm.uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$").unixEpochNanosToDotNetTicks
     return Column(func(_to_java_column(unix_column)))
 
 
@@ -281,7 +292,7 @@ def histogram(self: DataFrame,
         else:
             raise ValueError('thresholds must be int or floats: {}'.format(t))
 
-    jvm = self._sc._jvm
+    jvm = _get_jvm(self)
     col = jvm.org.apache.spark.sql.functions.col
     value_column = col(value_column)
     aggregate_columns = [col(column) for column in aggregate_columns]
@@ -292,6 +303,8 @@ def histogram(self: DataFrame,
 
 
 DataFrame.histogram = histogram
+if has_connect:
+    ConnectDataFrame.histogram = histogram
 
 
 class UnpersistHandle:
@@ -307,7 +320,7 @@ class UnpersistHandle:
 
 
 def unpersist_handle(self: SparkSession) -> UnpersistHandle:
-    jvm = self._sc._jvm
+    jvm = _get_jvm(self)
     handle = jvm.uk.co.gresearch.spark.UnpersistHandle()
     return UnpersistHandle(handle)
 
@@ -321,7 +334,7 @@ def with_row_numbers(self: DataFrame,
                      row_number_column_name: str = "row_number",
                      order: Union[str, Column, List[Union[str, Column]]] = [],
                      ascending: Union[bool, List[bool]] = True) -> DataFrame:
-    jvm = self._sc._jvm
+    jvm = _get_jvm(self)
     jsl = self._sc._getJavaStorageLevel(storage_level)
     juho = jvm.uk.co.gresearch.spark.UnpersistHandle
     juh = unpersist_handle._handle if unpersist_handle else juho.Noop()
@@ -338,17 +351,23 @@ def with_row_numbers(self: DataFrame,
     return DataFrame(jdf, self.session_or_ctx())
 
 
+DataFrame.with_row_numbers = with_row_numbers
+if has_connect:
+    ConnectDataFrame.with_row_numbers = with_row_numbers
+
+
 def session_or_ctx(self: DataFrame) -> Union[SparkSession, SQLContext]:
     return self.sparkSession if hasattr(self, 'sparkSession') else self.sql_ctx
 
 
-DataFrame.with_row_numbers = with_row_numbers
 DataFrame.session_or_ctx = session_or_ctx
+if has_connect:
+    ConnectDataFrame.session_or_ctx = session_or_ctx
 
 
 def set_description(description: str, if_not_set: bool = False):
     context = SparkContext._active_spark_context
-    jvm = context._jvm
+    jvm = _get_jvm(context)
     spark_package = jvm.uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$")
     return spark_package.setJobDescription(description, if_not_set, context._jsc.sc())
 
@@ -384,7 +403,7 @@ def job_description(description: str, if_not_set: bool = False):
 
 def append_description(extra_description: str, separator: str = " - "):
     context = SparkContext._active_spark_context
-    jvm = context._jvm
+    jvm = _get_jvm(context)
     spark_package = jvm.uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$")
     return spark_package.appendJobDescription(extra_description, separator, context._jsc.sc())
 
@@ -424,20 +443,24 @@ def create_temporary_dir(spark: Union[SparkSession, SparkContext], prefix: str) 
     :param prefix: prefix string of temporary directory name
     :return: absolute path of temporary directory
     """
-    if isinstance(spark, SparkSession):
-        spark = spark.sparkContext
-
-    root_dir = spark._jvm.org.apache.spark.SparkFiles.getRootDirectory()
+    jvm = _get_jvm(spark)
+    root_dir = jvm.org.apache.spark.SparkFiles.getRootDirectory()
     return tempfile.mkdtemp(prefix=prefix, dir=root_dir)
 
 
 SparkSession.create_temporary_dir = create_temporary_dir
 SparkContext.create_temporary_dir = create_temporary_dir
 
+if has_connect:
+    ConnectSparkSession.create_temporary_dir = create_temporary_dir
+
 
 def install_pip_package(spark: Union[SparkSession, SparkContext], *package_or_pip_option: str) -> None:
     if __version__.startswith('2.') or __version__.startswith('3.0.'):
         raise NotImplementedError(f'Not supported for PySpark __version__')
+
+    # just here to assert JVM is accessible
+    _get_jvm(spark)
 
     if isinstance(spark, SparkSession):
         spark = spark.sparkContext
@@ -465,6 +488,9 @@ def install_pip_package(spark: Union[SparkSession, SparkContext], *package_or_pi
 SparkSession.install_pip_package = install_pip_package
 SparkContext.install_pip_package = install_pip_package
 
+if has_connect:
+    ConnectSparkSession.install_pip_package = install_pip_package
+
 
 def install_poetry_project(spark: Union[SparkSession, SparkContext],
                            *project: str,
@@ -477,6 +503,9 @@ def install_poetry_project(spark: Union[SparkSession, SparkContext],
     # and we want to fail quickly here
     if __version__.startswith('2.') or __version__.startswith('3.0.'):
         raise NotImplementedError(f'Not supported for PySpark __version__')
+
+    # just here to assert JVM is accessible
+    _get_jvm(spark)
 
     if isinstance(spark, SparkSession):
         spark = spark.sparkContext
@@ -538,3 +567,6 @@ def install_poetry_project(spark: Union[SparkSession, SparkContext],
 
 SparkSession.install_poetry_project = install_poetry_project
 SparkContext.install_poetry_project = install_poetry_project
+
+if has_connect:
+    ConnectSparkSession.install_poetry_project = install_poetry_project

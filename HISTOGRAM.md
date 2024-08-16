@@ -55,3 +55,5 @@ In Python, call:
     import gresearch.spark
 
     df.histogram([100, 200], 'user').orderBy('user')
+
+Note that this feature is not supported in Python when connected with a [Spark Connect server](README.md#spark-connect-server).
