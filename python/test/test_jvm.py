@@ -16,8 +16,10 @@ from unittest import skipIf, skipUnless
 
 from pyspark.sql.functions import sum
 
-from gresearch.spark import _get_jvm, dotnet_ticks_to_timestamp, dotnet_ticks_to_unix_epoch, dotnet_ticks_to_unix_epoch_nanos, \
-    timestamp_to_dotnet_ticks, unix_epoch_to_dotnet_ticks, unix_epoch_nanos_to_dotnet_ticks, histogram, job_description, append_description
+from gresearch.spark import _get_jvm, \
+    dotnet_ticks_to_timestamp, dotnet_ticks_to_unix_epoch, dotnet_ticks_to_unix_epoch_nanos, \
+    timestamp_to_dotnet_ticks, unix_epoch_to_dotnet_ticks, unix_epoch_nanos_to_dotnet_ticks, \
+    histogram, job_description, append_description
 from gresearch.spark.diff import *
 from gresearch.spark.parquet import *
 from spark_common import SparkTest
@@ -57,6 +59,21 @@ class PackageTest(SparkTest):
             with self.assertRaises(RuntimeError) as e:
                 _get_jvm(object())
             self.assertEqual(("Unsupported class: <class 'object'>", ), e.exception.args)
+
+    @skipIf(SparkTest.is_spark_connect, "Spark classic client tests")
+    def test_get_jvm_check_java_pkg_is_installed(self):
+        from gresearch import spark
+
+        is_installed = spark._java_pkg_is_installed
+
+        try:
+            spark._java_pkg_is_installed = False
+            with self.assertRaises(RuntimeError) as e:
+                _get_jvm(self.spark)
+            self.assertEqual(("Java / Scala package not found! You need to add the Maven spark-extension package "
+                              "to your PySpark environment: https://github.com/G-Research/spark-extension#python", ), e.exception.args)
+        finally:
+            spark._java_pkg_is_installed = is_installed
 
     @skipUnless(SparkTest.is_spark_connect, "Spark connect client tests")
     def test_diff(self):

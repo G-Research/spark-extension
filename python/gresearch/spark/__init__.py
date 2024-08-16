@@ -45,26 +45,56 @@ except ImportError:
 if TYPE_CHECKING:
     from pyspark.sql._typing import ColumnOrName
 
+_java_pkg_is_installed: Optional[bool] = None
+
+
+def _check_java_pkg_is_installed(jvm: JVMView) -> bool:
+    """Check that the Java / Scala package is installed."""
+    try:
+        jvm.uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$").VersionString()
+        return True
+    except TypeError as e:
+        print(e.args)
+        return False
+    except:
+        # any other exception indicate some problem, be safe and do not fail fast here
+        return True
+
 
 def _get_jvm(obj: Any) -> JVMView:
+    """
+    Provides easy access to the JVMView provided by Spark, and raises meaningful error message if that is not available.
+    Also checks that the Java / Scala package is accessible via this JVMView.
+    """
     if obj is None:
         if SparkContext._active_spark_context is None:
             raise RuntimeError("This method must be called inside an active Spark session")
         else:
             raise ValueError("Cannot provide access to JVM from None")
 
-    # helper method to assert the JVM is accessible and provide a useful error message
     if has_connect and isinstance(obj, (ConnectDataFrame, ConnectDataFrameReader, ConnectSparkSession)):
-        raise RuntimeError('This feature is not supported for Spark Connect. Please use a classic Spark client. https://github.com/G-Research/spark-extension#spark-connect-server')
+        raise RuntimeError('This feature is not supported for Spark Connect. Please use a classic Spark client. '
+                           'https://github.com/G-Research/spark-extension#spark-connect-server')
+
     if isinstance(obj, DataFrame):
-        return _get_jvm(obj._sc)
-    if isinstance(obj, DataFrameReader):
-        return _get_jvm(obj._spark)
-    if isinstance(obj, SparkSession):
-        return _get_jvm(obj.sparkContext)
-    if isinstance(obj, (SparkContext, SQLContext)):
-        return obj._jvm
-    raise RuntimeError(f'Unsupported class: {type(obj)}')
+        jvm = _get_jvm(obj._sc)
+    elif isinstance(obj, DataFrameReader):
+        jvm = _get_jvm(obj._spark)
+    elif isinstance(obj, SparkSession):
+        jvm = _get_jvm(obj.sparkContext)
+    elif isinstance(obj, (SparkContext, SQLContext)):
+        jvm = obj._jvm
+    else:
+        raise RuntimeError(f'Unsupported class: {type(obj)}')
+
+    global _java_pkg_is_installed
+    if _java_pkg_is_installed is None:
+        _java_pkg_is_installed = _check_java_pkg_is_installed(jvm)
+    if not _java_pkg_is_installed:
+        raise RuntimeError("Java / Scala package not found! You need to add the Maven spark-extension package "
+                           "to your PySpark environment: https://github.com/G-Research/spark-extension#python")
+
+    return jvm
 
 
 def _to_seq(jvm: JVMView, list: List[Any]) -> JavaObject:
