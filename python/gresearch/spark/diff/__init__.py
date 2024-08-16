@@ -453,7 +453,7 @@ class Differ:
         """
         self._check_schema(left, right, id_columns, ignore_columns)
 
-        case_sensitive = left.session.conf.get("spark.sql.caseSensitive") == "true"
+        case_sensitive = left.session().conf.get("spark.sql.caseSensitive") == "true"
         columns = list_diff_case_sensitivity(left.columns, ignore_columns, case_sensitive)
         pk_columns = id_columns or columns
         value_columns = list_diff_case_sensitivity(columns, pk_columns, case_sensitive)
