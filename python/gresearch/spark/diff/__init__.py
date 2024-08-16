@@ -332,7 +332,7 @@ class Differ:
         :return: the diff DataFrame
         :rtype DataFrame
         """
-        if len(id_or_ignore_columns) == 2 and all([isinstance(lst, Iterable) for lst in id_or_ignore_columns]):
+        if len(id_or_ignore_columns) == 2 and all([isinstance(lst, Iterable) and not isinstance(lst, str) for lst in id_or_ignore_columns]):
             id_columns, ignore_columns = id_or_ignore_columns
         else:
             id_columns, ignore_columns = (id_or_ignore_columns, [])
@@ -386,14 +386,114 @@ class Differ:
             .alias(self._options.right_column_prefix)
         return diff.select(diff_column, left_struct, right_struct)
 
-    def _check_schema(self, left: DataFrame, right: DataFrame, id_columns: List[str], ignore_columns: List[str]):
-        pass
+    def _check_schema(self, left: DataFrame, right: DataFrame, id_columns: List[str], ignore_columns: List[str], case_sensitive: bool):
+        def require(result: bool, message: str) -> None:
+            if not result:
+                raise ValueError(message)
+
+        require(
+            len(left.columns) == len(set(left.columns)) and len(right.columns) == len(set(right.columns)),
+            f"The datasets have duplicate columns.\n" +
+            f"Left column names: {', '.join(left.columns)}\n" +
+            f"Right column names: {', '.join(right.columns)}")
+
+        left_non_ignored = list_diff_case_sensitivity(left.columns, ignore_columns, case_sensitive)
+        right_non_ignored = list_diff_case_sensitivity(right.columns, ignore_columns, case_sensitive)
+
+        except_ignored_columns_msg = ' except ignored columns' if ignore_columns else ''
+
+        require(
+            len(left_non_ignored) == len(right_non_ignored),
+            "The number of columns doesn't match.\n" +
+            f"Left column names{except_ignored_columns_msg} ({len(left_non_ignored)}): {', '.join(left_non_ignored)}\n" +
+            f"Right column names{except_ignored_columns_msg} ({len(right_non_ignored)}): {', '.join(right_non_ignored)}"
+        )
+
+        require(len(left_non_ignored) > 0, f"The schema{except_ignored_columns_msg} must not be empty")
+
+        # column types must match but we ignore the nullability of columns
+        left_fields = {handle_configured_case_sensitivity(field.name, case_sensitive): field.dataType
+                       for field in left.schema.fields
+                       if not list_contains_case_sensitivity(ignore_columns, field.name, case_sensitive)}
+        right_fields = {handle_configured_case_sensitivity(field.name, case_sensitive): field.dataType
+                        for field in right.schema.fields
+                        if not list_contains_case_sensitivity(ignore_columns, field.name, case_sensitive)}
+        left_extra_schema = set(left_fields.items()) - set(right_fields.items())
+        right_extra_schema = set(right_fields.items()) - set(left_fields.items())
+        require(
+            len(left_extra_schema) == 0 and len(right_extra_schema) == 0,
+            "The datasets do not have the same schema.\n" +
+            f"Left extra columns: {', '.join([f'{f} ({t.typeName()})' for f, t in sorted(list(left_extra_schema))])}\n" +
+            f"Right extra columns: {', '.join([f'{f} ({t.typeName()})' for f, t in sorted(list(right_extra_schema))])}")
+
+        columns = left_non_ignored
+        pk_columns = id_columns or columns
+        non_pk_columns = list_diff_case_sensitivity(columns, pk_columns, case_sensitive)
+        missing_id_columns = list_diff_case_sensitivity(pk_columns, columns, case_sensitive)
+        require(
+            len(missing_id_columns) == 0,
+            f"Some id columns do not exist: {', '.join(missing_id_columns)} missing among {', '.join(columns)}"
+        )
+
+        missing_ignore_columns = list_diff_case_sensitivity(ignore_columns, left.columns + right.columns, case_sensitive)
+        require(
+            len(missing_ignore_columns) == 0,
+            f"Some ignore columns do not exist: {', '.join(missing_ignore_columns)} " +
+            f"missing among {', '.join(sorted(list(set(left_non_ignored + right_non_ignored))))}"
+        )
+
+        require(
+            not list_contains_case_sensitivity(pk_columns, self._options.diff_column, case_sensitive),
+            f"The id columns must not contain the diff column name '{self._options.diff_column}': {', '.join(pk_columns)}"
+        )
+        require(
+            self._options.change_column is None or not list_contains_case_sensitivity(pk_columns, self._options.change_column, case_sensitive),
+            f"The id columns must not contain the change column name '{self._options.change_column}': {', '.join(pk_columns)}"
+        )
+        diff_value_columns = self._get_diff_value_columns(pk_columns, non_pk_columns, left, right, ignore_columns, case_sensitive)
+        diff_value_columns = {n for n, t in diff_value_columns}
+
+        if self._options.diff_mode in [DiffMode.LeftSide, DiffMode.RightSide]:
+            require(
+                not list_contains_case_sensitivity(diff_value_columns, self._options.diff_column, case_sensitive),
+                f"The {'left' if self._options.diff_mode == DiffMode.LeftSide else 'right'} " +
+                f"non-id columns must not contain the diff column name '{self._options.diff_column}': " +
+                f"{', '.join(list_diff_case_sensitivity((left if self._options.diff_mode == DiffMode.LeftSide else right).columns, id_columns, case_sensitive))}"
+            )
+
+            require(
+                self._options.change_column is None or not list_contains_case_sensitivity(diff_value_columns, self._options.change_column, case_sensitive),
+                f"The {'left' if self._options.diff_mode == DiffMode.LeftSide else 'right'} " +
+                f"non-id columns must not contain the change column name '{self._options.change_column}': " +
+                f"{', '.join(list_diff_case_sensitivity((left if self._options.diff_mode == DiffMode.LeftSide else right).columns, id_columns, case_sensitive))}"
+            )
+        else:
+            require(
+                not list_contains_case_sensitivity(diff_value_columns, self._options.diff_column, case_sensitive),
+                f"The column prefixes '{self._options.left_column_prefix}' and '{self._options.right_column_prefix}', " +
+                f"together with these non-id columns must not produce the diff column name '{self._options.diff_column}': " +
+                f"{', '.join(non_pk_columns)}"
+            )
+
+            require(
+                self._options.change_column is None or not list_contains_case_sensitivity(diff_value_columns, self._options.change_column, case_sensitive),
+                f"The column prefixes '{self._options.left_column_prefix}' and '{self._options.right_column_prefix}', " +
+                f"together with these non-id columns must not produce the change column name '{self._options.change_column}': " +
+                f"{', '.join(non_pk_columns)}"
+            )
+
+            require(
+                all(not list_contains_case_sensitivity(pk_columns, c, case_sensitive) for c in diff_value_columns),
+                f"The column prefixes '{self._options.left_column_prefix}' and '{self._options.right_column_prefix}', " +
+                f"together with these non-id columns must not produce any id column name '{', '.join(pk_columns)}': " +
+                f"{', '.join(non_pk_columns)}"
+            )
 
     def _get_change_column(self,
-                          exists_column_name: str,
-                          value_columns_with_comparator: List[Tuple[str, DiffComparator]],
-                          left: DataFrame,
-                          right: DataFrame) -> Optional[Column]:
+                           exists_column_name: str,
+                           value_columns_with_comparator: List[Tuple[str, DiffComparator]],
+                           left: DataFrame,
+                           right: DataFrame) -> Optional[Column]:
         if self._options.change_column is None:
             return None
         if not self._options.change_column:
@@ -405,9 +505,9 @@ class Differ:
             .alias(self._options.change_column)
 
     def _do_diff(self, left: DataFrame, right: DataFrame, id_columns: List[str], ignore_columns: List[str]) -> DataFrame:
-        self._check_schema(left, right, id_columns, ignore_columns)
-
         case_sensitive = left.session().conf.get("spark.sql.caseSensitive") == "true"
+        self._check_schema(left, right, id_columns, ignore_columns, case_sensitive)
+
         columns = list_diff_case_sensitivity(left.columns, ignore_columns, case_sensitive)
         pk_columns = id_columns or columns
         value_columns = list_diff_case_sensitivity(columns, pk_columns, case_sensitive)
@@ -418,8 +518,8 @@ class Differ:
         left_with_exists = left.withColumn(exists_column_name, lit(1))
         right_with_exists = right.withColumn(exists_column_name, lit(1))
         join_condition = reduce(lambda l, r: l & r,
-                               [left_with_exists[c].eqNullSafe(right_with_exists[c])
-                                for c in pk_columns])
+                                [left_with_exists[c].eqNullSafe(right_with_exists[c])
+                                 for c in pk_columns])
         un_changed = reduce(lambda l, r: l & r,
                             [cmp.equiv(left_with_exists[c], right_with_exists[c])
                              for (c, cmp) in value_columns_with_comparator],
@@ -433,7 +533,7 @@ class Differ:
             .otherwise(lit(self._options.nochange_diff_value)) \
             .alias(self._options.diff_column)
 
-        diff_columns = [c[1] for c in self._get_diff_column(pk_columns, value_columns, left, right, ignore_columns, case_sensitive)]
+        diff_columns = [c[1] for c in self._get_diff_columns(pk_columns, value_columns, left, right, ignore_columns, case_sensitive)]
         # turn this column into a list of one or none column so we can easily concat it below with diffActionColumn and diffColumns
         change_column = self._get_change_column(exists_column_name, value_columns_with_comparator, left_with_exists, right_with_exists)
         change_columns = [change_column] if change_column is not None else []
@@ -442,14 +542,17 @@ class Differ:
             .join(right_with_exists, join_condition, "fullouter") \
             .select(*([diff_action_column] + change_columns + diff_columns))
 
-    def _get_diff_column(self, pk_columns: List[str],
-                         value_columns: List[str],
-                         left: DataFrame,
-                         right: DataFrame,
-                         ignore_columns: List[str],
-                         case_sensitive: bool) -> List[Tuple[str, Column]]:
-        id_columns = [(c, coalesce(left[c], right[c]).alias(c)) for c in pk_columns]
+    def _get_diff_id_columns(self, pk_columns: List[str],
+                                left: DataFrame,
+                                right: DataFrame) -> List[Tuple[str, Column]]:
+        return [(c, coalesce(left[c], right[c]).alias(c)) for c in pk_columns]
 
+    def _get_diff_value_columns(self, pk_columns: List[str],
+                          value_columns: List[str],
+                          left: DataFrame,
+                          right: DataFrame,
+                          ignore_columns: List[str],
+                          case_sensitive: bool) -> List[Tuple[str, Column]]:
         left_value_columns = list_filter_case_sensitivity(left.columns, value_columns, case_sensitive)
         right_value_columns = list_filter_case_sensitivity(right.columns, value_columns, case_sensitive)
 
@@ -479,11 +582,11 @@ class Differ:
         prefixed_right_ignored_columns = [alias_right(c) for c in right_ignored_columns]
 
         if self._options.diff_mode == DiffMode.ColumnByColumn:
-            non_id_columns =\
+            non_id_columns = \
                 [c for vc in value_columns for c in [alias_left(vc), alias_right(vc)]] + \
                 [c for ic in ignore_columns for c in (
-                   [alias_left(ic)] if list_contains_case_sensitivity(left_ignored_columns, ic, case_sensitive) else [] +
-                   [alias_right(ic)] if list_contains_case_sensitivity(right_ignored_columns, ic, case_sensitive) else []
+                   ([alias_left(ic)] if list_contains_case_sensitivity(left_ignored_columns, ic, case_sensitive) else []) +
+                   ([alias_right(ic)] if list_contains_case_sensitivity(right_ignored_columns, ic, case_sensitive) else [])
                 )]
         elif self._options.diff_mode == DiffMode.SideBySide:
             non_id_columns = \
@@ -500,7 +603,16 @@ class Differ:
         else:
             raise RuntimeError(f'Unsupported diff mode: {self._options.diff_mode}')
 
-        return id_columns + non_id_columns
+        return non_id_columns
+
+    def _get_diff_columns(self, pk_columns: List[str],
+                          value_columns: List[str],
+                          left: DataFrame,
+                          right: DataFrame,
+                          ignore_columns: List[str],
+                          case_sensitive: bool) -> List[Tuple[str, Column]]:
+        return self._get_diff_id_columns(pk_columns, left, right) + \
+               self._get_diff_value_columns(pk_columns, value_columns, left, right, ignore_columns, case_sensitive)
 
 
 @overload

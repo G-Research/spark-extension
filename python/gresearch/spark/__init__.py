@@ -21,7 +21,7 @@ import tempfile
 import time
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Union, List, Optional, Mapping, TYPE_CHECKING
+from typing import Any, Union, List, Optional, Mapping, Iterable, TYPE_CHECKING
 
 from py4j.java_gateway import JVMView, JavaObject
 from pyspark import __version__
@@ -116,7 +116,9 @@ def backticks(*name_parts: str) -> str:
 
 def distinct_prefix_for(existing: List[str]) -> str:
     # count number of suffix _ for each existing column name
-    length = max([len(name) - len(name.lstrip('_')) for name in existing]) + 1
+    length = 1
+    if existing:
+        length = max([len(name) - len(name.lstrip('_')) for name in existing]) + 1
     # return string with one more _ than that
     return '_' * length
 
@@ -131,16 +133,16 @@ def handle_configured_case_sensitivity(column_name: str, case_sensitive: bool) -
     return column_name.lower()
 
 
-def list_contains_case_sensitivity(column_names: List[str], columnName: str, case_sensitive: bool) -> bool:
+def list_contains_case_sensitivity(column_names: Iterable[str], columnName: str, case_sensitive: bool) -> bool:
     return handle_configured_case_sensitivity(columnName, case_sensitive) in [handle_configured_case_sensitivity(c, case_sensitive) for c in column_names]
 
 
-def list_filter_case_sensitivity(column_names: List[str], filter: List[str], case_sensitive: bool) -> List[str]:
+def list_filter_case_sensitivity(column_names: Iterable[str], filter: Iterable[str], case_sensitive: bool) -> List[str]:
     filter_set = {handle_configured_case_sensitivity(f, case_sensitive) for f in filter}
     return [c for c in column_names if handle_configured_case_sensitivity(c, case_sensitive) in filter_set]
 
 
-def list_diff_case_sensitivity(column_names: List[str], other: List[str], case_sensitive: bool) -> List[str]:
+def list_diff_case_sensitivity(column_names: Iterable[str], other: Iterable[str], case_sensitive: bool) -> List[str]:
     other_set = {handle_configured_case_sensitivity(f, case_sensitive) for f in other}
     return [c for c in column_names if handle_configured_case_sensitivity(c, case_sensitive) not in other_set]
 

@@ -100,7 +100,7 @@ class Differ(options: DiffOptions) {
       s"The id columns must not contain the change column name '${options.changeColumn.get}': ${pkColumns.mkString(", ")}"
     )
 
-    val diffValueColumns = getDiffColumns(pkColumns, nonPkColumns, left, right, ignoreColumns).map(_._1).diff(pkColumns)
+    val diffValueColumns = getDiffValueColumns(pkColumns, nonPkColumns, left, right, ignoreColumns).map(_._1)
 
     if (Seq(DiffMode.LeftSide, DiffMode.RightSide).contains(options.diffMode)) {
       require(
@@ -171,15 +171,21 @@ class Differ(options: DiffOptions) {
       )
   }
 
-  private[diff] def getDiffColumns[T, U](
+  private[diff] def getDiffIdColumns[T, U](
+      pkColumns: Seq[String],
+      left: Dataset[T],
+      right: Dataset[U],
+  ): Seq[(String, Column)] = {
+    pkColumns.map(c => c -> coalesce(left(backticks(c)), right(backticks(c))).as(c))
+  }
+
+  private[diff] def getDiffValueColumns[T, U](
       pkColumns: Seq[String],
       valueColumns: Seq[String],
       left: Dataset[T],
       right: Dataset[U],
       ignoreColumns: Seq[String]
   ): Seq[(String, Column)] = {
-    val idColumns = pkColumns.map(c => c -> coalesce(left(backticks(c)), right(backticks(c))).as(c))
-
     val leftValueColumns = left.columns.filterIsInCaseSensitivity(valueColumns)
     val rightValueColumns = right.columns.filterIsInCaseSensitivity(valueColumns)
 
@@ -230,7 +236,7 @@ class Differ(options: DiffOptions) {
     val prefixedLeftIgnoredColumns = leftIgnoredColumns.map(c => aliasLeft(c))
     val prefixedRightIgnoredColumns = rightIgnoredColumns.map(c => aliasRight(c))
 
-    val nonIdColumns = options.diffMode match {
+    options.diffMode match {
       case DiffMode.ColumnByColumn =>
         valueColumns.flatMap(c =>
           Seq(
@@ -251,12 +257,21 @@ class Differ(options: DiffOptions) {
         (
           if (options.diffMode == DiffMode.LeftSide) valueColumns.map(alias(None, leftValues))
           else valueColumns.map(alias(None, rightValues))
-        ) ++ (
+          ) ++ (
           if (options.diffMode == DiffMode.LeftSide) leftIgnoredColumns.map(alias(None, leftValues))
           else rightIgnoredColumns.map(alias(None, rightValues))
-        )
+          )
     }
-    idColumns ++ nonIdColumns
+  }
+
+  private[diff] def getDiffColumns[T, U](
+      pkColumns: Seq[String],
+      valueColumns: Seq[String],
+      left: Dataset[T],
+      right: Dataset[U],
+      ignoreColumns: Seq[String]
+  ): Seq[(String, Column)] = {
+    getDiffIdColumns(pkColumns, left, right) ++ getDiffValueColumns(pkColumns, valueColumns, left, right, ignoreColumns)
   }
 
   private def doDiff[T, U](
