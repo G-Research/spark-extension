@@ -2,7 +2,7 @@
 
 This project provides extensions to the [Apache Spark project](https://spark.apache.org/) in Scala and Python:
 
-**[Diff](DIFF.md) [<sup>[*]</sup>](#spark-connect-server):** A `diff` transformation and application for `Dataset`s that computes the differences between
+**[Diff](DIFF.md):** A `diff` transformation and application for `Dataset`s that computes the differences between
 two datasets, i.e. which rows to _add_, _delete_ or _change_ to get from one dataset to the other.
 
 **[SortedGroups](GROUPS.md):** A `groupByKey` transformation that groups rows by a key while providing
