@@ -257,10 +257,10 @@ class Differ(options: DiffOptions) {
         (
           if (options.diffMode == DiffMode.LeftSide) valueColumns.map(alias(None, leftValues))
           else valueColumns.map(alias(None, rightValues))
-          ) ++ (
+        ) ++ (
           if (options.diffMode == DiffMode.LeftSide) leftIgnoredColumns.map(alias(None, leftValues))
           else rightIgnoredColumns.map(alias(None, rightValues))
-          )
+        )
     }
   }
 

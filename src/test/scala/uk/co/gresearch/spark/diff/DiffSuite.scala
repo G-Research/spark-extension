@@ -813,8 +813,14 @@ class DiffSuite extends AnyFunSuite with SparkTestSession {
 
     val options = DiffOptions.default.withChangeColumn("change")
 
-    doTestRequirement(left.diff(right, options), "The id columns must not contain the change column name 'change': id, change")
-    doTestRequirement(left.diff(right, options, "change"), "The id columns must not contain the change column name 'change': change")
+    doTestRequirement(
+      left.diff(right, options),
+      "The id columns must not contain the change column name 'change': id, change"
+    )
+    doTestRequirement(
+      left.diff(right, options, "change"),
+      "The id columns must not contain the change column name 'change': change"
+    )
     doTestRequirement(
       left.diff(right, options, "change", "id"),
       "The id columns must not contain the change column name 'change': change, id"
