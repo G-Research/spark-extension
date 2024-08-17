@@ -195,8 +195,7 @@ class Differ(options: DiffOptions) {
           .map(c =>
             (
               handleConfiguredCaseSensitivity(c),
-              c -> (if (options.sparseMode) when(not(left(backticks(c)) <=> right(backticks(c))), left(backticks(c)))
-                    else left(backticks(c)))
+              c -> when(not(left(backticks(c)) <=> right(backticks(c))), left(backticks(c)))
             )
           )
           .toMap,
@@ -204,8 +203,7 @@ class Differ(options: DiffOptions) {
           .map(c =>
             (
               handleConfiguredCaseSensitivity(c),
-              c -> (if (options.sparseMode) when(not(left(backticks(c)) <=> right(backticks(c))), right(backticks(c)))
-                    else right(backticks(c)))
+              c -> when(not(left(backticks(c)) <=> right(backticks(c))), right(backticks(c)))
             )
           )
           .toMap
