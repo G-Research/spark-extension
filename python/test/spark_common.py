@@ -12,11 +12,11 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import contextlib
 import logging
 import os
 import sys
 import unittest
+from contextlib import contextmanager
 from pathlib import Path
 
 from pyspark import SparkConf
@@ -26,7 +26,7 @@ logger = logging.getLogger()
 logger.level = logging.INFO
 
 
-@contextlib.contextmanager
+@contextmanager
 def spark_session():
     session = SparkTest.get_spark_session()
     try:
@@ -106,3 +106,30 @@ class SparkTest(unittest.TestCase):
         logging.info('stopping Spark session')
         cls.spark.stop()
         super(SparkTest, cls).tearDownClass()
+
+    @contextmanager
+    def sql_conf(self, pairs):
+        """
+        Copied from pyspark/testing/sqlutils available from PySpark 3.5.0 and higher.
+        https://github.com/apache/spark/blob/v3.5.0/python/pyspark/testing/sqlutils.py#L171
+        http://www.apache.org/licenses/LICENSE-2.0
+
+        A convenient context manager to test some configuration specific logic. This sets
+        `value` to the configuration `key` and then restores it back when it exits.
+        """
+        assert isinstance(pairs, dict), "pairs should be a dictionary."
+        assert hasattr(self, "spark"), "it should have 'spark' attribute, having a spark session."
+
+        keys = pairs.keys()
+        new_values = pairs.values()
+        old_values = [self.spark.conf.get(key, None) for key in keys]
+        for key, new_value in zip(keys, new_values):
+            self.spark.conf.set(key, new_value)
+        try:
+            yield
+        finally:
+            for key, old_value in zip(keys, old_values):
+                if old_value is None:
+                    self.spark.conf.unset(key)
+                else:
+                    self.spark.conf.set(key, old_value)

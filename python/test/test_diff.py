@@ -18,14 +18,13 @@ from py4j.java_gateway import JavaObject
 from pyspark.sql import Row
 from pyspark.sql.functions import col, when, abs
 from pyspark.sql.types import IntegerType, LongType, StringType, DateType, StructField, StructType, FloatType, DoubleType
-from pyspark.testing.sqlutils import SQLTestUtils
 from unittest import skipIf
 
 from gresearch.spark.diff import Differ, DiffOptions, DiffMode, DiffComparators
 from spark_common import SparkTest
 
 
-class DiffTest(SparkTest, SQLTestUtils):
+class DiffTest(SparkTest):
 
     expected_diff = None
 
