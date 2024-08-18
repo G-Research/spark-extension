@@ -225,7 +225,7 @@ class DiffTest(SparkTest):
                     .diff(right.withColumnRenamed("diff", "Diff"), "Diff", "id")
 
         with self.subTest("non-id column 'diff"):
-            actual = left.diff(right, "id")
+            actual = left.diff(right, "id").orderBy("id")
             expected_columns = ["diff", "id", "left_diff", "right_diff", "left_label", "right_label"]
             self.assertEqual(actual.columns, expected_columns)
             self.assertEqual(actual.collect(), self.expected_diff)
@@ -320,7 +320,7 @@ class DiffTest(SparkTest):
                     .diff_with_options(right.withColumnRenamed("change", "Change"), options, "Change", "id")
 
         with self.subTest("non-id column 'change"):
-            actual = left.diff_with_options(right, options, "id")
+            actual = left.diff_with_options(right, options, "id").orderBy("id")
             expected_columns = ["diff", "change", "id", "left_change", "right_change", "left_label", "right_label"]
             diff_change_row = Row(*expected_columns)
             expected_diff = [
