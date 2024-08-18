@@ -18,7 +18,7 @@ from subprocess import CalledProcessError
 from unittest import skipUnless, skipIf
 
 from pyspark import __version__, SparkContext
-from pyspark.sql import Row, SparkSession
+from pyspark.sql import Row, SparkSession, SQLContext
 from pyspark.sql.functions import col, count
 
 from gresearch.spark import backticks, distinct_prefix_for, handle_configured_case_sensitivity, \
@@ -26,6 +26,12 @@ from gresearch.spark import backticks, distinct_prefix_for, handle_configured_ca
     dotnet_ticks_to_timestamp, dotnet_ticks_to_unix_epoch, dotnet_ticks_to_unix_epoch_nanos, \
     timestamp_to_dotnet_ticks, unix_epoch_to_dotnet_ticks, unix_epoch_nanos_to_dotnet_ticks, count_null
 from spark_common import SparkTest
+
+try:
+    from pyspark.sql.connect.session import SparkSession as ConnectSparkSession
+    has_connect = True
+except ImportError:
+    has_connect = False
 
 POETRY_PYTHON_ENV = "POETRY_PYTHON"
 RICH_SOURCES_ENV = "RICH_SOURCES"
@@ -235,11 +241,11 @@ class PackageTest(SparkTest):
 
     def test_session(self):
         self.assertIsNotNone(self.ticks.session())
-        self.assertIsInstance(self.ticks.session(), SparkSession)
+        self.assertIsInstance(self.ticks.session(), tuple(([SparkSession] + ([ConnectSparkSession] if has_connect else []))))
 
     def test_session_or_ctx(self):
         self.assertIsNotNone(self.ticks.session_or_ctx())
-        self.assertIsInstance(self.ticks.session_or_ctx(), (SparkSession, SparkContext))
+        self.assertIsInstance(self.ticks.session_or_ctx(), tuple(([SparkSession, SQLContext] + ([ConnectSparkSession] if has_connect else []))))
 
     @skipIf(SparkTest.is_spark_connect, "Spark Connect does not provide access to the JVM, required by create_temp_dir")
     def test_create_temp_dir(self):
