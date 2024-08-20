@@ -49,6 +49,9 @@
     <spark.patch.version>1</spark.patch.version>
     <spark.compat.version>${spark.major.version}.${spark.minor.version}</spark.compat.version>
     <spark.version>${spark.compat.version}.${spark.patch.version}</spark.version>
+    <!-- protobuf / grpc in-sync with Apache Spark -->
+    <protobuf.version>3.23.4</protobuf.version>
+    <grpc.version>1.56.0</grpc.version>
   </properties>
 
   <dependencies>
@@ -71,6 +74,44 @@
       <groupId>org.apache.spark</groupId>
       <artifactId>spark-hive_${scala.compat.version}</artifactId>
       <version>${spark.version}</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <!-- Spark Connect -->
+    <dependency>
+      <groupId>org.apache.spark</groupId>
+      <artifactId>spark-connect_${scala.compat.version}</artifactId>
+      <version>${spark.version}</version>
+      <scope>provided</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>com.google.guava</groupId>
+          <artifactId>guava</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.spark</groupId>
+      <artifactId>spark-connect-common_${scala.compat.version}</artifactId>
+      <version>${spark.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-java</artifactId>
+      <version>${protobuf.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.grpc</groupId>
+      <artifactId>grpc-protobuf</artifactId>
+      <version>${grpc.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.grpc</groupId>
+      <artifactId>grpc-stub</artifactId>
+      <version>${grpc.version}</version>
       <scope>provided</scope>
     </dependency>
 
@@ -230,6 +271,26 @@
             </manifest>
           </archive>
         </configuration>
+      </plugin>
+      <!-- protobuf  -->
+      <plugin>
+        <groupId>io.github.ascopes</groupId>
+        <artifactId>protobuf-maven-plugin</artifactId>
+        <version>2.2.3</version>
+        <configuration>
+          <protocVersion>${protobuf.version}</protocVersion>
+          <sourceDirectories>
+            <sourceDirectory>src/main/protobuf</sourceDirectory>
+          </sourceDirectories>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>generate</goal>
+              <goal>generate-test</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
       <!-- scalafmt -->
       <plugin>
