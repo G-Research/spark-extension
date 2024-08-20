@@ -16,6 +16,7 @@
 
 package uk.co.gresearch.spark.diff.comparator
 
+import org.apache.spark.extension.ExpressionExtension
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.encoders.encoderFor
 import org.apache.spark.sql.catalyst.expressions.codegen.Block.BlockHelper
@@ -31,8 +32,7 @@ trait EquivDiffComparator[T] extends DiffComparator {
 
 private trait ExpressionEquivDiffComparator[T] extends EquivDiffComparator[T] {
   def equiv(left: Expression, right: Expression): EquivExpression[T]
-  def equiv(left: Column, right: Column): Column =
-    new Column(equiv(left.expr, right.expr).asInstanceOf[Expression])
+  def equiv(left: Column, right: Column): Column = equiv(left.expr, right.expr).toColumn
 }
 
 trait TypedEquivDiffComparator[T] extends EquivDiffComparator[T] with TypedDiffComparator
