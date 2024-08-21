@@ -19,6 +19,7 @@ package uk.co.gresearch.spark
 import org.apache.spark.{SparkFiles, TaskContext}
 import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.expressions.{Descending, SortOrder}
+import org.apache.spark.sql.extension.ColumnExtension
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
 import org.apache.spark.storage.StorageLevel
