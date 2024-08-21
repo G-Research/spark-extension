@@ -16,7 +16,7 @@
 
 package org.apache.spark.sql.connect
 
-import com.google.protobuf
+import org.sparkproject.connect.protobuf
 import org.apache.orc.protobuf.Descriptors.FieldDescriptor
 import org.apache.spark.connect.proto.Plan
 import org.apache.spark.sql.DataFrame
