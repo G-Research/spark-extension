@@ -270,6 +270,12 @@ class WritePartitionedSuite extends AnyFunSuite with SparkTestSession {
     }
   }
 
+  test("write with un-named partition columns") {
+    assertThrows[IllegalArgumentException] {
+      values.writePartitionedBy(Seq($"id" + 1))
+    }
+  }
+
   test("write dataframe") {
     withTempPath { dir =>
       withUnpersist() { handle =>

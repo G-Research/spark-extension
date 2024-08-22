@@ -14,13 +14,17 @@
  * limitations under the License.
  */
 
-package org.apache.spark
+package org.apache.spark.sql
 
-import org.apache.spark.sql.Column
 import org.apache.spark.sql.catalyst.expressions.Expression
 
 package object extension {
+  implicit class ColumnExtension(col: Column) {
+    // Column.expr exists in this Spark version
+    def sql: String = col.expr.sql
+  }
+
   implicit class ExpressionExtension(expr: Expression) {
-    def toColumn: Column = Column(expr)
+    def column: Column = new Column(expr)
   }
 }

@@ -18,7 +18,7 @@ package uk.co.gresearch.spark
 
 import org.apache.spark.{SparkFiles, TaskContext}
 import org.apache.spark.sql._
-import org.apache.spark.sql.catalyst.expressions.{Descending, SortOrder}
+import org.apache.spark.sql.extension.ColumnExtension
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
 import org.apache.spark.storage.StorageLevel
@@ -517,9 +517,9 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
 
     try {
       // testing with descending order is only supported for a single column
-      val desc = columns.map(_.expr) match {
-        case Seq(SortOrder(_, Descending, _, _)) => true
-        case _                                   => false
+      val desc = columns.map(_.sql) match {
+        case Seq(so) if so.contains("DESC") => true
+        case _                              => false
       }
 
       // assert row numbers are correct
