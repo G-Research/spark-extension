@@ -22,6 +22,7 @@ import org.apache.spark.sql.internal.ExpressionUtils.{column => toColumn, expres
 package object extension {
   implicit class ColumnExtension(col: Column) {
     def expr: Expression = expression(col)
+    def sql: String = col.node.sql
   }
 
   implicit class ExpressionExtension(expr: Expression) {
