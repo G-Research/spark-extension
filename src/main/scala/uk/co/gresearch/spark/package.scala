@@ -40,6 +40,8 @@ package object spark extends Logging with SparkVersion with BuildVersion {
    *   distinct prefix
    */
   private[spark] def distinctPrefixFor(existing: Seq[String]): String = {
+    // count number of suffix _ for each existing column name
+    // return string with one more _ than that
     "_" * (existing.map(_.takeWhile(_ == '_').length).reduceOption(_ max _).getOrElse(0) + 1)
   }
 

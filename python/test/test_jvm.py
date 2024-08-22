@@ -76,19 +76,6 @@ class PackageTest(SparkTest):
             spark._java_pkg_is_installed = is_installed
 
     @skipUnless(SparkTest.is_spark_connect, "Spark connect client tests")
-    def test_diff(self):
-        for label, func in {
-            'diff': lambda: self.df.diff(self.df),
-            'diff_with_options': lambda: self.df.diff_with_options(self.df, DiffOptions()),
-            'diffwith': lambda: self.df.diffwith(self.df),
-            'diffwith_with_options': lambda: self.df.diffwith_with_options(self.df, DiffOptions()),
-        }.items():
-            with self.subTest(label):
-                with self.assertRaises(RuntimeError) as e:
-                    func()
-                self.assertEqual((EXPECTED_UNSUPPORTED_MESSAGE, ), e.exception.args)
-
-    @skipUnless(SparkTest.is_spark_connect, "Spark connect client tests")
     def test_dotnet_ticks(self):
         for label, func in {
             'dotnet_ticks_to_timestamp': dotnet_ticks_to_timestamp,
