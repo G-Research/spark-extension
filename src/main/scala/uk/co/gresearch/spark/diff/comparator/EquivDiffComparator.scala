@@ -21,6 +21,7 @@ import org.apache.spark.sql.catalyst.encoders.encoderFor
 import org.apache.spark.sql.catalyst.expressions.codegen.Block.BlockHelper
 import org.apache.spark.sql.catalyst.expressions.codegen.{CodegenContext, ExprCode, FalseLiteral}
 import org.apache.spark.sql.catalyst.expressions.{BinaryExpression, BinaryOperator, Expression}
+import org.apache.spark.sql.extension.{ColumnExtension, ExpressionExtension}
 import org.apache.spark.sql.types.{BooleanType, DataType}
 import org.apache.spark.sql.{Column, Encoder}
 import uk.co.gresearch.spark.BinaryLikeWithNewChildrenInternal
@@ -31,8 +32,7 @@ trait EquivDiffComparator[T] extends DiffComparator {
 
 private trait ExpressionEquivDiffComparator[T] extends EquivDiffComparator[T] {
   def equiv(left: Expression, right: Expression): EquivExpression[T]
-  def equiv(left: Column, right: Column): Column =
-    new Column(equiv(left.expr, right.expr).asInstanceOf[Expression])
+  def equiv(left: Column, right: Column): Column = equiv(left.expr, right.expr).column
 }
 
 trait TypedEquivDiffComparator[T] extends EquivDiffComparator[T] with TypedDiffComparator

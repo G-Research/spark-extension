@@ -402,7 +402,11 @@ All Python methods come in two variants, one without (as shown below) and one wi
 The latter variant is prefixed with `_with_options`.
 
 * `def diff(self: DataFrame, other: DataFrame, *id_columns: str) -> DataFrame`
+* `def diff(self: DataFrame, other: DataFrame, id_columns: List[str], ignore_columns: List[str]) -> DataFrame`
 * `def diffwith(self: DataFrame, other: DataFrame, *id_columns: str) -> DataFrame:`
+* `def diffwith(self: DataFrame, other: DataFrame, id_columns: List[str], ignore_columns: List[str]) -> DataFrame`
+
+Note that this feature is not supported in Python when connected with a [Spark Connect server](README.md#spark-connect-server).
 
 ## Diff Spark application
 

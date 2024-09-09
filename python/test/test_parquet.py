@@ -13,11 +13,13 @@
 #  limitations under the License.
 
 from pathlib import Path
+from unittest import skipIf
 
 from spark_common import SparkTest
 import gresearch.spark.parquet
 
 
+@skipIf(SparkTest.is_spark_connect, "Spark Connect does not provide access to the JVM, required by Parquet")
 class ParquetTest(SparkTest):
 
     test_file = str((Path(__file__).parent.parent.parent / "src" / "test" / "files" / "test.parquet").resolve())

@@ -216,3 +216,7 @@ WindowExec: No Partition Defined for Window operation! Moving all data to a sing
 ```
 This warning is unavoidable, because `withRowNumbers` has to pull information about the initial partitions into a single partition.
 Fortunately, there are only 12 Bytes per input partition required, so this amount of data usually fits into a single partition and the warning can safely be ignored.
+
+## Known issues
+
+Note that this feature is not supported in Python when connected with a [Spark Connect server](README.md#spark-connect-server).

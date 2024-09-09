@@ -129,3 +129,7 @@ Finally, shutdown the example cluster:
 ```shell
 docker compose -f docker-compose.yml down
 ```
+
+## Known Issues
+
+Note that this feature is not supported in Python when connected with a [Spark Connect server](README.md#spark-connect-server).

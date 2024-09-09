@@ -18,11 +18,13 @@ from py4j.java_gateway import JavaObject
 from pyspark.sql import Row
 from pyspark.sql.functions import col, when
 from pyspark.sql.types import IntegerType, LongType, StringType, DateType
+from unittest import skipIf
 
 from gresearch.spark.diff import Differ, DiffOptions, DiffMode, DiffComparators
 from spark_common import SparkTest
 
 
+@skipIf(SparkTest.is_spark_connect, "Spark Connect does not provide access to the JVM, required by Diff")
 class DiffTest(SparkTest):
 
     expected_diff = None
@@ -60,6 +62,15 @@ class DiffTest(SparkTest):
             diff_row('I', 6, None, 6.0, None, 'six'),
             diff_row('D', 7, 7.0, None, 'seven', None),
         ]
+        cls.expected_diff_ignored = [
+            diff_row('C', 1, 1.0, 1.1, 'one', 'one'),
+            diff_row('N', 2, 2.0, 2.0, 'two', 'Two'),
+            diff_row('N', 3, 3.0, 3.0, 'three', 'three'),
+            diff_row('C', 4, None, 4.0, None, 'four'),
+            diff_row('C', 5, 5.0, None, 'five', None),
+            diff_row('I', 6, None, 6.0, None, 'six'),
+            diff_row('D', 7, 7.0, None, 'seven', None),
+        ]
 
         diffwith_row = Row('diff', 'left', 'right')
         cls.expected_diffwith = [
@@ -71,11 +82,29 @@ class DiffTest(SparkTest):
             diffwith_row('I', None, value_row(6, 6.0, 'six')),
             diffwith_row('D', value_row(7, 7.0, 'seven'), None),
         ]
+        cls.expected_diffwith_ignored = [
+            diffwith_row('C', value_row(1, 1.0, 'one'), value_row(1, 1.1, 'one')),
+            diffwith_row('N', value_row(2, 2.0, 'two'), value_row(2, 2.0, 'Two')),
+            diffwith_row('N', value_row(3, 3.0, 'three'), value_row(3, 3.0, 'three')),
+            diffwith_row('C', value_row(4, None, None), value_row(4, 4.0, 'four')),
+            diffwith_row('C', value_row(5, 5.0, 'five'), value_row(5, None, None)),
+            diffwith_row('I', None, value_row(6, 6.0, 'six')),
+            diffwith_row('D', value_row(7, 7.0, 'seven'), None),
+        ]
 
         diff_with_options_row = Row('d', 'id', 'l_val', 'r_val', 'l_label', 'r_label')
         cls.expected_diff_with_options = [
             diff_with_options_row('c', 1, 1.0, 1.1, 'one', 'one'),
             diff_with_options_row('c', 2, 2.0, 2.0, 'two', 'Two'),
+            diff_with_options_row('n', 3, 3.0, 3.0, 'three', 'three'),
+            diff_with_options_row('c', 4, None, 4.0, None, 'four'),
+            diff_with_options_row('c', 5, 5.0, None, 'five', None),
+            diff_with_options_row('i', 6, None, 6.0, None, 'six'),
+            diff_with_options_row('r', 7, 7.0, None, 'seven', None),
+        ]
+        cls.expected_diff_with_options_ignored = [
+            diff_with_options_row('c', 1, 1.0, 1.1, 'one', 'one'),
+            diff_with_options_row('n', 2, 2.0, 2.0, 'two', 'Two'),
             diff_with_options_row('n', 3, 3.0, 3.0, 'three', 'three'),
             diff_with_options_row('c', 4, None, 4.0, None, 'four'),
             diff_with_options_row('c', 5, 5.0, None, 'five', None),
@@ -144,10 +173,19 @@ class DiffTest(SparkTest):
         diff = self.left_df.diff(self.right_df, 'id').orderBy('id').collect()
         self.assertEqual(self.expected_diff, diff)
 
+    def test_dataframe_diff_with_ignored(self):
+        diff = self.left_df.diff(self.right_df, ['id'], ['label']).orderBy('id').collect()
+        self.assertEqual(self.expected_diff_ignored, diff)
+
     def test_dataframe_diffwith(self):
         diff = self.left_df.diffwith(self.right_df, 'id').orderBy('id').collect()
         self.assertSetEqual(set(self.expected_diffwith), set(diff))
         self.assertEqual(len(self.expected_diffwith), len(diff))
+
+    def test_dataframe_diffwith_with_ignored(self):
+        diff = self.left_df.diffwith(self.right_df, ['id'], ['label']).orderBy('id').collect()
+        self.assertSetEqual(set(self.expected_diffwith_ignored), set(diff))
+        self.assertEqual(len(self.expected_diffwith_ignored), len(diff))
 
     def test_dataframe_diff_with_default_options(self):
         diff = self.left_df.diff_with_options(self.right_df, DiffOptions(), 'id').orderBy('id').collect()
@@ -157,6 +195,11 @@ class DiffTest(SparkTest):
         options = DiffOptions('d', 'l', 'r', 'i', 'c', 'r', 'n', None)
         diff = self.left_df.diff_with_options(self.right_df, options, 'id').orderBy('id').collect()
         self.assertEqual(self.expected_diff_with_options, diff)
+
+    def test_dataframe_diff_with_options_and_ignored(self):
+        options = DiffOptions('d', 'l', 'r', 'i', 'c', 'r', 'n', None)
+        diff = self.left_df.diff_with_options(self.right_df, options, ['id'], ['label']).orderBy('id').collect()
+        self.assertEqual(self.expected_diff_with_options_ignored, diff)
 
     def test_dataframe_diff_with_changes(self):
         options = DiffOptions().with_change_column('changes')
