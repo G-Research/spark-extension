@@ -28,7 +28,7 @@ from pyspark import __version__
 from pyspark.context import SparkContext
 from pyspark.files import SparkFiles
 from pyspark.sql import DataFrame, DataFrameReader, SQLContext
-from pyspark.sql.column import Column, _to_java_column
+from pyspark.sql.column import Column
 from pyspark.sql.context import SQLContext
 from pyspark.sql.functions import col, count, lit, when
 from pyspark.sql.session import SparkSession
