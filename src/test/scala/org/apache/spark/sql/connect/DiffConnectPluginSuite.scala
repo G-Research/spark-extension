@@ -109,14 +109,16 @@ class DiffConnectPluginSuite extends AnyFunSuite with SparkTestSession {
     )
     assert(actual.orderBy("int").collect() === expected)
 
-    val expectedSchema = StructType(Seq(
-      StructField("diff", StringType, nullable = false),
-      StructField("int", IntegerType),
-      StructField("left_str", StringType, nullable = true),
-      StructField("right_str", StringType, nullable = true),
-      StructField("left_struct", StructType(Seq(StructField("inner", IntegerType)))),
-      StructField("right_struct", StructType(Seq(StructField("inner", IntegerType)))),
-    ))
+    val expectedSchema = StructType(
+      Seq(
+        StructField("diff", StringType, nullable = false),
+        StructField("int", IntegerType),
+        StructField("left_str", StringType, nullable = true),
+        StructField("right_str", StringType, nullable = true),
+        StructField("left_struct", StructType(Seq(StructField("inner", IntegerType)))),
+        StructField("right_struct", StructType(Seq(StructField("inner", IntegerType)))),
+      )
+    )
     assert(actual.schema === expectedSchema)
   }
 }
