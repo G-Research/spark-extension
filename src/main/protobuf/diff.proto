@@ -1,0 +1,64 @@
+syntax = 'proto3';
+
+package spark.extension;
+
+option java_package = "uk.co.gresearch.spark.connect.diff";
+
+message Diff {
+  bytes left = 1;
+  bytes right = 2;
+  DiffOptions options = 3;
+  repeated string idColumn = 4;
+  repeated string ignoreColumn = 5;
+}
+
+message DiffOptions {
+  optional string diffColumn = 1;
+  optional string leftColumnPrefix = 2;
+  optional string rightColumnPrefix = 3;
+  optional string insertDiffValue = 4;
+  optional string changeDiffValue = 5;
+  optional string deleteDiffValue = 6;
+  optional string nochangeDiffValue = 7;
+  optional string changeColumn = 8;
+  optional string diffMode = 9;
+  optional string sparseMode = 10;
+  optional Comparator defaultComparator = 20;
+  map<string, Comparator> dataTypeComparators = 21;
+  map<string, Comparator> columnNameComparators = 22;
+}
+
+message Comparator {
+  oneof comparator {
+    DefaultComparator default = 1;
+    NullSafeComparator nullSafeEqual = 2;
+    EquivComparator equiv = 3;
+    EpsilonComparator epsilon = 4;
+    StringComparator string = 5;
+    DurationComparator duration = 6;
+    MapComparator map = 7;
+  }
+
+  message DefaultComparator {}
+  message NullSafeComparator {}
+  message EquivComparator {
+    string equiv = 1;
+    optional string dataType = 2;
+  }
+  message EpsilonComparator {
+    double epsilon = 1;
+    bool relative = 2;
+    bool inclusive = 3;
+  }
+  message StringComparator {
+    bool whitespaceAgnostic = 1;
+  }
+  message DurationComparator {
+    string duration = 1;
+  }
+  message MapComparator {
+    string keyDataType = 1;
+    string valueDataType = 2;
+    bool keyOrderSensitive = 3;
+  }
+}

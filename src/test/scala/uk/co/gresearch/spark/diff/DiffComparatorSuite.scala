@@ -437,7 +437,7 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
 
       val rs = left.diff(right, changesetOptions, "id").where($"diff" === "C")
       assert(rs.count() == 1, "Only one row should differ with the numeric comparator applied")
-      val changesInDifferingRow: util.List[String] = rs.head.getList[String](1)
+      val changesInDifferingRow: util.List[String] = rs.head().getList[String](1)
       assert(
         changesInDifferingRow.get(0) == "floatValue",
         "Only floatVal differs after considering the comparators so the changeset should be size 1"
