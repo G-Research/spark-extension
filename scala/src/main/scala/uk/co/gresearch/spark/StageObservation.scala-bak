@@ -1,0 +1,158 @@
+/*
+ * Copyright 2023 G-Research
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package uk.co.gresearch.spark
+
+import org.apache.spark.sql.catalyst.plans.logical.CollectMetrics
+import org.apache.spark.sql.execution.QueryExecution
+import org.apache.spark.sql.{Column, Dataset, SparkSession}
+
+import java.util.UUID
+import scala.jdk.CollectionConverters.MapHasAsJava
+import scala.collection.immutable
+
+class StageObservation(val name: String) {
+
+  if (name.isEmpty) throw new IllegalArgumentException("Name must not be empty")
+
+  /**
+   * Create a stage observation instance without providing a name. This generates a random name.
+   */
+  def this() = this(UUID.randomUUID().toString)
+
+  private val listener: StageObservationListener = StageObservationListener(this)
+
+  @volatile private var dataframeId: Option[(SparkSession, Long)] = None
+
+  @volatile private var metrics: Option[Map[String, Any]] = None
+
+  /**
+   * Attach this observation to the given [[Dataset]] to observe aggregation expressions.
+   *
+   * @param ds dataset
+   * @param expr first aggregation expression
+   * @param exprs more aggregation expressions
+   * @tparam T dataset type
+   * @return observed dataset
+   * @throws IllegalArgumentException If this is a streaming Dataset (ds.isStreaming == true)
+   */
+  private[spark] def on[T](ds: Dataset[T], expr: Column, exprs: Column*): Dataset[T] = {
+    if (ds.isStreaming) {
+      throw new IllegalArgumentException("StageObservation does not support streaming Datasets." +
+        "This is because there will be multiple observed metrics as microbatches are constructed" +
+        ". Please register a StreamingQueryListener and get the metric for each microbatch in " +
+        "QueryProgressEvent.progress, or use query.lastProgress or query.recentProgress.")
+    }
+    register(ds.sparkSession, ds.id)
+    ds.observe(name, expr, exprs: _*)
+  }
+
+  /**
+   * (Scala-specific) Get the observed per-stage metrics. This waits for the observed dataset to finish
+   * its first action. Only the result of the first action is available. Subsequent actions do not
+   * modify the result.
+   *
+   * @return the observed metrics as a `Map[String, Any]`
+   * @throws InterruptedException interrupted while waiting
+   */
+  @throws[InterruptedException]
+  def get: Map[String, _] = {
+    synchronized {
+      // we need to loop as wait might return without us calling notify
+      // https://en.wikipedia.org/w/index.php?title=Spurious_wakeup&oldid=992601610
+      while (this.metrics.isEmpty) {
+        wait()
+      }
+    }
+
+    this.metrics.get
+  }
+
+  /**
+   * (Java-specific) Get the observed per-stage metrics. This waits for the observed dataset to finish
+   * its first action. Only the result of the first action is available. Subsequent actions do not
+   * modify the result.
+   *
+   * @return the observed metrics as a `java.util.Map[String, Object]`
+   * @throws InterruptedException interrupted while waiting
+   */
+  @throws[InterruptedException]
+  def getAsJava: java.util.Map[String, AnyRef] = {
+    get.map { case (key, value) => (key, value.asInstanceOf[Object])}.asJava
+  }
+
+  /**
+   * Get the observed per-stage metrics. This returns the metrics if they are available, otherwise an empty.
+   *
+   * @return the observed metrics as a `Map[String, Any]`
+   */
+  @throws[InterruptedException]
+  private[sql] def getOrEmpty: Map[String, _] = {
+    synchronized {
+      if (metrics.isEmpty) {
+        wait(100) // Wait for 100ms to see if metrics are available
+      }
+      metrics.getOrElse(Map.empty)
+    }
+  }
+
+  private def unregister(): Unit = {
+    this.dataframeId.foreach(_._1.listenerManager.unregister(this.listener))
+  }
+
+  private[sql] def register(sparkSession: SparkSession, dataframeId: Long): Unit = {
+    // makes this class thread-safe:
+    // only the first thread entering this block can set sparkSession
+    // all other threads will see the exception, as it is only allowed to do this once
+    synchronized {
+      if (this.dataframeId.isDefined) {
+        throw new IllegalArgumentException("An Observation can be used with a Dataset only once")
+      }
+      this.dataframeId = Some((sparkSession, dataframeId))
+    }
+
+    sparkSession.listenerManager.register(this.listener)
+  }
+
+  private[spark] def onFinish(qe: QueryExecution): Unit = {
+    synchronized {
+      if (this.metrics.isEmpty && qe.logical.exists {
+        case CollectMetrics(name, _, _, dataframeId) =>
+          name == this.name && dataframeId == this.dataframeId.get._2
+        case _ => false
+      }) {
+        val row = qe.observedMetrics.get(name)
+        this.metrics = row.map(r => r.getValuesMap[Any](immutable.ArraySeq.unsafeWrapArray(r.schema.fieldNames)))
+        if (metrics.isDefined) {
+          notifyAll()
+          unregister()
+        }
+      }
+    }
+  }
+}
+
+object StageObservation {
+  /**
+   * Constructor for creating an anonymous stage observation.
+   */
+  def apply(): StageObservation = new StageObservation()
+
+  /**
+   * Constructor for creating a named stage observation.
+   */
+  def apply(name: String): StageObservation = new StageObservation(name)
+}
