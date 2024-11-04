@@ -27,8 +27,6 @@ inputs:
 
 runs:
   using: 'composite'
-  env:
-    DEFAULT_BRANCH_REF: ${{ format('refs/heads/{0}', github.event.repository.default_branch) }}
   steps:
   - name: Set versions in pom.xml
     run: |
