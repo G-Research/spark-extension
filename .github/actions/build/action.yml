@@ -61,7 +61,7 @@ runs:
     uses: actions/cache/save@v4
     with:
       path: ~/.m2/repository
-      key: ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-${{ hashFiles('pom.xml') }}-${{ github.run_id }}}
+      key: ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-${{ hashFiles('pom.xml') }}-${{ github.run_id }}
 
   # merely populate the cache for test-jvm and test-python actions
   - name: Restore Spark Binaries cache
@@ -90,7 +90,7 @@ runs:
     uses: actions/cache/save@v4
     with:
       path: ~/spark
-      key: ${{ runner.os }}-spark-binaries-${{ inputs.spark-version }}-${{ inputs.scala-compat-version }}-${{ github.run_id }}}
+      key: ${{ runner.os }}-spark-binaries-${{ inputs.spark-version }}-${{ inputs.scala-compat-version }}-${{ github.run_id }}
 
   - name: Upload Binaries
     uses: actions/upload-artifact@v4

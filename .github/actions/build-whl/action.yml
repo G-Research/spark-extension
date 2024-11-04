@@ -82,7 +82,7 @@ runs:
     uses: actions/cache/save@v4
     with:
       path: ~/.cache/pip
-      key: ${{ runner.os }}-pip-whl-${{ inputs.python-version }}-${{ hashFiles(format('python/requirements-{0}_{1}.txt', inputs.spark-compat-version, inputs.scala-compat-version)) }}-${{ github.run_id }}}
+      key: ${{ runner.os }}-pip-whl-${{ inputs.python-version }}-${{ hashFiles(format('python/requirements-{0}_{1}.txt', inputs.spark-compat-version, inputs.scala-compat-version)) }}-${{ github.run_id }}
 
   - name: Upload whl
     uses: actions/upload-artifact@v4

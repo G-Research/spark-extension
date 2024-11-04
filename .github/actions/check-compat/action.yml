@@ -82,7 +82,7 @@ runs:
     uses: actions/cache/save@v4
     with:
       path: ~/.m2/repository
-      key: ${{ runner.os }}-mvn-check-${{ inputs.spark-version }}-${{ inputs.scala-version }}-${{ hashFiles('pom.xml') }}-${{ github.run_id }}}
+      key: ${{ runner.os }}-mvn-check-${{ inputs.spark-version }}-${{ inputs.scala-version }}-${{ hashFiles('pom.xml') }}-${{ github.run_id }}
 
   - name: Upload Report
     uses: actions/upload-artifact@v4
