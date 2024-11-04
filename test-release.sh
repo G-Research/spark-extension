@@ -54,7 +54,7 @@ then
     echo "Testing Python with whl package"
     if [ ! -e "venv-$spark" ]
     then
-      virtualenv -p python3.10 venv-$spark
+      python -m venv venv-$spark
     fi
     source venv-$spark/bin/activate
     pip install -r python/requirements-${spark_compat}_$scala_compat.txt
