@@ -2,6 +2,7 @@ name: Clear caches
 
 on:
   workflow_dispatch:
+  pull_request:
 
 permissions:
   actions: write
@@ -14,10 +15,12 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const caches = await github.rest.actions.getActionsCacheList({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-            })
+            const caches = await github.paginate(
+              github.rest.actions.getActionsCacheList.endpoint.merge({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+              })
+            )
             for (const cache of caches.data.actions_caches) {
               console.log(cache)
               github.rest.actions.deleteActionsCacheById({
