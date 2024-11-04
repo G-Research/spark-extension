@@ -43,12 +43,14 @@ runs:
       name: Binaries-${{ inputs.spark-compat-version }}-${{ inputs.scala-compat-version }}
       path: .
 
-  - name: Cache Spark Binaries
-    uses: actions/cache@v4
-    if: inputs.scala-compat-version == '2.12' && ! contains(inputs.spark-version, '-SNAPSHOT')
+  - name: Restore Spark Binaries cache
+    if: github.event_name != 'schedule' && inputs.scala-compat-version == '2.12' && ! contains(inputs.spark-version, '-SNAPSHOT')
+    uses: actions/cache/restore@v4
     with:
       path: ~/spark
       key: ${{ runner.os }}-spark-binaries-${{ inputs.spark-version }}-${{ inputs.scala-compat-version }}
+      restore-keys:
+        ${{ runner.os }}-spark-binaries-${{ inputs.spark-version }}-${{ inputs.scala-compat-version }}
 
   - name: Setup Spark Binaries
     if: inputs.scala-compat-version == '2.12' && ! contains(inputs.spark-version, '-SNAPSHOT')
@@ -63,13 +65,15 @@ runs:
       echo "SPARK_BIN_HOME=$(cd ~/spark; pwd)" >> $GITHUB_ENV
     shell: bash
 
-  - name: Cache Maven packages
-    if: github.event_name != 'merge_group'
-    uses: actions/cache@v4
+  - name: Restore Maven packages cache
+    if: github.event_name != 'schedule'
+    uses: actions/cache/restore@v4
     with:
       path: ~/.m2/repository
       key: ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-${{ hashFiles('pom.xml') }}
-      restore-keys: ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-
+      restore-keys:
+        ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-${{ hashFiles('pom.xml') }}
+        ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-
 
   - name: Setup JDK 1.8
     uses: actions/setup-java@v4
@@ -77,13 +81,17 @@ runs:
       java-version: '8'
       distribution: 'zulu'
 
-  - name: Cache Pip packages
-    if: github.event_name != 'merge_group'
-    uses: actions/cache@v4
+  - name: Restore Pip packages cache
+    if: github.event_name != 'schedule'
+    uses: actions/cache/restore@v4
     with:
       path: ~/.cache/pip
       key: ${{ runner.os }}-pip-test-${{ inputs.python-version }}-${{ hashFiles(format('python/requirements-{0}_{1}.txt', inputs.spark-compat-version, inputs.scala-compat-version)) }}
-      restore-keys: ${{ runner.os }}-pip-test-${{ inputs.python-version }}-
+      restore-keys:
+        ${{ runner.os }}-pip-test-${{ inputs.python-version }}-${{ hashFiles(format('python/requirements-{0}_{1}.txt', inputs.spark-compat-version, inputs.scala-compat-version)) }}
+        ${{ runner.os }}-pip-whl-${{ inputs.python-version }}-${{ hashFiles(format('python/requirements-{0}_{1}.txt', inputs.spark-compat-version, inputs.scala-compat-version)) }}
+        ${{ runner.os }}-pip-test-${{ inputs.python-version }}-
+        ${{ runner.os }}-pip-whl-${{ inputs.python-version }}-
 
   - name: Setup Python
     uses: actions/setup-python@v5
@@ -180,6 +188,13 @@ runs:
     run: |
       $SPARK_HOME/bin/spark-shell --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION < test-release.scala
     shell: bash
+
+  - name: Save Pip packages cache
+    if: github.event_name != 'schedule' && github.ref == 'refs/heads/master'
+    uses: actions/cache/save@v4
+    with:
+      path: ~/.cache/pip
+      key: ${{ runner.os }}-pip-test-${{ inputs.python-version }}-${{ hashFiles(format('python/requirements-{0}_{1}.txt', inputs.spark-compat-version, inputs.scala-compat-version)) }}-${{ github.run_id }}}
 
   - name: Upload Test Results
     if: always()

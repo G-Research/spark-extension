@@ -37,12 +37,14 @@ runs:
       name: Binaries-${{ inputs.spark-compat-version }}-${{ inputs.scala-compat-version }}
       path: .
 
-  - name: Cache Spark Binaries
-    uses: actions/cache@v4
-    if: ( ! contains(inputs.spark-version, '-SNAPSHOT') )
+  - name: Restore Spark Binaries cache
+    if: github.event_name != 'schedule' && ! contains(inputs.spark-version, '-SNAPSHOT')
+    uses: actions/cache/restore@v4
     with:
       path: ~/spark
       key: ${{ runner.os }}-spark-binaries-${{ inputs.spark-version }}-${{ inputs.scala-compat-version }}
+      restore-keys:
+        ${{ runner.os }}-spark-binaries-${{ inputs.spark-version }}-${{ inputs.scala-compat-version }}
 
   - name: Setup Spark Binaries
     if: ( ! contains(inputs.spark-version, '-SNAPSHOT') )
@@ -57,13 +59,15 @@ runs:
       echo "SPARK_HOME=$(cd ~/spark; pwd)" >> $GITHUB_ENV
     shell: bash
 
-  - name: Cache Maven packages
-    if: github.event_name != 'merge_group'
-    uses: actions/cache@v4
+  - name: Restore Maven packages cache
+    if: github.event_name != 'schedule'
+    uses: actions/cache/restore@v4
     with:
       path: ~/.m2/repository
       key: ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-${{ hashFiles('pom.xml') }}
-      restore-keys: ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-
+      restore-keys:
+        ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-${{ hashFiles('pom.xml') }}
+        ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-
 
   - name: Setup JDK ${{ inputs.java-compat-version }}
     uses: actions/setup-java@v4
