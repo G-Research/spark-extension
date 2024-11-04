@@ -100,7 +100,7 @@ class Differ(options: DiffOptions) {
       s"The id columns must not contain the change column name '${options.changeColumn.get}': ${pkColumns.mkString(", ")}"
     )
 
-    val diffValueColumns = getDiffColumns(pkColumns, nonPkColumns, left, right, ignoreColumns).map(_._1).diff(pkColumns)
+    val diffValueColumns = getDiffValueColumns(pkColumns, nonPkColumns, left, right, ignoreColumns).map(_._1)
 
     if (Seq(DiffMode.LeftSide, DiffMode.RightSide).contains(options.diffMode)) {
       require(
@@ -145,7 +145,7 @@ class Differ(options: DiffOptions) {
 
   private def getChangeColumn(
       existsColumnName: String,
-      valueVolumnsWithComparator: Seq[(String, DiffComparator)],
+      valueColumnsWithComparator: Seq[(String, DiffComparator)],
       left: Dataset[_],
       right: Dataset[_]
   ): Option[Column] = {
@@ -153,7 +153,7 @@ class Differ(options: DiffOptions) {
       .map(changeColumn =>
         when(left(existsColumnName).isNull || right(existsColumnName).isNull, lit(null))
           .otherwise(
-            Some(valueVolumnsWithComparator)
+            Some(valueColumnsWithComparator)
               .filter(_.nonEmpty)
               .map(columns =>
                 concat(
@@ -171,15 +171,21 @@ class Differ(options: DiffOptions) {
       )
   }
 
-  private[diff] def getDiffColumns[T, U](
+  private[diff] def getDiffIdColumns[T, U](
+      pkColumns: Seq[String],
+      left: Dataset[T],
+      right: Dataset[U],
+  ): Seq[(String, Column)] = {
+    pkColumns.map(c => c -> coalesce(left(backticks(c)), right(backticks(c))).as(c))
+  }
+
+  private[diff] def getDiffValueColumns[T, U](
       pkColumns: Seq[String],
       valueColumns: Seq[String],
       left: Dataset[T],
       right: Dataset[U],
       ignoreColumns: Seq[String]
   ): Seq[(String, Column)] = {
-    val idColumns = pkColumns.map(c => c -> coalesce(left(backticks(c)), right(backticks(c))).as(c))
-
     val leftValueColumns = left.columns.filterIsInCaseSensitivity(valueColumns)
     val rightValueColumns = right.columns.filterIsInCaseSensitivity(valueColumns)
 
@@ -230,7 +236,7 @@ class Differ(options: DiffOptions) {
     val prefixedLeftIgnoredColumns = leftIgnoredColumns.map(c => aliasLeft(c))
     val prefixedRightIgnoredColumns = rightIgnoredColumns.map(c => aliasRight(c))
 
-    val nonIdColumns = options.diffMode match {
+    options.diffMode match {
       case DiffMode.ColumnByColumn =>
         valueColumns.flatMap(c =>
           Seq(
@@ -256,7 +262,16 @@ class Differ(options: DiffOptions) {
           else rightIgnoredColumns.map(alias(None, rightValues))
         )
     }
-    idColumns ++ nonIdColumns
+  }
+
+  private[diff] def getDiffColumns[T, U](
+      pkColumns: Seq[String],
+      valueColumns: Seq[String],
+      left: Dataset[T],
+      right: Dataset[U],
+      ignoreColumns: Seq[String]
+  ): Seq[(String, Column)] = {
+    getDiffIdColumns(pkColumns, left, right) ++ getDiffValueColumns(pkColumns, valueColumns, left, right, ignoreColumns)
   }
 
   private def doDiff[T, U](
@@ -271,14 +286,14 @@ class Differ(options: DiffOptions) {
     val pkColumns = if (idColumns.isEmpty) columns else idColumns
     val valueColumns = columns.diffCaseSensitivity(pkColumns)
     val valueStructFields = left.schema.fields.map(f => f.name -> f).toMap
-    val valueVolumnsWithComparator = valueColumns.map(c => c -> options.comparatorFor(valueStructFields(c)))
+    val valueColumnsWithComparator = valueColumns.map(c => c -> options.comparatorFor(valueStructFields(c)))
 
     val existsColumnName = distinctPrefixFor(left.columns) + "exists"
     val leftWithExists = left.withColumn(existsColumnName, lit(1))
     val rightWithExists = right.withColumn(existsColumnName, lit(1))
     val joinCondition =
       pkColumns.map(c => leftWithExists(backticks(c)) <=> rightWithExists(backticks(c))).reduce(_ && _)
-    val unChanged = valueVolumnsWithComparator
+    val unChanged = valueColumnsWithComparator
       .map { case (c, cmp) =>
         cmp.equiv(leftWithExists(backticks(c)), rightWithExists(backticks(c)))
       }
@@ -294,7 +309,7 @@ class Differ(options: DiffOptions) {
         .as(options.diffColumn)
 
     val diffColumns = getDiffColumns(pkColumns, valueColumns, left, right, ignoreColumns).map(_._2)
-    val changeColumn = getChangeColumn(existsColumnName, valueVolumnsWithComparator, leftWithExists, rightWithExists)
+    val changeColumn = getChangeColumn(existsColumnName, valueColumnsWithComparator, leftWithExists, rightWithExists)
       // turn this column into a sequence of one or none column so we can easily concat it below with diffActionColumn and diffColumns
       .map(Seq(_))
       .getOrElse(Seq.empty[Column])

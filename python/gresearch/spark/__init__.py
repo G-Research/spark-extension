@@ -21,7 +21,7 @@ import tempfile
 import time
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Union, List, Optional, Mapping, TYPE_CHECKING
+from typing import Any, Union, List, Optional, Mapping, Iterable, TYPE_CHECKING
 
 from py4j.java_gateway import JVMView, JavaObject
 from pyspark import __version__
@@ -30,6 +30,7 @@ from pyspark.files import SparkFiles
 from pyspark.sql import DataFrame, DataFrameReader, SQLContext
 from pyspark.sql.column import Column, _to_java_column
 from pyspark.sql.context import SQLContext
+from pyspark import SparkConf
 from pyspark.sql.functions import col, count, lit, when
 from pyspark.sql.session import SparkSession
 from pyspark.storagelevel import StorageLevel
@@ -104,6 +105,46 @@ def _to_seq(jvm: JVMView, list: List[Any]) -> JavaObject:
 
 def _to_map(jvm: JVMView, map: Mapping[Any, Any]) -> JavaObject:
     return jvm.scala.collection.JavaConverters.mapAsScalaMap(map)
+
+
+def backticks(*name_parts: str) -> str:
+    return '.'.join([f'`{part}`'
+                     if '.' in part and not part.startswith('`') and not part.endswith('`')
+                     else part
+                     for part in name_parts])
+
+
+def distinct_prefix_for(existing: List[str]) -> str:
+    # count number of suffix _ for each existing column name
+    length = 1
+    if existing:
+        length = max([len(name) - len(name.lstrip('_')) for name in existing]) + 1
+    # return string with one more _ than that
+    return '_' * length
+
+
+def handle_configured_case_sensitivity(column_name: str, case_sensitive: bool) -> str:
+    """
+    Produces a column name that considers configured case-sensitivity of column names. When case sensitivity is
+    deactivated, it lower-cases the given column name and no-ops otherwise.
+    """
+    if case_sensitive:
+        return column_name
+    return column_name.lower()
+
+
+def list_contains_case_sensitivity(column_names: Iterable[str], columnName: str, case_sensitive: bool) -> bool:
+    return handle_configured_case_sensitivity(columnName, case_sensitive) in [handle_configured_case_sensitivity(c, case_sensitive) for c in column_names]
+
+
+def list_filter_case_sensitivity(column_names: Iterable[str], filter: Iterable[str], case_sensitive: bool) -> List[str]:
+    filter_set = {handle_configured_case_sensitivity(f, case_sensitive) for f in filter}
+    return [c for c in column_names if handle_configured_case_sensitivity(c, case_sensitive) in filter_set]
+
+
+def list_diff_case_sensitivity(column_names: Iterable[str], other: Iterable[str], case_sensitive: bool) -> List[str]:
+    other_set = {handle_configured_case_sensitivity(f, case_sensitive) for f in other}
+    return [c for c in column_names if handle_configured_case_sensitivity(c, case_sensitive) not in other_set]
 
 
 def dotnet_ticks_to_timestamp(tick_column: Union[str, Column]) -> Column:
@@ -386,12 +427,18 @@ if has_connect:
     ConnectDataFrame.with_row_numbers = with_row_numbers
 
 
+def session(self: DataFrame) -> SparkSession:
+    return self.sparkSession if hasattr(self, 'sparkSession') else self.sql_ctx.sparkSession
+
+
 def session_or_ctx(self: DataFrame) -> Union[SparkSession, SQLContext]:
     return self.sparkSession if hasattr(self, 'sparkSession') else self.sql_ctx
 
 
+DataFrame.session = session
 DataFrame.session_or_ctx = session_or_ctx
 if has_connect:
+    ConnectDataFrame.session = session
     ConnectDataFrame.session_or_ctx = session_or_ctx
 
 
