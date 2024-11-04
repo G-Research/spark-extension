@@ -62,7 +62,7 @@ runs:
 
   # merely populate the cache for test-jvm and test-python actions
   - name: Restore Spark Binaries cache
-    if: github.event_name != 'schedule' && ! contains(inputs.spark-version, '-SNAPSHOT')
+    if: github.event_name != 'schedule' && github.ref == 'refs/heads/master' && ! contains(inputs.spark-version, '-SNAPSHOT')
     uses: actions/cache/restore@v4
     with:
       path: ~/spark
@@ -71,7 +71,7 @@ runs:
         ${{ runner.os }}-spark-binaries-${{ inputs.spark-version }}-${{ inputs.scala-compat-version }}
 
   - name: Setup Spark Binaries
-    if: ( ! contains(inputs.spark-version, '-SNAPSHOT') )
+    if: github.event_name != 'schedule' && github.ref == 'refs/heads/master' && ! contains(inputs.spark-version, '-SNAPSHOT')
     env:
       SPARK_PACKAGE: spark-${{ inputs.spark-version }}/spark-${{ inputs.spark-version }}-bin-hadoop${{ inputs.hadoop-version }}${{ inputs.scala-compat-version == '2.13' && '-scala2.13' || '' }}.tgz
     run: |
@@ -83,7 +83,7 @@ runs:
     shell: bash
 
   - name: Save Spark Binaries cache
-    if: github.event_name != 'schedule' && github.ref == 'refs/heads/master'
+    if: github.event_name != 'schedule' && github.ref == 'refs/heads/master' && ! contains(inputs.spark-version, '-SNAPSHOT')
     uses: actions/cache/save@v4
     with:
       path: ~/spark
