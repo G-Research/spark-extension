@@ -28,13 +28,15 @@ runs:
       git diff
     shell: bash
 
-  - name: Cache Maven packages
-    if: github.event_name != 'merge_group'
-    uses: actions/cache@v4
+  - name: Restore Maven packages cache
+    if: github.event_name != 'schedule'
+    uses: actions/cache/restore@v4
     with:
       path: ~/.m2/repository
       key: ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-${{ hashFiles('pom.xml') }}
-      restore-keys: ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-
+      restore-keys:
+        ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-${{ hashFiles('pom.xml') }}
+        ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-
 
   - name: Setup JDK ${{ inputs.java-compat-version }}
     uses: actions/setup-java@v4
@@ -50,6 +52,42 @@ runs:
       mvn --batch-mode package -Dspotless.check.skip -DskipTests -Dmaven.test.skip=true
       mvn --batch-mode install -Dspotless.check.skip -DskipTests -Dmaven.test.skip=true -Dgpg.skip
     shell: bash
+
+  - name: Save Maven packages cache
+    if: github.event_name != 'schedule' && github.ref == 'refs/heads/master'
+    uses: actions/cache/save@v4
+    with:
+      path: ~/.m2/repository
+      key: ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-${{ hashFiles('pom.xml') }}-${{ github.run_id }}}
+
+  # merely populate the cache for test-jvm and test-python actions
+  - name: Restore Spark Binaries cache
+    if: github.event_name != 'schedule' && ! contains(inputs.spark-version, '-SNAPSHOT')
+    uses: actions/cache/restore@v4
+    with:
+      path: ~/spark
+      key: ${{ runner.os }}-spark-binaries-${{ inputs.spark-version }}-${{ inputs.scala-compat-version }}
+      restore-keys:
+        ${{ runner.os }}-spark-binaries-${{ inputs.spark-version }}-${{ inputs.scala-compat-version }}
+
+  - name: Setup Spark Binaries
+    if: ( ! contains(inputs.spark-version, '-SNAPSHOT') )
+    env:
+      SPARK_PACKAGE: spark-${{ inputs.spark-version }}/spark-${{ inputs.spark-version }}-bin-hadoop${{ inputs.hadoop-version }}${{ inputs.scala-compat-version == '2.13' && '-scala2.13' || '' }}.tgz
+    run: |
+      if [[ ! -e ~/spark ]]
+      then
+        wget --progress=dot:giga "https://www.apache.org/dyn/closer.lua/spark/${SPARK_PACKAGE}?action=download" -O - | tar -xzC "${{ runner.temp }}"
+        archive=$(basename "${SPARK_PACKAGE}") bash -c "mv -v "${{ runner.temp }}/\${archive/%.tgz/}" ~/spark"
+      fi
+    shell: bash
+
+  - name: Save Spark Binaries cache
+    if: github.event_name != 'schedule' && github.ref == 'refs/heads/master'
+    uses: actions/cache/save@v4
+    with:
+      path: ~/spark
+      key: ${{ runner.os }}-spark-binaries-${{ inputs.spark-version }}-${{ inputs.scala-compat-version }}-${{ github.run_id }}}
 
   - name: Upload Binaries
     uses: actions/upload-artifact@v4
