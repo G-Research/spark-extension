@@ -377,6 +377,8 @@ Then execute `python -m build python/` to create a whl from the sources. It can 
 - ***Spark’s groupByKey should be avoided – and here’s why**, Enrico Minack, 13/06/2023*:<br/>https://www.gresearch.com/blog/article/sparks-groupbykey-should-be-avoided-and-heres-why/
 - ***Inspecting Parquet files with Spark**, Enrico Minack, 28/07/2023*:<br/>https://www.gresearch.com/blog/article/parquet-files-know-your-scaling-limits/
 - ***Enhancing Spark’s UI with Job Descriptions**, Enrico Minack, 12/12/2023*:<br/>https://www.gresearch.com/blog/article/enhancing-sparks-ui-with-job-descriptions/
+- ***PySpark apps with dependencies: Managing Python dependencies in code**, Enrico Minack, 24/01/2024*:<br/>https://www.gresearch.com/news/pyspark-apps-with-dependencies-managing-python-dependencies-in-code/
+- ***Observing Spark Aggregates: Cheap Metrics from Datasets**, Enrico Minack, 06/02/2024*:<br/>https://www.gresearch.com/news/observing-spark-aggregates-cheap-metrics-from-datasets-2/
 
 ## Security
 
