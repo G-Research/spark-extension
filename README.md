@@ -377,3 +377,7 @@ Then execute `python -m build python/` to create a whl from the sources. It can 
 - ***Spark’s groupByKey should be avoided – and here’s why**, Enrico Minack, 13/06/2023*:<br/>https://www.gresearch.com/blog/article/sparks-groupbykey-should-be-avoided-and-heres-why/
 - ***Inspecting Parquet files with Spark**, Enrico Minack, 28/07/2023*:<br/>https://www.gresearch.com/blog/article/parquet-files-know-your-scaling-limits/
 - ***Enhancing Spark’s UI with Job Descriptions**, Enrico Minack, 12/12/2023*:<br/>https://www.gresearch.com/blog/article/enhancing-sparks-ui-with-job-descriptions/
+
+## Security
+
+Please see our [security policy](https://github.com/G-Research/spark-extension/blob/master/SECURITY.md) for details on reporting security vulnerabilities.
