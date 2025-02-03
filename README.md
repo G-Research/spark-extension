@@ -2,7 +2,7 @@
 
 This project provides extensions to the [Apache Spark project](https://spark.apache.org/) in Scala and Python:
 
-**[Diff](DIFF.md) [<sup>[*]</sup>](#spark-connect-server):** A `diff` transformation and application for `Dataset`s that computes the differences between
+**[Diff](DIFF.md):** A `diff` transformation and application for `Dataset`s that computes the differences between
 two datasets, i.e. which rows to _add_, _delete_ or _change_ to get from one dataset to the other.
 
 **[SortedGroups](GROUPS.md):** A `groupByKey` transformation that groups rows by a key while providing
@@ -198,7 +198,7 @@ The package version has the following semantics: `spark-extension_{SCALA_COMPAT_
 Add this line to your `build.sbt` file:
 
 ```sbt
-libraryDependencies += "uk.co.gresearch.spark" %% "spark-extension" % "2.12.0-3.5"
+libraryDependencies += "uk.co.gresearch.spark" %% "spark-extension" % "2.13.0-3.5"
 ```
 
 ### Maven
@@ -209,7 +209,7 @@ Add this dependency to your `pom.xml` file:
 <dependency>
   <groupId>uk.co.gresearch.spark</groupId>
   <artifactId>spark-extension_2.12</artifactId>
-  <version>2.12.0-3.5</version>
+  <version>2.13.0-3.5</version>
 </dependency>
 ```
 
@@ -219,7 +219,7 @@ Add this dependency to your `build.gradle` file:
 
 ```groovy
 dependencies {
-    implementation "uk.co.gresearch.spark:spark-extension_2.12:2.12.0-3.5"
+    implementation "uk.co.gresearch.spark:spark-extension_2.12:2.13.0-3.5"
 }
 ```
 
@@ -228,7 +228,7 @@ dependencies {
 Submit your Spark app with the Spark Extension dependency (version ≥1.1.0) as follows:
 
 ```shell script
-spark-submit --packages uk.co.gresearch.spark:spark-extension_2.12:2.12.0-3.5 [jar]
+spark-submit --packages uk.co.gresearch.spark:spark-extension_2.12:2.13.0-3.5 [jar]
 ```
 
 Note: Pick the right Scala version (here 2.12) and Spark version (here 3.5) depending on your Spark version.
@@ -238,7 +238,7 @@ Note: Pick the right Scala version (here 2.12) and Spark version (here 3.5) depe
 Launch a Spark Shell with the Spark Extension dependency (version ≥1.1.0) as follows:
 
 ```shell script
-spark-shell --packages uk.co.gresearch.spark:spark-extension_2.12:2.12.0-3.5
+spark-shell --packages uk.co.gresearch.spark:spark-extension_2.12:2.13.0-3.5
 ```
 
 Note: Pick the right Scala version (here 2.12) and Spark version (here 3.5) depending on your Spark Shell version.
@@ -254,7 +254,7 @@ from pyspark.sql import SparkSession
 
 spark = SparkSession \
     .builder \
-    .config("spark.jars.packages", "uk.co.gresearch.spark:spark-extension_2.12:2.12.0-3.5") \
+    .config("spark.jars.packages", "uk.co.gresearch.spark:spark-extension_2.12:2.13.0-3.5") \
     .getOrCreate()
 ```
 
@@ -265,7 +265,7 @@ Note: Pick the right Scala version (here 2.12) and Spark version (here 3.5) depe
 Launch the Python Spark REPL with the Spark Extension dependency (version ≥1.1.0) as follows:
 
 ```shell script
-pyspark --packages uk.co.gresearch.spark:spark-extension_2.12:2.12.0-3.5
+pyspark --packages uk.co.gresearch.spark:spark-extension_2.12:2.13.0-3.5
 ```
 
 Note: Pick the right Scala version (here 2.12) and Spark version (here 3.5) depending on your PySpark version.
@@ -275,7 +275,7 @@ Note: Pick the right Scala version (here 2.12) and Spark version (here 3.5) depe
 Run your Python scripts that use PySpark via `spark-submit`:
 
 ```shell script
-spark-submit --packages uk.co.gresearch.spark:spark-extension_2.12:2.12.0-3.5 [script.py]
+spark-submit --packages uk.co.gresearch.spark:spark-extension_2.12:2.13.0-3.5 [script.py]
 ```
 
 Note: Pick the right Scala version (here 2.12) and Spark version (here 3.5) depending on your Spark version.
@@ -289,7 +289,7 @@ Running your Python application on a Spark cluster will still require one of the
 to add the Scala package to the Spark environment.
 
 ```shell script
-pip install pyspark-extension==2.12.0.3.5
+pip install pyspark-extension==2.13.0.3.5
 ```
 
 Note: Pick the right Spark version (here 3.5) depending on your PySpark version.
@@ -299,7 +299,7 @@ Note: Pick the right Spark version (here 3.5) depending on your PySpark version.
 There are plenty of [Data Science notebooks](https://datasciencenotebook.org/) around. To use this library,
 add **a jar dependency** to your notebook using these **Maven coordinates**:
 
-    uk.co.gresearch.spark:spark-extension_2.12:2.12.0-3.5
+    uk.co.gresearch.spark:spark-extension_2.12:2.13.0-3.5
 
 Or [download the jar](https://mvnrepository.com/artifact/uk.co.gresearch.spark/spark-extension) and place it
 on a filesystem where it is accessible by the notebook, and reference that jar file directly.
@@ -377,3 +377,9 @@ Then execute `python -m build python/` to create a whl from the sources. It can 
 - ***Spark’s groupByKey should be avoided – and here’s why**, Enrico Minack, 13/06/2023*:<br/>https://www.gresearch.com/blog/article/sparks-groupbykey-should-be-avoided-and-heres-why/
 - ***Inspecting Parquet files with Spark**, Enrico Minack, 28/07/2023*:<br/>https://www.gresearch.com/blog/article/parquet-files-know-your-scaling-limits/
 - ***Enhancing Spark’s UI with Job Descriptions**, Enrico Minack, 12/12/2023*:<br/>https://www.gresearch.com/blog/article/enhancing-sparks-ui-with-job-descriptions/
+- ***PySpark apps with dependencies: Managing Python dependencies in code**, Enrico Minack, 24/01/2024*:<br/>https://www.gresearch.com/news/pyspark-apps-with-dependencies-managing-python-dependencies-in-code/
+- ***Observing Spark Aggregates: Cheap Metrics from Datasets**, Enrico Minack, 06/02/2024*:<br/>https://www.gresearch.com/news/observing-spark-aggregates-cheap-metrics-from-datasets-2/
+
+## Security
+
+Please see our [security policy](https://github.com/G-Research/spark-extension/blob/master/SECURITY.md) for details on reporting security vulnerabilities.

@@ -14,13 +14,16 @@
 import dataclasses
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional, Dict, Mapping, Any, Callable, Union, Iterable, overload
+from functools import reduce
+from typing import Optional, Dict, Mapping, Any, Callable, List, Tuple, Union, Iterable, overload
 
 from py4j.java_gateway import JavaObject, JVMView
-from pyspark.sql import DataFrame
-from pyspark.sql.types import DataType
+from pyspark.sql import DataFrame, Column
+from pyspark.sql.functions import col, lit, when, concat, coalesce, array, struct
+from pyspark.sql.types import DataType, StructField, ArrayType
 
-from gresearch.spark import _get_jvm, _to_seq, _to_map
+from gresearch.spark import _get_jvm, _to_seq, _to_map, backticks, distinct_prefix_for, \
+    handle_configured_case_sensitivity, list_contains_case_sensitivity, list_filter_case_sensitivity, list_diff_case_sensitivity
 from gresearch.spark.diff.comparator import DiffComparator, DiffComparators, DefaultDiffComparator
 
 try:
@@ -36,8 +39,8 @@ class DiffMode(Enum):
     LeftSide = "LeftSide"
     RightSide = "RightSide"
 
-    # the actual default enum value is defined in Java
-    Default = "Default"
+    # should be in sync with default defined in Java
+    Default = ColumnByColumn
 
     def _to_java(self, jvm: JVMView) -> JavaObject:
         return jvm.uk.co.gresearch.spark.diff.DiffMode.withNameOption(self.name).get()
@@ -238,28 +241,13 @@ class DiffOptions:
         column_name_comparators.update({dt: comparator for dt in column_name})
         return dataclasses.replace(self, column_name_comparators=column_name_comparators)
 
-    def _to_java(self, jvm: JVMView) -> JavaObject:
-        return jvm.uk.co.gresearch.spark.diff.DiffOptions(
-            self.diff_column,
-            self.left_column_prefix,
-            self.right_column_prefix,
-            self.insert_diff_value,
-            self.change_diff_value,
-            self.delete_diff_value,
-            self.nochange_diff_value,
-            jvm.scala.Option.apply(self.change_column),
-            self.diff_mode._to_java(jvm),
-            self.sparse_mode,
-            self.default_comparator._to_java(jvm),
-            self._to_java_map(jvm, self.data_type_comparators, key_to_java=self._to_java_data_type),
-            self._to_java_map(jvm, self.column_name_comparators)
-        )
-
-    def _to_java_map(self, jvm: JVMView, map: Mapping[Any, DiffComparator], key_to_java: Callable[[JVMView, Any], Any] = lambda j, x: x) -> JavaObject:
-        return _to_map(jvm, {key_to_java(jvm, key): cmp._to_java(jvm) for key, cmp in map.items()})
-
-    def _to_java_data_type(self, jvm: JVMView, dt: DataType) -> JavaObject:
-        return jvm.org.apache.spark.sql.types.DataType.fromJson(dt.json())
+    def comparator_for(self, column: StructField) -> DiffComparator:
+        cmp = self.column_name_comparators.get(column.name)
+        if cmp is None:
+            cmp = self.data_type_comparators.get(column.dataType)
+        if cmp is None:
+            cmp = self.default_comparator
+        return cmp
 
 
 class Differ:
@@ -271,10 +259,6 @@ class Differ:
     """
     def __init__(self, options: DiffOptions = None):
         self._options = options or DiffOptions()
-
-    def _to_java(self, jvm: JVMView) -> JavaObject:
-        jdo = self._options._to_java(jvm)
-        return jvm.uk.co.gresearch.spark.diff.Differ(jdo)
 
     @overload
     def diff(self, left: DataFrame, right: DataFrame, *id_columns: str) -> DataFrame: ...
@@ -348,15 +332,18 @@ class Differ:
         :return: the diff DataFrame
         :rtype DataFrame
         """
-        if len(id_or_ignore_columns) == 2 and all([isinstance(lst, Iterable) for lst in id_or_ignore_columns]):
+        if len(id_or_ignore_columns) == 2 and all([isinstance(lst, Iterable) and not isinstance(lst, str) for lst in id_or_ignore_columns]):
             id_columns, ignore_columns = id_or_ignore_columns
         else:
             id_columns, ignore_columns = (id_or_ignore_columns, [])
 
-        jvm = _get_jvm(left)
-        jdiffer = self._to_java(jvm)
-        jdf = jdiffer.diff(left._jdf, right._jdf, _to_seq(jvm, list(id_columns)), _to_seq(jvm, list(ignore_columns)))
-        return DataFrame(jdf, left.session_or_ctx())
+        return self._do_diff(left, right, id_columns, ignore_columns)
+
+    @staticmethod
+    def _columns_of_side(df: DataFrame, id_columns: List[str], side_prefix: str) -> List[Column]:
+        prefix = side_prefix + '_'
+        return [col(c) if c in id_columns else col(c).alias(c.replace(prefix, ""))
+                for c in df.columns if c in id_columns or c.startswith(side_prefix)]
 
     @overload
     def diffwith(self, left: DataFrame, right: DataFrame, *id_columns: str) -> DataFrame: ...
@@ -386,14 +373,246 @@ class Differ:
         else:
             id_columns, ignore_columns = (id_or_ignore_columns, [])
 
-        jvm = _get_jvm(left)
-        jdiffer = self._to_java(jvm)
-        jdf = jdiffer.diffWith(left._jdf, right._jdf, _to_seq(jvm, list(id_columns)), _to_seq(jvm, list(ignore_columns)))
-        df = DataFrame(jdf, left.sql_ctx)
-        return df \
-            .withColumnRenamed('_1', self._options.diff_column) \
-            .withColumnRenamed('_2', self._options.left_column_prefix) \
-            .withColumnRenamed('_3', self._options.right_column_prefix)
+        diff = self._do_diff(left, right, id_columns, ignore_columns)
+        left_columns = self._columns_of_side(diff, id_columns, self._options.left_column_prefix)
+        right_columns = self._columns_of_side(diff, id_columns, self._options.right_column_prefix)
+        diff_column = col(self._options.diff_column)
+
+        left_struct = when(diff_column == self._options.insert_diff_value, lit(None)) \
+            .otherwise(struct(*left_columns)) \
+            .alias(self._options.left_column_prefix)
+        right_struct = when(diff_column == self._options.delete_diff_value, lit(None)) \
+            .otherwise(struct(*right_columns)) \
+            .alias(self._options.right_column_prefix)
+        return diff.select(diff_column, left_struct, right_struct)
+
+    def _check_schema(self, left: DataFrame, right: DataFrame, id_columns: List[str], ignore_columns: List[str], case_sensitive: bool):
+        def require(result: bool, message: str) -> None:
+            if not result:
+                raise ValueError(message)
+
+        require(
+            len(left.columns) == len(set(left.columns)) and len(right.columns) == len(set(right.columns)),
+            f"The datasets have duplicate columns.\n" +
+            f"Left column names: {', '.join(left.columns)}\n" +
+            f"Right column names: {', '.join(right.columns)}")
+
+        left_non_ignored = list_diff_case_sensitivity(left.columns, ignore_columns, case_sensitive)
+        right_non_ignored = list_diff_case_sensitivity(right.columns, ignore_columns, case_sensitive)
+
+        except_ignored_columns_msg = ' except ignored columns' if ignore_columns else ''
+
+        require(
+            len(left_non_ignored) == len(right_non_ignored),
+            "The number of columns doesn't match.\n" +
+            f"Left column names{except_ignored_columns_msg} ({len(left_non_ignored)}): {', '.join(left_non_ignored)}\n" +
+            f"Right column names{except_ignored_columns_msg} ({len(right_non_ignored)}): {', '.join(right_non_ignored)}"
+        )
+
+        require(len(left_non_ignored) > 0, f"The schema{except_ignored_columns_msg} must not be empty")
+
+        # column types must match but we ignore the nullability of columns
+        left_fields = {handle_configured_case_sensitivity(field.name, case_sensitive): field.dataType
+                       for field in left.schema.fields
+                       if not list_contains_case_sensitivity(ignore_columns, field.name, case_sensitive)}
+        right_fields = {handle_configured_case_sensitivity(field.name, case_sensitive): field.dataType
+                        for field in right.schema.fields
+                        if not list_contains_case_sensitivity(ignore_columns, field.name, case_sensitive)}
+        left_extra_schema = set(left_fields.items()) - set(right_fields.items())
+        right_extra_schema = set(right_fields.items()) - set(left_fields.items())
+        require(
+            len(left_extra_schema) == 0 and len(right_extra_schema) == 0,
+            "The datasets do not have the same schema.\n" +
+            f"Left extra columns: {', '.join([f'{f} ({t.typeName()})' for f, t in sorted(list(left_extra_schema))])}\n" +
+            f"Right extra columns: {', '.join([f'{f} ({t.typeName()})' for f, t in sorted(list(right_extra_schema))])}")
+
+        columns = left_non_ignored
+        pk_columns = id_columns or columns
+        non_pk_columns = list_diff_case_sensitivity(columns, pk_columns, case_sensitive)
+        missing_id_columns = list_diff_case_sensitivity(pk_columns, columns, case_sensitive)
+        require(
+            len(missing_id_columns) == 0,
+            f"Some id columns do not exist: {', '.join(missing_id_columns)} missing among {', '.join(columns)}"
+        )
+
+        missing_ignore_columns = list_diff_case_sensitivity(ignore_columns, left.columns + right.columns, case_sensitive)
+        require(
+            len(missing_ignore_columns) == 0,
+            f"Some ignore columns do not exist: {', '.join(missing_ignore_columns)} " +
+            f"missing among {', '.join(sorted(list(set(left_non_ignored + right_non_ignored))))}"
+        )
+
+        require(
+            not list_contains_case_sensitivity(pk_columns, self._options.diff_column, case_sensitive),
+            f"The id columns must not contain the diff column name '{self._options.diff_column}': {', '.join(pk_columns)}"
+        )
+        require(
+            self._options.change_column is None or not list_contains_case_sensitivity(pk_columns, self._options.change_column, case_sensitive),
+            f"The id columns must not contain the change column name '{self._options.change_column}': {', '.join(pk_columns)}"
+        )
+        diff_value_columns = self._get_diff_value_columns(pk_columns, non_pk_columns, left, right, ignore_columns, case_sensitive)
+        diff_value_columns = {n for n, t in diff_value_columns}
+
+        if self._options.diff_mode in [DiffMode.LeftSide, DiffMode.RightSide]:
+            require(
+                not list_contains_case_sensitivity(diff_value_columns, self._options.diff_column, case_sensitive),
+                f"The {'left' if self._options.diff_mode == DiffMode.LeftSide else 'right'} " +
+                f"non-id columns must not contain the diff column name '{self._options.diff_column}': " +
+                f"{', '.join(list_diff_case_sensitivity((left if self._options.diff_mode == DiffMode.LeftSide else right).columns, id_columns, case_sensitive))}"
+            )
+
+            require(
+                self._options.change_column is None or not list_contains_case_sensitivity(diff_value_columns, self._options.change_column, case_sensitive),
+                f"The {'left' if self._options.diff_mode == DiffMode.LeftSide else 'right'} " +
+                f"non-id columns must not contain the change column name '{self._options.change_column}': " +
+                f"{', '.join(list_diff_case_sensitivity((left if self._options.diff_mode == DiffMode.LeftSide else right).columns, id_columns, case_sensitive))}"
+            )
+        else:
+            require(
+                not list_contains_case_sensitivity(diff_value_columns, self._options.diff_column, case_sensitive),
+                f"The column prefixes '{self._options.left_column_prefix}' and '{self._options.right_column_prefix}', " +
+                f"together with these non-id columns must not produce the diff column name '{self._options.diff_column}': " +
+                f"{', '.join(non_pk_columns)}"
+            )
+
+            require(
+                self._options.change_column is None or not list_contains_case_sensitivity(diff_value_columns, self._options.change_column, case_sensitive),
+                f"The column prefixes '{self._options.left_column_prefix}' and '{self._options.right_column_prefix}', " +
+                f"together with these non-id columns must not produce the change column name '{self._options.change_column}': " +
+                f"{', '.join(non_pk_columns)}"
+            )
+
+            require(
+                all(not list_contains_case_sensitivity(pk_columns, c, case_sensitive) for c in diff_value_columns),
+                f"The column prefixes '{self._options.left_column_prefix}' and '{self._options.right_column_prefix}', " +
+                f"together with these non-id columns must not produce any id column name '{', '.join(pk_columns)}': " +
+                f"{', '.join(non_pk_columns)}"
+            )
+
+    def _get_change_column(self,
+                           exists_column_name: str,
+                           value_columns_with_comparator: List[Tuple[str, DiffComparator]],
+                           left: DataFrame,
+                           right: DataFrame) -> Optional[Column]:
+        if self._options.change_column is None:
+            return None
+        if not self._options.change_column:
+            return array().cast(ArrayType(StringType, containsNull = false)).alias(self._options.change_column)
+        return when(left[exists_column_name].isNull() | right[exists_column_name].isNull(), lit(None)) \
+            .otherwise(
+                concat(*[when(cmp.equiv(left[c], right[c]), array()).otherwise(array(lit(c)))
+                         for (c, cmp) in value_columns_with_comparator])) \
+            .alias(self._options.change_column)
+
+    def _do_diff(self, left: DataFrame, right: DataFrame, id_columns: List[str], ignore_columns: List[str]) -> DataFrame:
+        case_sensitive = left.session().conf.get("spark.sql.caseSensitive") == "true"
+        self._check_schema(left, right, id_columns, ignore_columns, case_sensitive)
+
+        columns = list_diff_case_sensitivity(left.columns, ignore_columns, case_sensitive)
+        pk_columns = id_columns or columns
+        value_columns = list_diff_case_sensitivity(columns, pk_columns, case_sensitive)
+        value_struct_fields = {f.name: f for f in left.schema.fields}
+        value_columns_with_comparator = [(c, self._options.comparator_for(value_struct_fields[c])) for c in value_columns]
+
+        exists_column_name = distinct_prefix_for(left.columns) + "exists"
+        left_with_exists = left.withColumn(exists_column_name, lit(1))
+        right_with_exists = right.withColumn(exists_column_name, lit(1))
+        join_condition = reduce(lambda l, r: l & r,
+                                [left_with_exists[c].eqNullSafe(right_with_exists[c])
+                                 for c in pk_columns])
+        un_changed = reduce(lambda l, r: l & r,
+                            [cmp.equiv(left_with_exists[c], right_with_exists[c])
+                             for (c, cmp) in value_columns_with_comparator],
+                            lit(True))
+        change_condition = ~un_changed
+
+        diff_action_column = \
+            when(left_with_exists[exists_column_name].isNull(), lit(self._options.insert_diff_value)) \
+            .when(right_with_exists[exists_column_name].isNull(), lit(self._options.delete_diff_value)) \
+            .when(change_condition, lit(self._options.change_diff_value)) \
+            .otherwise(lit(self._options.nochange_diff_value)) \
+            .alias(self._options.diff_column)
+
+        diff_columns = [c[1] for c in self._get_diff_columns(pk_columns, value_columns, left, right, ignore_columns, case_sensitive)]
+        # turn this column into a list of one or none column so we can easily concat it below with diffActionColumn and diffColumns
+        change_column = self._get_change_column(exists_column_name, value_columns_with_comparator, left_with_exists, right_with_exists)
+        change_columns = [change_column] if change_column is not None else []
+
+        return left_with_exists \
+            .join(right_with_exists, join_condition, "fullouter") \
+            .select(*([diff_action_column] + change_columns + diff_columns))
+
+    def _get_diff_id_columns(self, pk_columns: List[str],
+                                left: DataFrame,
+                                right: DataFrame) -> List[Tuple[str, Column]]:
+        return [(c, coalesce(left[c], right[c]).alias(c)) for c in pk_columns]
+
+    def _get_diff_value_columns(self, pk_columns: List[str],
+                          value_columns: List[str],
+                          left: DataFrame,
+                          right: DataFrame,
+                          ignore_columns: List[str],
+                          case_sensitive: bool) -> List[Tuple[str, Column]]:
+        left_value_columns = list_filter_case_sensitivity(left.columns, value_columns, case_sensitive)
+        right_value_columns = list_filter_case_sensitivity(right.columns, value_columns, case_sensitive)
+
+        left_non_pk_columns = list_diff_case_sensitivity(left.columns, pk_columns, case_sensitive)
+        right_non_pk_columns = list_diff_case_sensitivity(right.columns, pk_columns, case_sensitive)
+
+        left_ignored_columns = list_filter_case_sensitivity(left.columns, ignore_columns, case_sensitive)
+        right_ignored_columns = list_filter_case_sensitivity(right.columns, ignore_columns, case_sensitive)
+        left_values = {handle_configured_case_sensitivity(c, case_sensitive): (c, when(~(left[c].eqNullSafe(right[c])), left[c]) if self._options.sparse_mode else left[c]) for c in left_non_pk_columns}
+        right_values = {handle_configured_case_sensitivity(c, case_sensitive): (c, when(~(left[c].eqNullSafe(right[c])), right[c]) if self._options.sparse_mode else right[c]) for c in right_non_pk_columns}
+
+        def alias(prefix: Optional[str], values: Dict[str, Tuple[str, Column]]) -> Callable[[str], Tuple[str, Column]]:
+            def func(name: str) -> (str, Column):
+                name, column = values[handle_configured_case_sensitivity(name, case_sensitive)]
+                alias = name if prefix is None else f'{prefix}_{name}'
+                return alias, column.alias(alias)
+
+            return func
+
+        def alias_left(name: str) -> (str, Column):
+            return alias(self._options.left_column_prefix, left_values)(name)
+
+        def alias_right(name: str) -> (str, Column):
+            return alias(self._options.right_column_prefix, right_values)(name)
+
+        prefixed_left_ignored_columns = [alias_left(c) for c in left_ignored_columns]
+        prefixed_right_ignored_columns = [alias_right(c) for c in right_ignored_columns]
+
+        if self._options.diff_mode == DiffMode.ColumnByColumn:
+            non_id_columns = \
+                [c for vc in value_columns for c in [alias_left(vc), alias_right(vc)]] + \
+                [c for ic in ignore_columns for c in (
+                   ([alias_left(ic)] if list_contains_case_sensitivity(left_ignored_columns, ic, case_sensitive) else []) +
+                   ([alias_right(ic)] if list_contains_case_sensitivity(right_ignored_columns, ic, case_sensitive) else [])
+                )]
+        elif self._options.diff_mode == DiffMode.SideBySide:
+            non_id_columns = \
+                [alias_left(c) for c in left_value_columns] + prefixed_left_ignored_columns + \
+                [alias_right(c) for c in right_value_columns] + prefixed_right_ignored_columns
+        elif self._options.diff_mode == DiffMode.LeftSide:
+            non_id_columns = \
+                [alias(None, left_values)(c) for c in value_columns] +\
+                [alias(None, left_values)(c) for c in left_ignored_columns]
+        elif self._options.diff_mode == DiffMode.RightSide:
+            non_id_columns = \
+                [alias(None, right_values)(c) for c in value_columns] + \
+                [alias(None, right_values)(c) for c in right_ignored_columns]
+        else:
+            raise RuntimeError(f'Unsupported diff mode: {self._options.diff_mode}')
+
+        return non_id_columns
+
+    def _get_diff_columns(self, pk_columns: List[str],
+                          value_columns: List[str],
+                          left: DataFrame,
+                          right: DataFrame,
+                          ignore_columns: List[str],
+                          case_sensitive: bool) -> List[Tuple[str, Column]]:
+        return self._get_diff_id_columns(pk_columns, left, right) + \
+               self._get_diff_value_columns(pk_columns, value_columns, left, right, ignore_columns, case_sensitive)
 
 
 @overload

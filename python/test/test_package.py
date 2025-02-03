@@ -17,13 +17,21 @@ from decimal import Decimal
 from subprocess import CalledProcessError
 from unittest import skipUnless, skipIf
 
-from pyspark import __version__
-from pyspark.sql import Row
+from pyspark import __version__, SparkContext
+from pyspark.sql import Row, SparkSession, SQLContext
 from pyspark.sql.functions import col, count
 
-from gresearch.spark import dotnet_ticks_to_timestamp, dotnet_ticks_to_unix_epoch, dotnet_ticks_to_unix_epoch_nanos, \
+from gresearch.spark import backticks, distinct_prefix_for, handle_configured_case_sensitivity, \
+    list_contains_case_sensitivity, list_filter_case_sensitivity, list_diff_case_sensitivity, \
+    dotnet_ticks_to_timestamp, dotnet_ticks_to_unix_epoch, dotnet_ticks_to_unix_epoch_nanos, \
     timestamp_to_dotnet_ticks, unix_epoch_to_dotnet_ticks, unix_epoch_nanos_to_dotnet_ticks, count_null
 from spark_common import SparkTest
+
+try:
+    from pyspark.sql.connect.session import SparkSession as ConnectSparkSession
+    has_connect = True
+except ImportError:
+    has_connect = False
 
 POETRY_PYTHON_ENV = "POETRY_PYTHON"
 RICH_SOURCES_ENV = "RICH_SOURCES"
@@ -105,6 +113,72 @@ class PackageTest(SparkTest):
             [row.asDict() for row in expected.collect()]
         )
 
+    def test_backticks(self):
+        self.assertEqual(backticks("column"), "column")
+        self.assertEqual(backticks("a.column"), "`a.column`")
+        self.assertEqual(backticks("`a.column`"), "`a.column`")
+        self.assertEqual(backticks("column", "a.field"), "column.`a.field`")
+        self.assertEqual(backticks("a.column", "a.field"), "`a.column`.`a.field`")
+        self.assertEqual(backticks("the.alias", "a.column", "a.field"), "`the.alias`.`a.column`.`a.field`")
+
+    def test_distinct_prefix_for(self):
+        self.assertEqual(distinct_prefix_for([]), "_")
+        self.assertEqual(distinct_prefix_for(["a"]), "_")
+        self.assertEqual(distinct_prefix_for(["abc"]), "_")
+        self.assertEqual(distinct_prefix_for(["a", "bc", "def"]), "_")
+        self.assertEqual(distinct_prefix_for(["_a"]), "__")
+        self.assertEqual(distinct_prefix_for(["_abc"]), "__")
+        self.assertEqual(distinct_prefix_for(["a", "_bc", "__def"]), "___")
+
+    def test_handle_configured_case_sensitivity(self):
+        case_sensitive = False
+        with self.subTest(case_sensitive=case_sensitive):
+            self.assertEqual(handle_configured_case_sensitivity('abc', case_sensitive), 'abc')
+            self.assertEqual(handle_configured_case_sensitivity('AbC', case_sensitive), 'abc')
+            self.assertEqual(handle_configured_case_sensitivity('ABC', case_sensitive), 'abc')
+
+        case_sensitive = True
+        with self.subTest(case_sensitive=case_sensitive):
+            self.assertEqual(handle_configured_case_sensitivity('abc', case_sensitive), 'abc')
+            self.assertEqual(handle_configured_case_sensitivity('AbC', case_sensitive), 'AbC')
+            self.assertEqual(handle_configured_case_sensitivity('ABC', case_sensitive), 'ABC')
+
+    def test_list_contains_case_sensitivity(self):
+        the_list = ['abc', 'Def', 'GhI', 'JKL']
+        self.assertEqual(list_contains_case_sensitivity(the_list, 'a', case_sensitive=False), False)
+        self.assertEqual(list_contains_case_sensitivity(the_list, 'abc', case_sensitive=False), True)
+        self.assertEqual(list_contains_case_sensitivity(the_list, 'deF', case_sensitive=False), True)
+        self.assertEqual(list_contains_case_sensitivity(the_list, 'JKL', case_sensitive=False), True)
+
+        self.assertEqual(list_contains_case_sensitivity(the_list, 'a', case_sensitive=True), False)
+        self.assertEqual(list_contains_case_sensitivity(the_list, 'abc', case_sensitive=True), True)
+        self.assertEqual(list_contains_case_sensitivity(the_list, 'deF', case_sensitive=True), False)
+        self.assertEqual(list_contains_case_sensitivity(the_list, 'JKL', case_sensitive=True), True)
+
+    def test_list_filter_case_sensitivity(self):
+        the_list = ['abc', 'Def', 'GhI', 'JKL']
+        self.assertEqual(list_filter_case_sensitivity(the_list, ['a'], case_sensitive=False), [])
+        self.assertEqual(list_filter_case_sensitivity(the_list, ['abc'], case_sensitive=False), ['abc'])
+        self.assertEqual(list_filter_case_sensitivity(the_list, ['deF'], case_sensitive=False), ['Def'])
+        self.assertEqual(list_filter_case_sensitivity(the_list, ['JKL'], case_sensitive=False), ['JKL'])
+
+        self.assertEqual(list_filter_case_sensitivity(the_list, ['a'], case_sensitive=True), [])
+        self.assertEqual(list_filter_case_sensitivity(the_list, ['abc'], case_sensitive=True), ['abc'])
+        self.assertEqual(list_filter_case_sensitivity(the_list, ['deF'], case_sensitive=True), [])
+        self.assertEqual(list_filter_case_sensitivity(the_list, ['JKL'], case_sensitive=True), ['JKL'])
+
+    def test_list_diff_case_sensitivity(self):
+        the_list = ['abc', 'Def', 'GhI', 'JKL']
+        self.assertEqual(list_diff_case_sensitivity(the_list, ['a'], case_sensitive=False), the_list)
+        self.assertEqual(list_diff_case_sensitivity(the_list, ['abc'], case_sensitive=False), ['Def', 'GhI', 'JKL'])
+        self.assertEqual(list_diff_case_sensitivity(the_list, ['deF'], case_sensitive=False), ['abc', 'GhI', 'JKL'])
+        self.assertEqual(list_diff_case_sensitivity(the_list, ['JKL'], case_sensitive=False), ['abc', 'Def', 'GhI'])
+
+        self.assertEqual(list_diff_case_sensitivity(the_list, ['a'], case_sensitive=True), the_list)
+        self.assertEqual(list_diff_case_sensitivity(the_list, ['abc'], case_sensitive=True), ['Def', 'GhI', 'JKL'])
+        self.assertEqual(list_diff_case_sensitivity(the_list, ['deF'], case_sensitive=True), the_list)
+        self.assertEqual(list_diff_case_sensitivity(the_list, ['JKL'], case_sensitive=True), ['abc', 'Def', 'GhI'])
+
     @skipIf(SparkTest.is_spark_connect, "Spark Connect does not provide access to the JVM, required by dotnet ticks")
     def test_dotnet_ticks_to_timestamp(self):
         for column in ["tick", self.ticks.tick]:
@@ -164,6 +238,14 @@ class PackageTest(SparkTest):
             count_null(col("unix_nanos")).alias("null_nanos"),
         ).collect()
         self.assertEqual([Row(ids=7, nanos=6, null_ids=0, null_nanos=1)], actual)
+
+    def test_session(self):
+        self.assertIsNotNone(self.ticks.session())
+        self.assertIsInstance(self.ticks.session(), tuple(([SparkSession] + ([ConnectSparkSession] if has_connect else []))))
+
+    def test_session_or_ctx(self):
+        self.assertIsNotNone(self.ticks.session_or_ctx())
+        self.assertIsInstance(self.ticks.session_or_ctx(), tuple(([SparkSession, SQLContext] + ([ConnectSparkSession] if has_connect else []))))
 
     @skipIf(SparkTest.is_spark_connect, "Spark Connect does not provide access to the JVM, required by create_temp_dir")
     def test_create_temp_dir(self):

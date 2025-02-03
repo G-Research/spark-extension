@@ -3,6 +3,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [2.13.0] - 2024-11-04
+
+### Fixes
+- Support diff for Spark Connect implemened via PySpark Dataset API (#251)
+
+### Added
+- Add ignore columns to diff in Python API (#252)
+- Check that the Java / Scala package is installed when needed by Python (#250)
+
 ## [2.12.0] - 2024-04-26
 
 ## Fixes

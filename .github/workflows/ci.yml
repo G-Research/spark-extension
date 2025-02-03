@@ -56,7 +56,7 @@ jobs:
     name: "Test success"
     if: always()
     runs-on: ubuntu-latest
-    needs: [build-python, test-jvm, test-python, test-snapshots-jvm]
+    needs: [build-jvm, build-python, test-jvm, test-python]
 
     steps:
       - name: "Success"
