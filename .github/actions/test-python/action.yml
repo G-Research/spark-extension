@@ -164,6 +164,7 @@ runs:
   - name: Stop Spark Connect
     if: always() && steps.spark-connect.outcome == 'success'
     run: |
+      netstat -an
       $SPARK_BIN_HOME/sbin/stop-connect-server.sh
       echo "::group::Spark Connect server log"
       # though started in $SPARK_BIN_HOME/sbin, logs go to $SPARK_HOME/logs
