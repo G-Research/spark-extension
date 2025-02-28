@@ -7,7 +7,7 @@ description: 'A GitHub Action that tests Python spark-extension'
 # so this action only works with scala 2.12 and non-snapshot spark versions
 inputs:
   spark-version:
-    description: Spark version, e.g. 3.4.0
+    description: Spark version, e.g. 3.4.0 or 4.0.0-preview1
     required: true
   scala-version:
     description: Scala version, e.g. 2.12.15
@@ -44,7 +44,7 @@ runs:
       path: .
 
   - name: Restore Spark Binaries cache
-    if: github.event_name != 'schedule' && inputs.scala-compat-version == '2.12' && ! contains(inputs.spark-version, '-SNAPSHOT')
+    if: github.event_name != 'schedule' && ( startsWith(inputs.spark-version, '3.') && inputs.scala-compat-version == '2.12' || startsWith(inputs.spark-version, '4.') ) && ! contains(inputs.spark-version, '-SNAPSHOT')
     uses: actions/cache/restore@v4
     with:
       path: ~/spark
@@ -53,7 +53,7 @@ runs:
         ${{ runner.os }}-spark-binaries-${{ inputs.spark-version }}-${{ inputs.scala-compat-version }}
 
   - name: Setup Spark Binaries
-    if: inputs.scala-compat-version == '2.12' && ! contains(inputs.spark-version, '-SNAPSHOT')
+    if: ( startsWith(inputs.spark-version, '3.') && inputs.scala-compat-version == '2.12' || startsWith(inputs.spark-version, '4.') ) &&  ! contains(inputs.spark-version, '-SNAPSHOT')
     env:
       SPARK_PACKAGE: spark-${{ inputs.spark-version }}/spark-${{ inputs.spark-version }}-bin-hadoop${{ inputs.hadoop-version }}${{ inputs.scala-compat-version == '2.13' && '-scala2.13' || '' }}.tgz
     run: |
@@ -138,7 +138,7 @@ runs:
 
   - name: Start Spark Connect
     id: spark-connect
-    if: (inputs.spark-compat-version == '3.4' || inputs.spark-compat-version == '3.5' || startsWith('4.', inputs.spark-compat-version)) && inputs.scala-compat-version == '2.12' && ! contains(inputs.spark-version, '-SNAPSHOT')
+    if: ( contains('3.4,3.5', inputs.spark-compat-version) && inputs.scala-compat-version == '2.12' || startsWith(inputs.spark-version, '4.') ) && ! contains(inputs.spark-version, '-SNAPSHOT')
     run: |
       $SPARK_BIN_HOME/sbin/start-connect-server.sh --packages org.apache.spark:spark-connect_${{ inputs.scala-compat-version }}:${{ inputs.spark-version }}
     shell: bash

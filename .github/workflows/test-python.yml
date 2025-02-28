@@ -49,6 +49,11 @@ jobs:
             hadoop-version: '3'
             scala-compat-version: '2.12'
             scala-version: '2.12.18'
+          - spark-compat-version: '4.0'
+            spark-version: '4.0.0-preview2'
+            hadoop-version: '3'
+            scala-compat-version: '2.13'
+            scala-version: '2.13.16'
 
     steps:
       - name: Checkout
