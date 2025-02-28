@@ -26,11 +26,26 @@ jobs:
   build-jvm:
     name: "Build JVM"
     uses: "./.github/workflows/build-jvm.yml"
+  build-snapshots:
+    name: "Build Snapshots"
+    uses: "./.github/workflows/build-snapshots.yml"
+  build-python:
+    name: "Build Python"
+    needs: build-jvm
+    uses: "./.github/workflows/build-python.yml"
 
   test-jvm:
     name: "Test JVM"
     needs: build-jvm
     uses: "./.github/workflows/test-jvm.yml"
+  test-python:
+    name: "Test Python"
+    needs: build-jvm
+    uses: "./.github/workflows/test-python.yml"
+  test-snapshots-jvm:
+    name: "Test Snapshots"
+    needs: build-snapshots
+    uses: "./.github/workflows/test-snapshots.yml"
 
   check:
     name: "Check"
@@ -41,7 +56,7 @@ jobs:
     name: "Test success"
     if: always()
     runs-on: ubuntu-latest
-    needs: [test-jvm]
+    needs: [build-jvm, build-python, test-jvm, test-python]
 
     steps:
       - name: "Success"
