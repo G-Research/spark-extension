@@ -20,6 +20,7 @@ jobs:
             scala-version: '2.13.16'
             java-compat-version: '17'
             hadoop-version: '3'
+            python-version: '3.9'
 
     steps:
       - name: Checkout
