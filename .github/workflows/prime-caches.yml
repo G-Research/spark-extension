@@ -13,7 +13,7 @@ jobs:
       # keep in-sync with .github/workflows/test-jvm.yml
       matrix:
         scala-compat-version: ['2.12', '2.13']
-        spark-compat-version: ['3.2', '3.3', '3.4', '3.5']
+        spark-compat-version: ['3.4', '3.5']
         spark-patch-version: ['0', '1', '2', '3', '4']
 
         include:
@@ -30,16 +30,8 @@ jobs:
           - spark-compat-version: '3.2'
             scala-compat-version: '2.12'
             scala-version: '2.12.15'
+            spark-patch-version: '4'
             hadoop-version: '2.7'
-          - spark-compat-version: '3.3'
-            scala-compat-version: '2.12'
-            scala-version: '2.12.15'
-            hadoop-version: '2'
-          - spark-compat-version: '3.3'
-            scala-compat-version: '2.12'
-            scala-version: '2.12.15'
-            spark-patch-version: '3'
-            hadoop-version: '3'
           - spark-compat-version: '3.3'
             scala-compat-version: '2.12'
             scala-version: '2.12.15'
@@ -53,14 +45,21 @@ jobs:
             scala-compat-version: '2.12'
             scala-version: '2.12.18'
             hadoop-version: '3'
+          - spark-compat-version: '3.5'
+            scala-compat-version: '2.12'
+            scala-version: '2.12.18'
+            spark-patch-version: '5'
+            hadoop-version: '3'
 
           - spark-compat-version: '3.2'
             scala-compat-version: '2.13'
             scala-version: '2.13.5'
+            spark-patch-version: '4'
             hadoop-version: '3.2'
           - spark-compat-version: '3.3'
             scala-compat-version: '2.13'
             scala-version: '2.13.8'
+            spark-patch-version: '4'
             hadoop-version: '3'
           - spark-compat-version: '3.4'
             scala-compat-version: '2.13'
@@ -70,10 +69,11 @@ jobs:
             scala-compat-version: '2.13'
             scala-version: '2.13.8'
             hadoop-version: '3'
-
-        exclude:
           - spark-compat-version: '3.5'
-            spark-patch-version: '4'
+            scala-compat-version: '2.13'
+            scala-version: '2.13.8'
+            spark-patch-version: '5'
+            hadoop-version: '3'
 
     steps:
       - name: Checkout

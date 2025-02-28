@@ -7,7 +7,7 @@ on:
         required: true
         type: string
         description: 'Example: {"include": [{"params": {"spark-version": "3.0.3","scala-version": "2.12.10"}}]}'
-        default: '{"include": [{"params": {"spark-version": "3.0.3","scala-version": "2.12.10"}},{"params": {"spark-version": "3.1.3","scala-version": "2.12.10"}},{"params": { "spark-version": "3.2.4","scala-version": "2.12.15"}},{"params": {"spark-version": "3.3.4","scala-version": "2.12.15"}},{"params": {"spark-version": "3.4.2","scala-version": "2.12.17"}},{"params": {"spark-version": "3.5.0","scala-version": "2.12.18"}},{"params": {"spark-version": "3.2.4","scala-version": "2.13.5"}},{"params": {"spark-version": "3.3.4","scala-version": "2.13.8"}},{"params": {"spark-version": "3.4.2","scala-version": "2.13.8"}},{"params": {"spark-version": "3.5.0","scala-version": "2.13.8"}}]}'
+        default: '{"include": [{"params": {"spark-version": "3.0.3","scala-version": "2.12.10"}},{"params": {"spark-version": "3.1.3","scala-version": "2.12.10"}},{"params": { "spark-version": "3.2.4","scala-version": "2.12.15"}},{"params": {"spark-version": "3.3.4","scala-version": "2.12.15"}},{"params": {"spark-version": "3.4.4","scala-version": "2.12.17"}},{"params": {"spark-version": "3.5.5","scala-version": "2.12.18"}},{"params": {"spark-version": "3.2.4","scala-version": "2.13.5"}},{"params": {"spark-version": "3.3.4","scala-version": "2.13.8"}},{"params": {"spark-version": "3.4.4","scala-version": "2.13.8"}},{"params": {"spark-version": "3.5.5","scala-version": "2.13.8"}}]}'
       github_release_latest:
         description: 'Make the published GitHub release as the latest'
         required: false

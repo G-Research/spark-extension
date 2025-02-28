@@ -40,7 +40,7 @@ jobs:
           - spark-compat-version: '3.5'
             scala-compat-version: '2.12'
             scala-version: '2.12.18'
-            spark-version: '3.5.3'
+            spark-version: '3.5.5'
             hadoop-version: '3'
 
           - spark-compat-version: '3.2'
@@ -61,7 +61,12 @@ jobs:
           - spark-compat-version: '3.5'
             scala-compat-version: '2.13'
             scala-version: '2.13.8'
-            spark-version: '3.5.3'
+            spark-version: '3.5.5'
+            hadoop-version: '3'
+          - spark-compat-version: '3.5'
+            scala-compat-version: '2.13'
+            scala-version: '2.13.8'
+            spark-version: '4.0.0-preview2'
             hadoop-version: '3'
 
     steps:
