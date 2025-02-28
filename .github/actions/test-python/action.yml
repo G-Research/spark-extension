@@ -144,7 +144,7 @@ runs:
     id: spark-connect
     if: ( contains('3.4,3.5', inputs.spark-compat-version) && inputs.scala-compat-version == '2.12' || startsWith(inputs.spark-version, '4.') ) && ! contains(inputs.spark-version, '-SNAPSHOT')
     env:
-      CONNECT_GRPC_BINDING_ADDRESS: localhost
+      CONNECT_GRPC_BINDING_ADDRESS: 127.0.0.1
       CONNECT_GRPC_BINDING_PORT: 15002
     run: |
       $SPARK_BIN_HOME/sbin/start-connect-server.sh --packages org.apache.spark:spark-connect_${{ inputs.scala-compat-version }}:${{ inputs.spark-version }}
@@ -154,7 +154,7 @@ runs:
     if: steps.spark-connect.outcome == 'success'
     env:
       PYTHONPATH: python:python/test
-      TEST_SPARK_CONNECT_SERVER: sc://localhost:15002
+      TEST_SPARK_CONNECT_SERVER: sc://127.0.0.1:15002
     run: |
       .pytest-venv/bin/pip install pyspark[connect]
       netstat -an
