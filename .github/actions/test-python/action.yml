@@ -15,11 +15,14 @@ inputs:
   spark-compat-version:
     description: Spark compatibility version, e.g. 3.4
     required: true
-  hadoop-version:
-    description: Hadoop version, e.g. 2.7 or 2
-    required: true
   scala-compat-version:
     description: Scala compatibility version, e.g. 2.12
+    required: true
+  java-compat-version:
+    description: Java compatibility version, e.g. 8
+    required: true
+  hadoop-version:
+    description: Hadoop version, e.g. 2.7 or 2
     required: true
   python-version:
     description: Python version, e.g. 3.8
@@ -75,10 +78,10 @@ runs:
         ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-${{ hashFiles('pom.xml') }}
         ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-
 
-  - name: Setup JDK 1.8
+  - name: Setup JDK ${{ inputs.java-compat-version }}
     uses: actions/setup-java@v4
     with:
-      java-version: '8'
+      java-version: ${{ inputs.java-compat-version }}
       distribution: 'zulu'
 
   - name: Restore Pip packages cache
