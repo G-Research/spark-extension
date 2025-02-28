@@ -160,9 +160,14 @@ runs:
   - name: Stop Spark Connect
     if: always() && steps.spark-connect.outcome == 'success'
     run: |
+      echo "::group::Spark Connect server log"
+      # though started in $SPARK_BIN_HOME/sbin, logs go to $SPARK_HOME/logs
+      ls -lah $SPARK_HOME/logs || true
+      cat $SPARK_HOME/logs/spark-*-org.apache.spark.sql.connect.service.SparkConnectServer-*.out || true
+      echo "::endgroup::"
       $SPARK_BIN_HOME/sbin/stop-connect-server.sh
       echo "::group::Spark Connect server log"
-      # thoughs started in $SPARK_BIN_HOME/sbin, logs go to $SPARK_HOME/logs
+      # though started in $SPARK_BIN_HOME/sbin, logs go to $SPARK_HOME/logs
       ls -lah $SPARK_HOME/logs || true
       cat $SPARK_HOME/logs/spark-*-org.apache.spark.sql.connect.service.SparkConnectServer-*.out || true
       echo "::endgroup::"
