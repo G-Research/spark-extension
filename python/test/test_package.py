@@ -305,6 +305,8 @@ class PackageTest(SparkTest):
     @skipIf(SparkTest.is_spark_connect, "Spark Connect does not provide access to the JVM, required by install_poetry_project")
     def test_install_poetry_project(self):
         self.spark.sparkContext.setLogLevel("INFO")
+        # noinspection PyPackageRequirements
+        from rich.emoji import Emoji
         with self.assertRaises(ImportError):
             # noinspection PyPackageRequirements
             from rich.emoji import Emoji
