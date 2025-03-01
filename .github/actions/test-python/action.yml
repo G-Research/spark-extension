@@ -140,6 +140,12 @@ runs:
     run: mvn --batch-mode --update-snapshots install -Dspotless.check.skip -DskipTests -Dmaven.test.skip=true -Dgpg.skip
     shell: bash
 
+  - name: Setup tmate session
+    uses: mxschmitt/action-tmate@v3
+  - name: Wait and see
+    run: sleep 3600
+    shell: bash
+
   - name: Start Spark Connect
     id: spark-connect
     if: ( contains('3.4,3.5', inputs.spark-compat-version) && inputs.scala-compat-version == '2.12' || startsWith(inputs.spark-version, '4.') ) && ! contains(inputs.spark-version, '-SNAPSHOT')
