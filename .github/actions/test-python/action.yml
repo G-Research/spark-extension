@@ -109,8 +109,8 @@ runs:
       .pytest-venv/bin/pip install -r python/requirements-${{ inputs.spark-compat-version }}_${{ inputs.scala-compat-version }}.txt
       .pytest-venv/bin/pip install -r python/test/requirements.txt
 
-      SPARK_HOME=$(.pytest-venv/bin/python -c "import pyspark; import os; print(os.path.dirname(pyspark.__file__))")
-      echo "SPARK_HOME=$SPARK_HOME" | tee -a "$GITHUB_ENV"
+      PYSPARK_HOME=$(.pytest-venv/bin/python -c "import pyspark; import os; print(os.path.dirname(pyspark.__file__))")
+      echo "PYSPARK_HOME=$PYSPARK_HOME" | tee -a "$GITHUB_ENV"
     shell: bash
 
   - name: Prepare poetry tests
@@ -156,9 +156,9 @@ runs:
       netstat -an
       $SPARK_BIN_HOME/sbin/stop-connect-server.sh
       echo "::group::Spark Connect server log"
-      # though started in $SPARK_BIN_HOME/sbin, logs go to $SPARK_HOME/logs
-      ls -lah $SPARK_HOME/logs || true
-      cat $SPARK_HOME/logs/spark-*-org.apache.spark.sql.connect.service.SparkConnectServer-*.out || true
+      # though started in $SPARK_BIN_HOME/sbin, logs go to $PYSPARK_HOME/logs
+      ls -lah $PYSPARK_HOME/logs || true
+      cat $PYSPARK_HOME/logs/spark-*-org.apache.spark.sql.connect.service.SparkConnectServer-*.out || true
       echo "::endgroup::"
     shell: bash
 
@@ -169,7 +169,7 @@ runs:
       find python/test -name 'test*.py' > tests
       while read test
       do
-        if ! $SPARK_HOME/bin/spark-submit --master "local[2]" --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION "$test" test-results-submit
+        if ! $PYSPARK_HOME/bin/spark-submit --master "local[2]" --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION "$test" test-results-submit
         then
           state="fail"
         fi
@@ -179,12 +179,12 @@ runs:
 
   - name: Python Release Test
     run: |
-      $SPARK_HOME/bin/spark-submit --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION test-release.py
+      $PYSPARK_HOME/bin/spark-submit --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION test-release.py
     shell: bash
 
   - name: Scala Release Test
     run: |
-      $SPARK_HOME/bin/spark-shell --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION < test-release.scala
+      $PYSPARK_HOME/bin/spark-shell --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION < test-release.scala
     shell: bash
 
   - name: Save Pip packages cache
