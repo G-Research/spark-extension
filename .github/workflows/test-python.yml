@@ -18,7 +18,7 @@ jobs:
             spark-version: '4.0.0-preview2'
             scala-compat-version: '2.13'
             scala-version: '2.13.16'
-            java-compat-version: '17'
+            java-compat-version: '21'
             hadoop-version: '3'
             python-version: '3.9'
 

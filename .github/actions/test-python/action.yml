@@ -149,10 +149,13 @@ runs:
       PYTHONPATH: python:python/test
     run: |
       $SPARK_BIN_HOME/sbin/start-connect-server.sh --packages org.apache.spark:spark-connect_${{ inputs.scala-compat-version }}:${{ inputs.spark-version }}
+      ps aux | grep java
       netstat -an
       .pytest-venv/bin/pip install pyspark[connect]
+      ps aux | grep java
       netstat -an
       .pytest-venv/bin/python -m pytest python/test --junit-xml test-results-connect/pytest-$(date +%s.%N)-$RANDOM.xml
+      ps aux | grep java
       netstat -an
       $SPARK_BIN_HOME/sbin/stop-connect-server.sh
       echo "::group::Spark Connect server log"
