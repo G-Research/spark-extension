@@ -4,7 +4,7 @@ description: 'A GitHub Action that builds pyspark-extension package'
 
 inputs:
   spark-version:
-    description: Spark version, e.g. 3.4.0 or 3.4.0-SNAPSHOT
+    description: Spark version, e.g. 3.4.0, 3.4.0-SNAPSHOT, or 4.0.0-preview1
     required: true
   scala-version:
     description: Scala version, e.g. 2.12.15
@@ -14,6 +14,9 @@ inputs:
     required: true
   scala-compat-version:
     description: Scala compatibility version, e.g. 2.12
+    required: true
+  java-compat-version:
+    description: Java compatibility version, e.g. 8
     required: true
   python-version:
     description: Python version, e.g. 3.8
@@ -44,6 +47,12 @@ runs:
         ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-${{ hashFiles('pom.xml') }}
         ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-
 
+  - name: Setup JDK ${{ inputs.java-compat-version }}
+    uses: actions/setup-java@v4
+    with:
+      java-version: ${{ inputs.java-compat-version }}
+      distribution: 'zulu'
+
   - name: Restore Pip packages cache
     if: github.event_name != 'schedule'
     uses: actions/cache/restore@v4
@@ -72,7 +81,7 @@ runs:
   - name: Test whl
     run: |
       twine check python/dist/*
-      pip install pyspark==${{ inputs.spark-version }}
+      pip install -r python/requirements-${{ inputs.spark-compat-version }}_${{ inputs.scala-compat-version }}.txt
       pip install python/dist/*.whl
       python test-release.py
     shell: bash
