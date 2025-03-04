@@ -4,7 +4,7 @@ description: 'A GitHub Action that tests JVM spark-extension'
 
 inputs:
   spark-version:
-    description: Spark version, e.g. 3.4.0 or 3.4.0-SNAPSHOT
+    description: Spark version, e.g. 3.4.0, 3.4.0-SNAPSHOT or 4.0.0-preview1
     required: true
   scala-version:
     description: Scala version, e.g. 2.12.15
@@ -49,7 +49,7 @@ runs:
   - name: Setup Spark Binaries
     if: ( ! contains(inputs.spark-version, '-SNAPSHOT') )
     env:
-      SPARK_PACKAGE: spark-${{ inputs.spark-version }}/spark-${{ inputs.spark-version }}-bin-hadoop${{ inputs.hadoop-version }}${{ inputs.scala-compat-version == '2.13' && '-scala2.13' || '' }}.tgz
+      SPARK_PACKAGE: spark-${{ inputs.spark-version }}/spark-${{ inputs.spark-version }}-bin-hadoop${{ inputs.hadoop-version }}${{ startsWith(inputs.spark-version, '3.') && inputs.scala-compat-version == '2.13' && '-scala2.13' || '' }}.tgz
     run: |
       # Setup Spark Binaries
       if [[ ! -e ~/spark ]]
