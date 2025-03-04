@@ -15,6 +15,9 @@ inputs:
   spark-compat-version:
     description: Spark compatibility version, e.g. 3.4
     required: true
+  spark-archive-url:
+    description: The URL to download the Spark binary distribution
+    required: false
   scala-compat-version:
     description: Scala compatibility version, e.g. 2.12
     required: true
@@ -63,7 +66,8 @@ runs:
       # Setup Spark Binaries
       if [[ ! -e ~/spark ]]
       then
-        wget --progress=dot:giga "https://www.apache.org/dyn/closer.lua/spark/${SPARK_PACKAGE}?action=download" -O - | tar -xzC "${{ runner.temp }}"
+        url="${{ inputs.spark-archive-url }}"
+        wget --progress=dot:giga "${url:-https://www.apache.org/dyn/closer.lua/spark/${SPARK_PACKAGE}?action=download}" -O - | tar -xzC "${{ runner.temp }}"
         archive=$(basename "${SPARK_PACKAGE}") bash -c "mv -v "${{ runner.temp }}/\${archive/%.tgz/}" ~/spark"
       fi
       echo "SPARK_BIN_HOME=$(cd ~/spark; pwd)" >> $GITHUB_ENV

@@ -1,3 +1,3 @@
 py4j
 # keep in-sync with pom.xml
-pyspark==4.0.0.dev2
+https://dist.apache.org/repos/dist/dev/spark/v4.0.0-rc2-bin/pyspark-4.0.0.tar.gz

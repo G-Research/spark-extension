@@ -90,6 +90,7 @@ jobs:
             scala-compat-version: '2.13'
             scala-version: '2.13.16'
             spark-patch-version: '0'
+            spark-archive-url: https://dist.apache.org/repos/dist/dev/spark/v4.0.0-rc2-bin/spark-4.0.0-bin-hadoop3.tgz
             java-compat-version: '17'
             hadoop-version: '3'
 
@@ -105,6 +106,7 @@ jobs:
           spark-version: ${{ matrix.spark-compat-version }}.${{ matrix.spark-patch-version }}
           scala-version: ${{ matrix.scala-version }}
           spark-compat-version: ${{ matrix.spark-compat-version }}
+          spark-archive-url: ${{ matrix.spark-archive-url }}
           scala-compat-version: ${{ matrix.scala-compat-version }}
           java-compat-version: ${{ matrix.java-compat-version }}
           hadoop-version: ${{ matrix.hadoop-version }}
