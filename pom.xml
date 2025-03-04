@@ -153,11 +153,11 @@
         <updatePolicy>daily</updatePolicy>
       </snapshots>
     </repository>
-    <!-- required to resolve Spark preview versions -->
+    <!-- required to resolve Spark release candidates -->
     <repository>
-      <id>apache preview</id>
-      <name>Apache Preview</name>
-      <url>https://repository.apache.org/content/repositories/orgapachespark-1456/</url>
+      <id>apache release candidate</id>
+      <name>Apache staging</name>
+      <url>https://repository.apache.org/content/repositories/orgapachespark-1478/</url>
     </repository>
   </repositories>
 

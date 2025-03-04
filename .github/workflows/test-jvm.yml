@@ -89,7 +89,7 @@ jobs:
           - spark-compat-version: '4.0'
             scala-compat-version: '2.13'
             scala-version: '2.13.16'
-            spark-patch-version: '0-preview2'
+            spark-patch-version: '0'
             java-compat-version: '17'
             hadoop-version: '3'
 
