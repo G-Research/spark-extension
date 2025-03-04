@@ -139,8 +139,24 @@ runs:
   - name: Start Spark Connect
     id: spark-connect
     if: (inputs.spark-compat-version == '3.4' || inputs.spark-compat-version == '3.5' || startsWith('4.', inputs.spark-compat-version)) && inputs.scala-compat-version == '2.12' && ! contains(inputs.spark-version, '-SNAPSHOT')
+    env:
+      SPARK_HOME: ${{ env.SPARK_BIN_HOME }}
     run: |
-      $SPARK_BIN_HOME/sbin/start-connect-server.sh --packages org.apache.spark:spark-connect_${{ inputs.scala-compat-version }}:${{ inputs.spark-version }}
+      while true; do
+        $SPARK_HOME/sbin/start-connect-server.sh --packages org.apache.spark:spark-connect_${{ inputs.scala-compat-version }}:${{ inputs.spark-version }}
+        sleep 10
+        for log in $SPARK_HOME/logs/spark-*-org.apache.spark.sql.connect.service.SparkConnectServer-*.out*; do
+          echo "::group::Spark Connect server log: $log"
+          cat "$log" || true
+          echo "::endgroup::"
+        done
+
+        if netstat -an | grep 15002; then
+          break;
+        fi
+        $SPARK_HOME/sbin/stop-connect-server.sh --packages org.apache.spark:spark-connect_${{ inputs.scala-compat-version }}:${{ inputs.spark-version }}
+        sleep 5
+      done
     shell: bash
 
   - name: Python Unit Tests (Spark Connect)
@@ -155,10 +171,11 @@ runs:
 
   - name: Stop Spark Connect
     if: always() && steps.spark-connect.outcome == 'success'
+    env:
+      SPARK_HOME: ${{ env.SPARK_BIN_HOME }}
     run: |
-      $SPARK_BIN_HOME/sbin/stop-connect-server.sh
+      $SPARK_HOME/sbin/stop-connect-server.sh
       echo "::group::Spark Connect server log"
-      # thoughs started in $SPARK_BIN_HOME/sbin, logs go to $SPARK_HOME/logs
       ls -lah $SPARK_HOME/logs || true
       cat $SPARK_HOME/logs/spark-*-org.apache.spark.sql.connect.service.SparkConnectServer-*.out || true
       echo "::endgroup::"
