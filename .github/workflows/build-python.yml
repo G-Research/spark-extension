@@ -43,11 +43,6 @@ jobs:
             scala-compat-version: '2.12'
             scala-version: '2.12.18'
             java-compat-version: '8'
-          - spark-compat-version: '4.0'
-            spark-version: '4.0.0.dev2'
-            scala-compat-version: '2.13'
-            scala-version: '2.13.8'
-            java-compat-version: '17'
 
     steps:
       - name: Checkout
