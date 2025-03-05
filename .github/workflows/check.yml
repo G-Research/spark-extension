@@ -14,13 +14,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Cache Maven packages
-        if: github.event_name != 'merge_group'
-        uses: actions/cache@v4
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-mvn-lint-${{ hashFiles('pom.xml') }}
-
       - name: Setup JDK ${{ inputs.java-compat-version }}
         uses: actions/setup-java@v4
         with:

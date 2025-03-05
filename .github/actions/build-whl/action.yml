@@ -53,16 +53,6 @@ runs:
       java-version: ${{ inputs.java-compat-version }}
       distribution: 'zulu'
 
-  - name: Restore Pip packages cache
-    if: github.event_name != 'schedule'
-    uses: actions/cache/restore@v4
-    with:
-      path: ~/.cache/pip
-      key: ${{ runner.os }}-pip-whl-${{ inputs.python-version }}-${{ hashFiles(format('python/requirements-{0}_{1}.txt', inputs.spark-compat-version, inputs.scala-compat-version)) }}
-      restore-keys:
-        ${{ runner.os }}-pip-whl-${{ inputs.python-version }}-${{ hashFiles(format('python/requirements-{0}_{1}.txt', inputs.spark-compat-version, inputs.scala-compat-version)) }}
-        ${{ runner.os }}-pip-whl-${{ inputs.python-version }}-
-
   - name: Setup Python
     uses: actions/setup-python@v5
     with:
@@ -85,13 +75,6 @@ runs:
       pip install python/dist/*.whl
       python test-release.py
     shell: bash
-
-  - name: Save Pip packages cache
-    if: github.event_name != 'schedule' && github.ref == 'refs/heads/master'
-    uses: actions/cache/save@v4
-    with:
-      path: ~/.cache/pip
-      key: ${{ runner.os }}-pip-whl-${{ inputs.python-version }}-${{ hashFiles(format('python/requirements-{0}_{1}.txt', inputs.spark-compat-version, inputs.scala-compat-version)) }}-${{ github.run_id }}
 
   - name: Upload whl
     uses: actions/upload-artifact@v4

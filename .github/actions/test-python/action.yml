@@ -81,18 +81,6 @@ runs:
       java-version: '8'
       distribution: 'zulu'
 
-  - name: Restore Pip packages cache
-    if: github.event_name != 'schedule'
-    uses: actions/cache/restore@v4
-    with:
-      path: ~/.cache/pip
-      key: ${{ runner.os }}-pip-test-${{ inputs.python-version }}-${{ hashFiles(format('python/requirements-{0}_{1}.txt', inputs.spark-compat-version, inputs.scala-compat-version)) }}
-      restore-keys:
-        ${{ runner.os }}-pip-test-${{ inputs.python-version }}-${{ hashFiles(format('python/requirements-{0}_{1}.txt', inputs.spark-compat-version, inputs.scala-compat-version)) }}
-        ${{ runner.os }}-pip-whl-${{ inputs.python-version }}-${{ hashFiles(format('python/requirements-{0}_{1}.txt', inputs.spark-compat-version, inputs.scala-compat-version)) }}
-        ${{ runner.os }}-pip-test-${{ inputs.python-version }}-
-        ${{ runner.os }}-pip-whl-${{ inputs.python-version }}-
-
   - name: Setup Python
     uses: actions/setup-python@v5
     with:
@@ -205,13 +193,6 @@ runs:
     run: |
       $SPARK_HOME/bin/spark-shell --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION < test-release.scala
     shell: bash
-
-  - name: Save Pip packages cache
-    if: github.event_name != 'schedule' && github.ref == 'refs/heads/master'
-    uses: actions/cache/save@v4
-    with:
-      path: ~/.cache/pip
-      key: ${{ runner.os }}-pip-test-${{ inputs.python-version }}-${{ hashFiles(format('python/requirements-{0}_{1}.txt', inputs.spark-compat-version, inputs.scala-compat-version)) }}-${{ github.run_id }}}
 
   - name: Upload Test Results
     if: always()
