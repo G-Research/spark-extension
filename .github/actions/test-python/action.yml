@@ -157,7 +157,7 @@ runs:
       CONNECT_GRPC_BINDING_PORT: 15002
     run: |
       # Start Spark Connect
-      while true; do
+      for attempt in {1..10}; do
         $SPARK_HOME/sbin/start-connect-server.sh --packages org.apache.spark:spark-connect_${{ inputs.scala-compat-version }}:${{ inputs.spark-version }}
         sleep 10
         for log in $SPARK_HOME/logs/spark-*-org.apache.spark.sql.connect.service.SparkConnectServer-*.out; do
@@ -172,9 +172,15 @@ runs:
         if netstat -an | grep 15002; then
           break;
         fi
+        echo "::warning title=Starting Spark Connect server failed::Attempt #$attempt to start Spark Connect server failed"
         $SPARK_HOME/sbin/stop-connect-server.sh --packages org.apache.spark:spark-connect_${{ inputs.scala-compat-version }}:${{ inputs.spark-version }}
         sleep 5
       done
+
+      if ! netstat -an | grep 15002; then
+        echo "::error title=Starting Spark Connect server failed::All attempts to start Spark Connect server failed"
+        exit 1
+      fi
     shell: bash
 
   - name: Python Unit Tests (Spark Connect)
