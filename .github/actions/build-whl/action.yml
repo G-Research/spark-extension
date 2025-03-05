@@ -60,20 +60,29 @@ runs:
 
   - name: Install Python dependencies
     run: |
+      # Install Python dependencies
+      echo "::group::mvn compile"
       python -m pip install --upgrade pip build twine
+      echo "::endgroup::"
     shell: bash
 
   - name: Build whl
     run: |
+      # Build whl
+      echo "::group::build-whl.sh"
       ./build-whl.sh
+      echo "::endgroup::"
     shell: bash
 
   - name: Test whl
     run: |
+      # Test whl
+      echo "::group::test-release.py"
       twine check python/dist/*
       pip install -r python/requirements-${{ inputs.spark-compat-version }}_${{ inputs.scala-compat-version }}.txt
       pip install python/dist/*.whl
       python test-release.py
+      echo "::endgroup::"
     shell: bash
 
   - name: Upload whl
