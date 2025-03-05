@@ -14,18 +14,13 @@
  * limitations under the License.
  */
 
-package org.apache.spark.sql
+package uk.co.gresearch.spark
 
-import org.apache.spark.sql.catalyst.expressions.Expression
-import org.apache.spark.sql.classic.ExpressionUtils.{column => toColumn, expression}
+import org.apache.spark.sql.{Dataset, Encoder}
 
-package object extension {
-  implicit class ColumnExtension(col: Column) {
-    def expr: Expression = expression(col)
-    def sql: String = col.node.sql
-  }
-
-  implicit class ExpressionExtension(expr: Expression) {
-    def column: Column = toColumn(expr)
+trait SparkSuiteHelper {
+  self: SparkTestSession =>
+  def createEmptyDataset[T : Encoder](): Dataset[T] = {
+    spark.emptyDataset[T](implicitly[Encoder[T]])
   }
 }

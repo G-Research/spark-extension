@@ -657,15 +657,13 @@ class Differ(options: DiffOptions) {
       .otherwise(struct(rightColumns: _*))
       .as("_3")
 
-    val plan = diff.select(diffColumn, leftStruct, rightStruct).queryExecution.logical
-
     val encoder: Encoder[(String, T, U)] = Encoders.tuple(
       Encoders.STRING,
       implicitly[Encoder[T]],
       implicitly[Encoder[U]]
     )
 
-    new Dataset(diff.sparkSession, plan, encoder)
+    diff.select(diffColumn, leftStruct, rightStruct).as(encoder)
   }
 
 }

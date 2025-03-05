@@ -15,11 +15,11 @@ inputs:
   scala-compat-version:
     description: Scala compatibility version, e.g. 2.12
     required: true
-  hadoop-version:
-    description: Hadoop version, e.g. 2.7 or 2
-    required: true
   java-compat-version:
     description: Java compatibility version, e.g. 8
+    required: true
+  hadoop-version:
+    description: Hadoop version, e.g. 2.7 or 2
     required: true
 
 runs:

@@ -69,6 +69,13 @@
 
     <dependency>
       <groupId>org.apache.spark</groupId>
+      <artifactId>spark-catalyst_${scala.compat.version}</artifactId>
+      <version>${spark.version}</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.spark</groupId>
       <artifactId>spark-hive_${scala.compat.version}</artifactId>
       <version>${spark.version}</version>
       <scope>provided</scope>
@@ -181,6 +188,7 @@
         <version>3.5.0</version>
         <executions>
           <execution>
+            <id>spark-version-sources</id>
             <phase>generate-sources</phase>
             <goals>
               <goal>add-source</goal>
@@ -188,6 +196,18 @@
             <configuration>
               <sources>
                 <source>src/main/scala-spark-${spark.compat.version}</source>
+              </sources>
+            </configuration>
+          </execution>
+          <execution>
+            <id>spark-version-test-sources</id>
+            <phase>generate-test-sources</phase>
+            <goals>
+              <goal>add-test-source</goal>
+            </goals>
+            <configuration>
+              <sources>
+                <source>src/test/scala-spark-${spark.major.version}</source>
               </sources>
             </configuration>
           </execution>

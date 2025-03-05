@@ -31,7 +31,7 @@ import java.nio.file.Paths
 import java.sql.Timestamp
 import java.time.Instant
 
-class SparkSuite extends AnyFunSuite with SparkTestSession {
+class SparkSuite extends AnyFunSuite with SparkTestSession with SparkSuiteHelper {
 
   import spark.implicits._
 
@@ -64,17 +64,17 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
         cacheManager.clearCache()
         assert(cacheManager.isEmpty === true)
 
-        val df = spark.emptyDataFrame
-        assert(cacheManager.lookupCachedData(spark.emptyDataFrame).isDefined === false)
+        val ds = createEmptyDataset[String]()
+        assert(cacheManager.lookupCachedData(ds).isDefined === false)
 
-        unpersist.setDataFrame(df)
-        assert(cacheManager.lookupCachedData(spark.emptyDataFrame).isDefined === false)
+        unpersist.setDataFrame(ds.toDF())
+        assert(cacheManager.lookupCachedData(ds).isDefined === false)
 
-        df.cache()
-        assert(cacheManager.lookupCachedData(spark.emptyDataFrame).isDefined === true)
+        ds.cache()
+        assert(cacheManager.lookupCachedData(ds).isDefined === true)
 
         unpersist(blocking = true)
-        assert(cacheManager.lookupCachedData(spark.emptyDataFrame).isDefined === false)
+        assert(cacheManager.lookupCachedData(ds).isDefined === false)
 
         // calling this twice does not throw any errors
         unpersist()
@@ -88,18 +88,18 @@ class SparkSuite extends AnyFunSuite with SparkTestSession {
       cacheManager.clearCache()
       assert(cacheManager.isEmpty === true)
 
-      val df = spark.emptyDataFrame
-      assert(cacheManager.lookupCachedData(spark.emptyDataFrame).isDefined === false)
+      val ds = createEmptyDataset[String]()
+      assert(cacheManager.lookupCachedData(ds).isDefined === false)
 
       val unpersist = UnpersistHandle.Noop
-      unpersist.setDataFrame(df)
-      assert(cacheManager.lookupCachedData(spark.emptyDataFrame).isDefined === false)
+      unpersist.setDataFrame(ds.toDF())
+      assert(cacheManager.lookupCachedData(ds).isDefined === false)
 
-      df.cache()
-      assert(cacheManager.lookupCachedData(spark.emptyDataFrame).isDefined === true)
+      ds.cache()
+      assert(cacheManager.lookupCachedData(ds).isDefined === true)
 
       unpersist(blocking = true)
-      assert(cacheManager.lookupCachedData(spark.emptyDataFrame).isDefined === true)
+      assert(cacheManager.lookupCachedData(ds).isDefined === true)
 
       // calling this twice does not throw any errors
       unpersist()
