@@ -56,4 +56,4 @@ jobs:
           spark-compat-version: ${{ matrix.spark-compat-version }}
           scala-compat-version: ${{ matrix.scala-compat-version }}
           java-compat-version: ${{ matrix.java-compat-version }}
-          python-version: "3.9"
+          python-version: "3.13"
