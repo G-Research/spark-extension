@@ -58,6 +58,7 @@ jobs:
           - spark-compat-version: '4.0'
             spark-version: '4.0.0'
             spark-archive-url: https://dist.apache.org/repos/dist/dev/spark/v4.0.0-rc2-bin/spark-4.0.0-bin-hadoop3.tgz
+            spark-package-repo: https://repository.apache.org/content/repositories/orgapachespark-1478/
             scala-compat-version: '2.13'
             scala-version: '2.13.16'
             java-compat-version: '17'
@@ -102,6 +103,7 @@ jobs:
           scala-version: ${{ matrix.scala-version }}
           spark-compat-version: ${{ matrix.spark-compat-version }}
           spark-archive-url: ${{ matrix.spark-archive-url }}
+          spark-package-repo: ${{ matrix.spark-package-repo }}
           scala-compat-version: ${{ matrix.scala-compat-version }}
           java-compat-version: ${{ matrix.java-compat-version }}
           hadoop-version: ${{ matrix.hadoop-version }}
