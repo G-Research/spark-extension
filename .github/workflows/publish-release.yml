@@ -133,14 +133,6 @@ jobs:
           key: ${{ runner.os }}-mvn-build-${{ matrix.params.spark-version }}-${{ matrix.params.scala-version }}-${{ hashFiles('pom.xml') }}
           restore-keys: ${{ runner.os }}-mvn-build-${{ matrix.params.spark-version }}-${{ matrix.params.scala-version }}-
       
-      - name: Restore Pip packages cache
-        id: cache-pip
-        uses: actions/cache/restore@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-whl-${{ env.PYTHON_VERSION }}-${{ matrix.params.spark-version }}
-          restore-key: ${{ runner.os }}-pip-whl-${{ env.PYTHON_VERSION }}-${{ matrix.params.spark-version }}
-
       - name: Publish maven artifacts
         id: publish-maven
         run: |
