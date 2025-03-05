@@ -1,6 +1,6 @@
-name: 'Build'
+name: 'Prime caches'
 author: 'EnricoMi'
-description: 'A GitHub Action that builds spark-extension'
+description: 'A GitHub Action that primes caches'
 
 inputs:
   spark-version:
@@ -31,16 +31,6 @@ runs:
       git diff
     shell: bash
 
-  - name: Restore Maven packages cache
-    if: github.event_name != 'schedule'
-    uses: actions/cache/restore@v4
-    with:
-      path: ~/.m2/repository
-      key: ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-${{ hashFiles('pom.xml') }}
-      restore-keys:
-        ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-${{ hashFiles('pom.xml') }}
-        ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-
-
   - name: Setup JDK ${{ inputs.java-compat-version }}
     uses: actions/setup-java@v4
     with:
@@ -56,16 +46,27 @@ runs:
       mvn --batch-mode install -Dspotless.check.skip -DskipTests -Dmaven.test.skip=true -Dgpg.skip
     shell: bash
 
-  - name: Upload Binaries
-    uses: actions/upload-artifact@v4
+  - name: Save Maven packages cache
+    uses: actions/cache/save@v4
     with:
-      name: Binaries-${{ inputs.spark-compat-version }}-${{ inputs.scala-compat-version }}
-      path: |
-        *
-        !.*
-        !target/*-javadoc.jar
-        !target/*-sources.jar
-        !target/site
+      path: ~/.m2/repository
+      key: ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-${{ hashFiles('pom.xml') }}-${{ github.run_id }}
+
+  - name: Setup Spark Binaries
+    if: ( ! contains(inputs.spark-version, '-SNAPSHOT') )
+    env:
+      SPARK_PACKAGE: spark-${{ inputs.spark-version }}/spark-${{ inputs.spark-version }}-bin-hadoop${{ inputs.hadoop-version }}${{ inputs.scala-compat-version == '2.13' && '-scala2.13' || '' }}.tgz
+    run: |
+      wget --progress=dot:giga "https://www.apache.org/dyn/closer.lua/spark/${SPARK_PACKAGE}?action=download" -O - | tar -xzC "${{ runner.temp }}"
+      archive=$(basename "${SPARK_PACKAGE}") bash -c "mv -v "${{ runner.temp }}/\${archive/%.tgz/}" ~/spark"
+    shell: bash
+
+  - name: Save Spark Binaries cache
+    if: ( ! contains(inputs.spark-version, '-SNAPSHOT') )
+    uses: actions/cache/save@v4
+    with:
+      path: ~/spark
+      key: ${{ runner.os }}-spark-binaries-${{ inputs.spark-version }}-${{ inputs.scala-compat-version }}-${{ github.run_id }}
 
 branding:
   icon: 'check-circle'

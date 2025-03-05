@@ -14,14 +14,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Restore Maven packages cache
-        if: github.event_name != 'merge_group'
-        uses: actions/cache/restore@v4
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-mvn-lint-${{ hashFiles('pom.xml') }}
-          restore-key: ${{ runner.os }}-mvn-lint-${{ hashFiles('pom.xml') }}
-
       - name: Setup JDK ${{ inputs.java-compat-version }}
         uses: actions/setup-java@v4
         with:
@@ -40,13 +32,6 @@ jobs:
           mvn --batch-mode --update-snapshots spotless:apply
           git diff
         shell: bash
-
-      - name: Save Maven packages cache
-        if: github.event_name != 'merge_group' && github.ref == 'refs/heads/master'
-        uses: actions/cache/save@v4
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-mvn-lint-${{ hashFiles('pom.xml') }}-${{ github.run_id }}
 
   config:
     name: Configure compat

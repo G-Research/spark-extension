@@ -93,20 +93,6 @@ runs:
     run: mvn --batch-mode surefire-report:report-only
     shell: bash
 
-  - name: Save Spark Binaries cache
-    if: github.event_name != 'schedule' && github.ref == 'refs/heads/master' && ! contains(inputs.spark-version, '-SNAPSHOT')
-    uses: actions/cache/save@v4
-    with:
-      path: ~/spark
-      key: ${{ runner.os }}-spark-binaries-${{ inputs.spark-version }}-${{ inputs.scala-compat-version }}-${{ github.run_id }}
-
-  - name: Save Maven packages cache
-    if: github.event_name != 'schedule' && github.ref == 'refs/heads/master'
-    uses: actions/cache/save@v4
-    with:
-      path: ~/.m2/repository
-      key: ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-${{ hashFiles('pom.xml') }}-${{ github.run_id }}
-
   - name: Upload Unit Test Results
     if: always()
     uses: actions/upload-artifact@v4
