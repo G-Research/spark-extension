@@ -58,7 +58,7 @@ jobs:
             scala-compat-version: '2.13'
             scala-version: '2.13.16'
             java-compat-version: '17'
-          - spark-compat-version: '4.0'
+          - spark-compat-version: '4.1'
             spark-version: '4.1.0-SNAPSHOT'
             scala-compat-version: '2.13'
             scala-version: '2.13.16'
