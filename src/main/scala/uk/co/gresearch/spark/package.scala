@@ -78,8 +78,8 @@ package object spark extends Logging with SparkVersion with BuildVersion {
   /**
    * Encloses the given strings with backticks (backquotes) if needed.
    *
-   * Backticks are not needed for strings that start with a letter (`a`-`z` and `A`-`Z`) or an underscore,
-   * and contain only letters, numbers and underscores.
+   * Backticks are not needed for strings that start with a letter (`a`-`z` and `A`-`Z`) or an underscore, and contain
+   * only letters, numbers and underscores.
    *
    * Multiple strings will be enclosed individually and concatenated with dots (`.`).
    *
