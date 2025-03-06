@@ -57,6 +57,7 @@ runs:
     env:
       SPARK_PACKAGE: spark-${{ inputs.spark-version }}/spark-${{ inputs.spark-version }}-bin-hadoop${{ inputs.hadoop-version }}${{ inputs.scala-compat-version == '2.13' && '-scala2.13' || '' }}.tgz
     run: |
+      # Setup Spark Binaries
       if [[ ! -e ~/spark ]]
       then
         wget --progress=dot:giga "https://www.apache.org/dyn/closer.lua/spark/${SPARK_PACKAGE}?action=download" -O - | tar -xzC "${{ runner.temp }}"
@@ -88,17 +89,22 @@ runs:
 
   - name: Install Python dependencies
     run: |
+      # Install Python dependencies
+      echo "::group::pip install"
       python -m pip install --upgrade pip
       pip install pypandoc
       pip install -r python/requirements-${{ inputs.spark-compat-version }}_${{ inputs.scala-compat-version }}.txt
       pip install -r python/test/requirements.txt
+      echo "::endgroup::"
 
       SPARK_HOME=$(python -c "import pyspark; import os; print(os.path.dirname(pyspark.__file__))")
       echo "SPARK_HOME=$SPARK_HOME" | tee -a "$GITHUB_ENV"
     shell: bash
 
-  - name: Prepare poetry tests
+  - name: Prepare Poetry tests
     run: |
+      # Prepare Poetry tests
+      echo "::group::Prepare poetry tests"
       # install poetry in venv
       python -m venv .poetry-venv
       .poetry-venv/bin/python -m pip install poetry
@@ -111,6 +117,7 @@ runs:
       git reset --hard 20024635c06c22879fd2fd1e380ec4cccd9935dd
       # env var needed by poetry tests
       echo "RICH_SOURCES=$PWD" | tee -a "$GITHUB_ENV"
+      echo "::endgroup::"
     shell: bash
 
   - name: Python Unit Tests
@@ -121,7 +128,11 @@ runs:
     shell: bash
 
   - name: Install Spark Extension
-    run: mvn --batch-mode --update-snapshots install -Dspotless.check.skip -DskipTests -Dmaven.test.skip=true -Dgpg.skip
+    run: |
+      # Install Spark Extension
+      echo "::group::mvn install"
+      mvn --batch-mode --update-snapshots install -Dspotless.check.skip -DskipTests -Dmaven.test.skip=true -Dgpg.skip
+      echo "::endgroup::"
     shell: bash
 
   - name: Start Spark Connect
@@ -130,12 +141,16 @@ runs:
     env:
       SPARK_HOME: ${{ env.SPARK_BIN_HOME }}
     run: |
+      # Start Spark Connect
       while true; do
         $SPARK_HOME/sbin/start-connect-server.sh --packages org.apache.spark:spark-connect_${{ inputs.scala-compat-version }}:${{ inputs.spark-version }}
         sleep 10
-        for log in $SPARK_HOME/logs/spark-*-org.apache.spark.sql.connect.service.SparkConnectServer-*.out*; do
+        for log in $SPARK_HOME/logs/spark-*-org.apache.spark.sql.connect.service.SparkConnectServer-*.out; do
           echo "::group::Spark Connect server log: $log"
+          eoc="EOC-$RANDOM"
+          echo "::stop-commands::$eoc"
           cat "$log" || true
+          echo "::$eoc::"
           echo "::endgroup::"
         done
 
@@ -153,7 +168,12 @@ runs:
       PYTHONPATH: python:python/test
       TEST_SPARK_CONNECT_SERVER: sc://localhost:15002
     run: |
+      # Python Unit Tests (Spark Connect)
+
+      echo "::group::pip install"
       pip install pyspark[connect]
+      echo "::endgroup::"
+
       python -m pytest python/test --junit-xml test-results-connect/pytest-$(date +%s.%N)-$RANDOM.xml
     shell: bash
 
@@ -162,36 +182,50 @@ runs:
     env:
       SPARK_HOME: ${{ env.SPARK_BIN_HOME }}
     run: |
+      # Stop Spark Connect
       $SPARK_HOME/sbin/stop-connect-server.sh
-      echo "::group::Spark Connect server log"
-      ls -lah $SPARK_HOME/logs || true
-      cat $SPARK_HOME/logs/spark-*-org.apache.spark.sql.connect.service.SparkConnectServer-*.out || true
-      echo "::endgroup::"
+      for log in $SPARK_HOME/logs/spark-*-org.apache.spark.sql.connect.service.SparkConnectServer-*.out; do
+        echo "::group::Spark Connect server log: $log"
+        eoc="EOC-$RANDOM"
+        echo "::stop-commands::$eoc"
+        cat "$log" || true
+        echo "::$eoc::"
+        echo "::endgroup::"
+      done
     shell: bash
 
   - name: Python Integration Tests
     env:
       PYTHONPATH: python:python/test
     run: |
+      # Python Integration Tests
       find python/test -name 'test*.py' > tests
       while read test
       do
+        echo "::group::spark-submit $test"
         if ! $SPARK_HOME/bin/spark-submit --master "local[2]" --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION "$test" test-results-submit
         then
           state="fail"
         fi
+        echo "::endgroup::"
       done < tests
       if [[ "$state" == "fail" ]]; then exit 1; fi
     shell: bash
 
   - name: Python Release Test
     run: |
+      # Python Release Test
+      echo "::group::spark-submit"
       $SPARK_HOME/bin/spark-submit --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION test-release.py
+      echo "::endgroup::"
     shell: bash
 
   - name: Scala Release Test
     run: |
+      # Scala Release Test
+      echo "::group::spark-shell"
       $SPARK_HOME/bin/spark-shell --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION < test-release.scala
+      echo "::endgroup::"
     shell: bash
 
   - name: Upload Test Results

@@ -41,7 +41,10 @@ runs:
     env:
       JDK_JAVA_OPTIONS: --add-exports java.base/sun.nio.ch=ALL-UNNAMED --add-exports java.base/sun.util.calendar=ALL-UNNAMED
     run: |
+      # Build
+      echo "::group::mvn dependency:go-offline"
       mvn --batch-mode dependency:go-offline
+      echo "::endgroup::"
     shell: bash
 
   - name: Save Maven packages cache

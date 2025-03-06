@@ -51,6 +51,7 @@ runs:
     env:
       SPARK_PACKAGE: spark-${{ inputs.spark-version }}/spark-${{ inputs.spark-version }}-bin-hadoop${{ inputs.hadoop-version }}${{ inputs.scala-compat-version == '2.13' && '-scala2.13' || '' }}.tgz
     run: |
+      # Setup Spark Binaries
       if [[ ! -e ~/spark ]]
       then
         wget --progress=dot:giga "https://www.apache.org/dyn/closer.lua/spark/${SPARK_PACKAGE}?action=download" -O - | tar -xzC "${{ runner.temp }}"
@@ -78,19 +79,33 @@ runs:
   - name: Scala and Java Tests
     env:
       JDK_JAVA_OPTIONS: --add-exports java.base/sun.nio.ch=ALL-UNNAMED --add-exports java.base/sun.util.calendar=ALL-UNNAMED
-    run: mvn --batch-mode --update-snapshots -Dspotless.check.skip test
+    run: |
+      # Scala and Java Tests
+      echo "::group::mvn test"
+      mvn --batch-mode --update-snapshots -Dspotless.check.skip test
+      echo "::endgroup::"
     shell: bash
 
   - name: Diff App test
     if: ( ! contains(inputs.spark-version, '-SNAPSHOT') )
     run: |
+      # Diff App test
+      echo "::group::spark-submit"
       $SPARK_HOME/bin/spark-submit --packages com.github.scopt:scopt_${{ inputs.scala-compat-version }}:4.1.0 target/spark-extension_*.jar --format parquet --id id src/test/files/test.parquet/file1.parquet src/test/files/test.parquet/file2.parquet diff.parquet
+      echo "::endgroup::"
+
+      echo "::group::spark-shell"
       $SPARK_HOME/bin/spark-shell <<< 'val df = spark.read.parquet("diff.parquet").orderBy($"id").groupBy($"diff").count; df.show; if (df.count != 2) sys.exit(1)'
+      echo "::endgroup::"
     shell: bash
 
   - name: Generate Unit Test Report
     if: failure()
-    run: mvn --batch-mode surefire-report:report-only
+    run: |
+      # Generate Unit Test Report
+      echo "::group::mvn report-only"
+      mvn --batch-mode surefire-report:report-only
+      echo "::endgroup::"
     shell: bash
 
   - name: Upload Unit Test Results
