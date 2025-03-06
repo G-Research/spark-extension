@@ -4,8 +4,6 @@ on:
   schedule:
     - cron: '0 8 */10 * *'
   push:
-    branches:
-      - master
     tags:
       - '*'
   merge_group:
