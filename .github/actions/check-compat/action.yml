@@ -22,17 +22,17 @@ inputs:
 runs:
   using: 'composite'
   steps:
-  - name: Set versions in pom.xml
-    run: |
-      ./set-version.sh ${{ inputs.spark-version }} ${{ inputs.scala-version }}
-      git diff
-    shell: bash
-
   - name: Fetch Binaries Artifact
     uses: actions/download-artifact@v4
     with:
       name: Binaries-${{ inputs.spark-compat-version }}-${{ inputs.scala-compat-version }}
       path: .
+
+  - name: Set versions in pom.xml
+    run: |
+      ./set-version.sh ${{ inputs.spark-version }} ${{ inputs.scala-version }}
+      git diff
+    shell: bash
 
   - name: Restore Maven packages cache
     if: github.event_name != 'schedule'
