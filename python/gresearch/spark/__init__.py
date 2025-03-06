@@ -28,12 +28,17 @@ from pyspark import __version__
 from pyspark.context import SparkContext
 from pyspark.files import SparkFiles
 from pyspark.sql import DataFrame, DataFrameReader, SQLContext
-from pyspark.sql.column import Column, _to_java_column
+from pyspark.sql.column import Column
 from pyspark.sql.context import SQLContext
 from pyspark import SparkConf
 from pyspark.sql.functions import col, count, lit, when
 from pyspark.sql.session import SparkSession
 from pyspark.storagelevel import StorageLevel
+
+if __version__.startswith('4.'):
+    from pyspark.sql.classic.column import _to_java_column
+else:
+    from pyspark.sql.column import _to_java_column
 
 try:
     from pyspark.sql.connect.dataframe import DataFrame as ConnectDataFrame
