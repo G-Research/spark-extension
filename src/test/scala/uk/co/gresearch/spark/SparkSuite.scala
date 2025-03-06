@@ -143,7 +143,8 @@ class SparkSuite extends AnyFunSuite with SparkTestSession with SparkSuiteHelper
   test("backticks") {
     assert(backticks("column") === "column")
     assert(backticks("a.column") === "`a.column`")
-    assert(backticks("`a.column`") === "`a.column`")
+    assert(backticks("a column") === "`a column`")
+    assert(backticks("a `column`") === "`a ``column```")
     assert(backticks("column", "a.field") === "column.`a.field`")
     assert(backticks("a.column", "a.field") === "`a.column`.`a.field`")
     assert(backticks("the.alias", "a.column", "a.field") === "`the.alias`.`a.column`.`a.field`")
