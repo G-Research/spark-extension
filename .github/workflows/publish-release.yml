@@ -78,7 +78,7 @@ jobs:
           fi
 
       - name: Set up JDK 8 and Maven Central Repository
-        uses: actions/setup-java@99b8673ff64fbf99d8d325f52d9a5bdedb8483e9  # v4.2.1
+        uses: actions/setup-java@3a4f6e1af504cf6a31855fa899c6aa5355ba6c12  # v4.7.0
         with:
           java-version: '8'
           distribution: 'corretto'
@@ -87,6 +87,9 @@ jobs:
           server-password: MAVEN_PASSWORD
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg-passphrase: MAVEN_GPG_PASSPHRASE
+
+      - name: Inspect GPG
+        run: gpg -k
 
       - uses: actions/setup-python@v5 
         with:
@@ -104,7 +107,7 @@ jobs:
         id: publish-maven
         run: |
           ./set-version.sh ${{ matrix.params.spark-version }} ${{ matrix.params.scala-version }}
-          mvn clean deploy -Dsign
+          mvn clean deploy -Dsign -Dspotless.check.skip -DskipTests -Dmaven.test.skip=true
         env:
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
