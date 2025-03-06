@@ -82,8 +82,8 @@ jobs:
           ./set-version.sh $version
 
           # commit changes to local repo
-          git config --global user.name "$(git --no-pager log --format=format:'%an' -n 1)"
-          git config --global user.email "$(git --no-pager log --format=format:'%ae' -n 1)"
+          git config --local user.name "${{ github.actor }}"
+          git config --local user.email "github-action-${{ github.actor }}@users.noreply.github.com"
           echo "Committing release to local git"
           git add pom.xml python/setup.py CHANGELOG.md README.md python/README.md
           git commit -m "Releasing $version"
@@ -266,8 +266,8 @@ jobs:
           ./set-version.sh $next_pkg_version-SNAPSHOT
           
           # commit changes to local repo
-          git config --global user.name "$(git --no-pager log --format=format:'%an' -n 1)"
-          git config --global user.email "$(git --no-pager log --format=format:'%ae' -n 1)"
+          git config --local user.name "${{ github.actor }}"
+          git config --local user.email "github-action-${{ github.actor }}@users.noreply.github.com"
 
           echo "Committing release to local git"
           git commit -a -m "Post-release version bump to $next_pkg_version"
