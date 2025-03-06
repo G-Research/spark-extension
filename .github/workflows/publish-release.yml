@@ -22,108 +22,63 @@ on:
               {"params": {"spark-version": "3.5.5","scala-version": "2.13.8"}}
             ]
           }
-      github_release_latest:
-        description: 'Make the published GitHub release as the latest'
-        required: false
-        default: true
-        type: boolean
 
 env:
   # PySpark 3 versions only work with Python 3.9
   PYTHON_VERSION: "3.9"
 
 jobs:
-
-  prepare-release:
-    name: Prepare release
-    runs-on: ubuntu-latest
-    if: ${{ !github.event.repository.fork }}
-    permissions:
-      contents: write # required to push to a branch 
-    outputs:
-      RELEASE_TAG: ${{ steps.update-versions.outputs.release_tag_version }}
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Check if this is a SNAPSHOT version
-        id: check-snapshot
-        run: |
-          if ! grep -q "<version>.*-SNAPSHOT</version>" pom.xml
-          then
-            echo "Version in pom.xml is not a SNAPSHOT version, cannot test all versions"
-            exit 1
-          fi
-
-      - name: Update versions
-        id: update-versions
-        run: |
-
-          # check for unreleased entry in CHANGELOG.md
-          readarray -t changes < <(grep -A 100 "^## \[UNRELEASED\] - YYYY-MM-DD" CHANGELOG.md | grep -B 100 --max-count=1 -E "^## \[[0-9.]+\]" | grep "^-")
-          if [ ${#changes[@]} -eq 0 ]
-          then
-            echo "Did not find any changes in CHANGELOG.md under '## [UNRELEASED] - YYYY-MM-DD'"
-            exit 1
-          fi
-
-          # get latest and release version
-          latest=$(grep --max-count=1 "<version>.*</version>" README.md | sed -E -e "s/\s*<[^>]+>//g" -e "s/-[0-9.]+//g")
-          version=$(grep --max-count=1 "<version>.*</version>" pom.xml | sed -E -e "s/\s*<[^>]+>//g" -e "s/-SNAPSHOT//" -e "s/-[0-9.]+//g")
-
-          # update change
-          echo "Releasing ${#changes[@]} changes as version $version:"
-          for (( i=0; i<${#changes[@]}; i++ )); do echo "${changes[$i]}" ; done
-          sed -i "s/## \[UNRELEASED\] - YYYY-MM-DD/## [$version] - $(date +%Y-%m-%d)/" CHANGELOG.md
-          sed -i -e "s/$latest-/$version-/g" -e "s/$latest\./$version./g" README.md PYSPARK-DEPS.md python/README.md
-          ./set-version.sh $version
-
-          # commit changes to local repo
-          git config --local user.name "${{ github.actor }}"
-          git config --local user.email "github-action-${{ github.actor }}@users.noreply.github.com"
-          echo "Committing release to local git"
-          git add pom.xml python/setup.py CHANGELOG.md README.md python/README.md
-          git commit -m "Releasing $version"
-          git tag -a "v${version}" -m "Release v${version}"
-
-          # updating master and pushing a tag for the release
-          echo "Pushing release commit and tag to origin"
-          git push origin master "v${version}" --tags
-
-          # share release version to next job
-          echo "release_tag_version=v${version}" >> "$GITHUB_OUTPUT"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
   maven-release:
     name: Publish maven release
     runs-on: ubuntu-latest
-    needs: [prepare-release]
-    environment: release # secret GPG_PRIVATE_KEY is protected 
+    if: ${{ !github.event.repository.fork }}
+    environment: release # secret GPG_PRIVATE_KEY is protected
     permissions:
-      contents: write # required to push to a branch
       id-token: write # required for PiPy publish
     strategy:
       fail-fast: false
-      matrix: ${{fromJson(github.event.inputs.versions)}}
+      matrix: ${{ fromJson(github.event.inputs.versions) }}
 
     steps:
       - name: Checkout release tag
         uses: actions/checkout@v4
-        with:
-          ref: ${{needs.prepare-release.outputs.RELEASE_TAG}}
 
-      - name: Set up JDK 8
-        uses: actions/setup-java@v4
-        with:
-          java-version: '8'
-          distribution: 'corretto'
+      - name: Get versions
+        id: versions
+        run: |
+          # get latest and release version
+          latest=$(grep --max-count=1 "<version>.*</version>" README.md | sed -E -e "s/\s*<[^>]+>//g" -e "s/-[0-9.]+//g")
+          version=$(grep --max-count=1 "<version>.*</version>" pom.xml | sed -E -e "s/\s*<[^>]+>//g" -e "s/-SNAPSHOT//" -e "s/-[0-9.]+//g")
 
-      - name: Set up Maven Central Repository
-        uses: actions/setup-java@99b8673ff64fbf99d8d325f52d9a5bdedb8483e9
+          # share versions
+          echo "release_tag_version=v${version}" >> "$GITHUB_OUTPUT"
+          is_snapshot=$(if grep -q "<version>.*-SNAPSHOT</version>" pom.xml; then echo "true"; else echo "false"; fi)
+          echo "is_snapshot=$is_snapshot" >> "$GITHUB_OUTPUT"
+
+      - name: Check tag setup
+        run: |
+          # Check tag setup
+          if [[ "$GITHUB_REF" != "refs/tags/v"* ]]
+          then
+            echo "This workflow must be run on a tag, not $GITHUB_REF"
+            exit 1
+          fi
+
+          if [ "${{ steps.versions.outputs.is_snapshot }}" == "true" ]
+          then
+            echo "This is a tagged SNAPSHOT version. This is not allowed for release!"
+            exit 1
+          fi
+
+          if [ "${{ github.ref_name }}" != "${{ steps.versions.outputs.release_tag_version }}" ]
+          then
+            echo "The version in the pom.xml is ${{ steps.versions.outputs.release_tag_version }}"
+            echo "This tag is ${{ github.ref_name }}, which is different!"
+            exit 1
+          fi
+
+      - name: Set up JDK 8 and Maven Central Repository
+        uses: actions/setup-java@99b8673ff64fbf99d8d325f52d9a5bdedb8483e9  # v4.2.1
         with:
           java-version: '8'
           distribution: 'corretto'
@@ -144,7 +99,7 @@ jobs:
           path: ~/.m2/repository
           key: ${{ runner.os }}-mvn-build-${{ matrix.params.spark-version }}-${{ matrix.params.scala-version }}-${{ hashFiles('pom.xml') }}
           restore-keys: ${{ runner.os }}-mvn-build-${{ matrix.params.spark-version }}-${{ matrix.params.scala-version }}-
-      
+
       - name: Publish maven artifacts
         id: publish-maven
         run: |
@@ -159,7 +114,6 @@ jobs:
         id: prepare-pypi-package
         if: ${{ matrix.params.scala-version }} == 2.12*
         run: |
-          echo "Scala version starts with '2.12'"
           ./build-whl.sh
 
       - name: Publish package distributions to Test PyPI
@@ -182,98 +136,3 @@ jobs:
           password: ${{ secrets.PYPI_PASSWORD }}
           packages-dir: python/dist
           verbose: true
-
-  github-release:
-
-    name: Publish GitHub release
-    runs-on: ubuntu-latest
-    needs: [prepare-release,maven-release]
-    environment: release
-    permissions:
-      contents: write # required to push to a branch
-
-    steps:
-      - name: Checkout release tag
-        uses: actions/checkout@v4
-        with:
-          ref: ${{needs.prepare-release.outputs.RELEASE_TAG}}
-
-      - name: Extract release notes
-        id: release-notes
-        run: |
-          awk '/^## /{if(seen==1)exit; seen++} seen' CHANGELOG.md > ./release-notes.txt
-
-          # Grab release name
-          name=$(grep -m 1 "^## " CHANGELOG.md | sed "s/^## //")
-          echo "release_name=$name" >> $GITHUB_OUTPUT
-
-          # provide release notes file path as output
-          echo "release_notes_path=release-notes.txt" >> $GITHUB_OUTPUT
-
-      - name: Publish GitHub release
-        uses: ncipollo/release-action@2c591bcc8ecdcd2db72b97d6147f871fcd833ba5
-        id: github-release
-        with:
-          name: ${{ steps.release-notes.outputs.release_name }}
-          bodyFile: ${{ steps.release-notes.outputs.release_notes_path }}
-          makeLatest: ${{ inputs.github_release_latest }}
-          # don't block release process if release already exists (we might perform a job rerun or partial release)
-          skipIfReleaseExists: true
-          tag: ${{ needs.prepare-release.outputs.RELEASE_TAG }}
-          token: ${{ github.token }}
-
-      - name: Bump version for SNAPSHOT
-        id: bump-version
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-
-          # define function to bump version
-          function next_version {
-            local version=$1
-            local branch=$2
-          
-            patch=${version/*./}
-            majmin=${version%.${patch}}
-          
-            if [[ $branch == "master" ]]
-            then
-              # minor version bump
-              if [[ $version != *".0" ]]
-              then
-                echo "version is patch version, should be M.m.0: $version" >&2
-                exit 1
-              fi
-              maj=${version/.*/}
-              min=${majmin#${maj}.}
-              next=${maj}.$((min+1)).0
-              echo "$next"
-            else
-              # patch version bump
-              next=${majmin}.$((patch+1))
-              echo "$next"
-            fi
-          }
-          
-          # get release and next version
-          version=$(grep --max-count=1 "<version>.*</version>" pom.xml | sed -E -e "s/\s*<[^>]+>//g")
-          pkg_version="${version/-*/}"
-          branch=$(git rev-parse --abbrev-ref HEAD)
-          next_pkg_version="$(next_version "$pkg_version" "$branch")"
-          
-          # bump the version
-          echo "Bump version to $next_pkg_version"
-          ./set-version.sh $next_pkg_version-SNAPSHOT
-          
-          # commit changes to local repo
-          git config --local user.name "${{ github.actor }}"
-          git config --local user.email "github-action-${{ github.actor }}@users.noreply.github.com"
-
-          echo "Committing release to local git"
-          git commit -a -m "Post-release version bump to $next_pkg_version"
-          
-          # push version bump to origin
-          echo "Pushing release commit to origin"
-          git push origin "master"
-          # NOTE: This push will not trigger a CI as we are using GITHUB_TOKEN to push
-          # More info on: https://docs.github.com/en/actions/using-workflows/triggering-a-workflow#triggering-a-workflow-from-a-workflow

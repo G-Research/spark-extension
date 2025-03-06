@@ -1,0 +1,163 @@
+name: Prepare release
+
+on:
+  workflow_dispatch:
+    inputs:
+      github_release_latest:
+        description: 'Make the created GitHub release the latest'
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  prepare-release:
+    name: Prepare release
+    runs-on: ubuntu-latest
+    if: ${{ !github.event.repository.fork }}
+    permissions:
+      contents: write # required to push to a branch
+    outputs:
+      RELEASE_TAG: ${{ steps.versions.outputs.release_tag_version }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get versions
+        id: versions
+        run: |
+          # get latest and release version
+          latest=$(grep --max-count=1 "<version>.*</version>" README.md | sed -E -e "s/\s*<[^>]+>//g" -e "s/-[0-9.]+//g")
+          version=$(grep --max-count=1 "<version>.*</version>" pom.xml | sed -E -e "s/\s*<[^>]+>//g" -e "s/-SNAPSHOT//" -e "s/-[0-9.]+//g")
+
+          # share versions
+          echo "release_tag_version=v${version}" >> "$GITHUB_OUTPUT"
+          is_snapshot=$(if grep -q "<version>.*-SNAPSHOT</version>" pom.xml; then echo "true"; else echo "false"; fi)
+          echo "is_snapshot=$is_snapshot" >> "$GITHUB_OUTPUT"
+
+      - name: Check branch setup
+        run: |
+          # Check branch setup
+          if [[ "$GITHUB_REF" != "refs/heads/master" ]] && [[ "$GITHUB_REF" != "refs/heads/master-"* ]]
+          then
+            echo "This workflow must be run on master or master-* branch, not $GITHUB_REF"
+            exit 1
+          fi
+
+      - name: Tag and bump version
+        if: steps.versions.outputs.is_snapshot
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # check for unreleased entry in CHANGELOG.md
+          readarray -t changes < <(grep -A 100 "^## \[UNRELEASED\] - YYYY-MM-DD" CHANGELOG.md | grep -B 100 --max-count=1 -E "^## \[[0-9.]+\]" | grep "^-")
+          if [ ${#changes[@]} -eq 0 ]
+          then
+            echo "Did not find any changes in CHANGELOG.md under '## [UNRELEASED] - YYYY-MM-DD'"
+            exit 1
+          fi
+
+          # get latest and release version
+          latest=$(grep --max-count=1 "<version>.*</version>" README.md | sed -E -e "s/\s*<[^>]+>//g" -e "s/-[0-9.]+//g")
+          version=$(grep --max-count=1 "<version>.*</version>" pom.xml | sed -E -e "s/\s*<[^>]+>//g" -e "s/-SNAPSHOT//" -e "s/-[0-9.]+//g")
+
+          # update changlog
+          echo "Releasing ${#changes[@]} changes as version $version:"
+          for (( i=0; i<${#changes[@]}; i++ )); do echo "${changes[$i]}" ; done
+          sed -i "s/## \[UNRELEASED\] - YYYY-MM-DD/## [$version] - $(date +%Y-%m-%d)/" CHANGELOG.md
+          sed -i -e "s/$latest-/$version-/g" -e "s/$latest\./$version./g" README.md PYSPARK-DEPS.md python/README.md
+          ./set-version.sh $version
+
+          # configure git so we can commit changes
+          git config --local user.name "${{ github.actor }}"
+          git config --local user.email "github-action-${{ github.actor }}@users.noreply.github.com"
+
+          # commit changes to local repo
+          echo "Committing release to local git"
+          git add pom.xml python/setup.py CHANGELOG.md README.md python/README.md
+          git commit -m "Releasing $version"
+          git tag -a "v${version}" -m "Release v${version}"
+
+          # bump version
+          # define function to bump version
+          function next_version {
+            local version=$1
+            local branch=$2
+
+            patch=${version/*./}
+            majmin=${version%.${patch}}
+
+            if [[ $branch == "master" ]]
+            then
+              # minor version bump
+              if [[ $version != *".0" ]]
+              then
+                echo "version is patch version, should be M.m.0: $version" >&2
+                exit 1
+              fi
+              maj=${version/.*/}
+              min=${majmin#${maj}.}
+              next=${maj}.$((min+1)).0
+              echo "$next"
+            else
+              # patch version bump
+              next=${majmin}.$((patch+1))
+              echo "$next"
+            fi
+          }
+
+          # get next version
+          pkg_version="${version/-*/}"
+          branch=$(git rev-parse --abbrev-ref HEAD)
+          next_pkg_version="$(next_version "$pkg_version" "$branch")"
+
+          # bump the version
+          echo "Bump version to $next_pkg_version"
+          ./set-version.sh $next_pkg_version-SNAPSHOT
+
+          # commit changes to local repo
+          echo "Committing release to local git"
+          git commit -a -m "Post-release version bump to $next_pkg_version"
+
+          # push all commits and tag to origin
+          echo "Pushing release commit and tag to origin"
+          git push origin "$GITHUB_REF_NAME" "v${version}" --tags
+          # NOTE: This push will not trigger a CI as we are using GITHUB_TOKEN to push
+          # More info on: https://docs.github.com/en/actions/using-workflows/triggering-a-workflow#triggering-a-workflow-from-a-workflow
+
+  github-release:
+    name: Create GitHub release
+    runs-on: ubuntu-latest
+    needs: prepare-release
+    permissions:
+      contents: write # required to create release
+
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{needs.prepare-release.outputs.RELEASE_TAG}}
+
+      - name: Extract release notes
+        id: release-notes
+        run: |
+          awk '/^## /{if(seen==1)exit; seen++} seen' CHANGELOG.md > ./release-notes.txt
+
+          # Grab release name
+          name=$(grep -m 1 "^## " CHANGELOG.md | sed "s/^## //")
+          echo "release_name=$name" >> $GITHUB_OUTPUT
+
+          # provide release notes file path as output
+          echo "release_notes_path=release-notes.txt" >> $GITHUB_OUTPUT
+
+      - name: Publish GitHub release
+        uses: ncipollo/release-action@2c591bcc8ecdcd2db72b97d6147f871fcd833ba5
+        id: github-release
+        with:
+          name: ${{ steps.release-notes.outputs.release_name }}
+          bodyFile: ${{ steps.release-notes.outputs.release_notes_path }}
+          makeLatest: ${{ inputs.github_release_latest }}
+          tag: ${{ needs.prepare-release.outputs.RELEASE_TAG }}
+          token: ${{ github.token }}
