@@ -27,7 +27,9 @@ runs:
   steps:
   - name: Set versions in pom.xml
     run: |
+      echo "${{ hashFiles('pom.xml') }}"
       ./set-version.sh ${{ inputs.spark-version }} ${{ inputs.scala-version }}
+      echo "${{ hashFiles('pom.xml') }}"
       git diff
     shell: bash
 
@@ -59,6 +61,12 @@ runs:
       echo "SPARK_HOME=$(cd ~/spark; pwd)" >> $GITHUB_ENV
     shell: bash
 
+  - name: pom.xml diff
+    run: |
+      echo "${{ hashFiles('pom.xml') }}"
+      git diff
+    shell: bash
+
   - name: Restore Maven packages cache
     if: github.event_name != 'schedule'
     uses: actions/cache/restore@v4
@@ -68,6 +76,12 @@ runs:
       restore-keys:
         ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-${{ hashFiles('pom.xml') }}
         ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-
+
+  - name: pom.xml diff
+    run: |
+      echo "${{ hashFiles('pom.xml') }}"
+      git diff
+    shell: bash
 
   - name: Setup JDK ${{ inputs.java-compat-version }}
     uses: actions/setup-java@v4
