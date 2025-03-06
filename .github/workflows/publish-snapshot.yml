@@ -37,13 +37,13 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up JDK 8
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@3a4f6e1af504cf6a31855fa899c6aa5355ba6c12  # 4.7.0
         with:
           java-version: '8'
           distribution: 'corretto'
 
       - name: Set up Maven Central Repository
-        uses: actions/setup-java@99b8673ff64fbf99d8d325f52d9a5bdedb8483e9
+        uses: actions/setup-java@3a4f6e1af504cf6a31855fa899c6aa5355ba6c12  # 4.7.0
         with:
           java-version: '8'
           distribution: 'corretto'
@@ -53,7 +53,10 @@ jobs:
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg-passphrase: MAVEN_GPG_PASSPHRASE
 
-      - uses: actions/setup-python@v5 
+      - name: Inspect GPG
+        run: gpg -k
+
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -64,7 +67,7 @@ jobs:
           path: ~/.m2/repository
           key: ${{ runner.os }}-mvn-build-${{ matrix.params.spark-version }}-${{ matrix.params.scala-version }}-${{ hashFiles('pom.xml') }}
           restore-keys: ${{ runner.os }}-mvn-build-${{ matrix.params.spark-version }}-${{ matrix.params.scala-version }}-
-      
+
       - name: Check if this is a SNAPSHOT version
         id: check-snapshot
         run: |
@@ -77,12 +80,6 @@ jobs:
       - name: Release snapshot
         id: snapshot
         run: |
-
-          # required by mvn
-          mkdir -p ~/.ivy2
-          # required by ./test-release.sh
-          pip3 install virtualenv
-
           ./set-version.sh ${{ matrix.params.spark-version }} ${{ matrix.params.scala-version }}
           mvn clean deploy -Dsign
         env:
