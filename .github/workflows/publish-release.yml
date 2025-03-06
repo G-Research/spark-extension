@@ -29,7 +29,8 @@ on:
         type: boolean
 
 env:
-  PYTHON_VERSION: "3.10"
+  # PySpark 3 versions only work with Python 3.9
+  PYTHON_VERSION: "3.9"
 
 jobs:
 
