@@ -28,6 +28,12 @@ inputs:
 runs:
   using: 'composite'
   steps:
+  - name: Fetch Binaries Artifact
+    uses: actions/download-artifact@v4
+    with:
+      name: Binaries-${{ inputs.spark-compat-version }}-${{ inputs.scala-compat-version }}
+      path: .
+
   - name: Set versions in pom.xml
     run: |
       ./set-version.sh ${{ inputs.spark-version }} ${{ inputs.scala-version }}
@@ -36,12 +42,6 @@ runs:
       SPARK_EXTENSION_VERSION=$(grep --max-count=1 "<version>.*</version>" pom.xml | sed -E -e "s/\s*<[^>]+>//g")
       echo "SPARK_EXTENSION_VERSION=$SPARK_EXTENSION_VERSION" | tee -a "$GITHUB_ENV"
     shell: bash
-
-  - name: Fetch Binaries Artifact
-    uses: actions/download-artifact@v4
-    with:
-      name: Binaries-${{ inputs.spark-compat-version }}-${{ inputs.scala-compat-version }}
-      path: .
 
   - name: Restore Spark Binaries cache
     if: github.event_name != 'schedule' && inputs.scala-compat-version == '2.12' && ! contains(inputs.spark-version, '-SNAPSHOT')
