@@ -399,6 +399,16 @@ def unpersist_handle(self: SparkSession) -> UnpersistHandle:
 SparkSession.unpersist_handle = unpersist_handle
 
 
+def _get_sort_cols(df: DataFrame, order: Union[str, Column, List[Union[str, Column]]], ascending: Union[bool, List[bool]]):
+    if __version__.startswith('3.'):
+        # pyspark<4
+        return df._sort_cols([order], {'ascending': ascending})
+
+    # pyspark>=4
+    _cols = df._preapare_cols_for_sort(col, [order], {"ascending": ascending})
+    return df._jseq(_cols, _to_java_column)
+
+
 def with_row_numbers(self: DataFrame,
                      storage_level: StorageLevel = StorageLevel.MEMORY_AND_DISK,
                      unpersist_handle: Optional[UnpersistHandle] = None,
@@ -409,7 +419,7 @@ def with_row_numbers(self: DataFrame,
     jsl = self._sc._getJavaStorageLevel(storage_level)
     juho = jvm.uk.co.gresearch.spark.UnpersistHandle
     juh = unpersist_handle._handle if unpersist_handle else juho.Noop()
-    jcols = self._sort_cols([order], {'ascending': ascending}) if not isinstance(order, list) or order else jvm.PythonUtils.toSeq([])
+    jcols = _get_sort_cols(self, order, ascending) if not isinstance(order, list) or order else jvm.PythonUtils.toSeq([])
 
     row_numbers = jvm.uk.co.gresearch.spark.RowNumbers
     jdf = row_numbers \
