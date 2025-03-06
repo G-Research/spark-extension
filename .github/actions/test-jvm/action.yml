@@ -25,6 +25,12 @@ inputs:
 runs:
   using: 'composite'
   steps:
+  - name: Fetch Binaries Artifact
+    uses: actions/download-artifact@v4
+    with:
+      name: Binaries-${{ inputs.spark-compat-version }}-${{ inputs.scala-compat-version }}
+      path: .
+
   - name: Set versions in pom.xml
     run: |
       echo "${{ hashFiles('pom.xml') }}"
@@ -32,12 +38,6 @@ runs:
       echo "${{ hashFiles('pom.xml') }}"
       git diff
     shell: bash
-
-  - name: Fetch Binaries Artifact
-    uses: actions/download-artifact@v4
-    with:
-      name: Binaries-${{ inputs.spark-compat-version }}-${{ inputs.scala-compat-version }}
-      path: .
 
   - name: Restore Spark Binaries cache
     if: github.event_name != 'schedule' && ! contains(inputs.spark-version, '-SNAPSHOT')
