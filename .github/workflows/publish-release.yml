@@ -106,9 +106,6 @@ jobs:
     permissions:
       contents: write # required to push to a branch
       id-token: write # required for PiPy publish
-    outputs:
-      RELEASE_NAME: ${{ steps.release-notes.outputs.release_name }}
-      RELEASE_NOTES_PATH: ${{ steps.release-notes.outputs.release_notes_path }}
     strategy:
       fail-fast: false
       matrix: ${{fromJson(github.event.inputs.versions)}}
@@ -186,19 +183,8 @@ jobs:
           packages-dir: python/dist
           verbose: true
 
-      - name: Extract release notes
-        id: release-notes
-        run: |
-          awk '/^## /{if(seen==1)exit; seen++} seen' CHANGELOG.md > ./release-notes.txt
-
-          # Grab release name
-          name=$(grep -m 1 "^## " CHANGELOG.md | sed "s/^## //")
-          echo "release_name=$name" >> $GITHUB_OUTPUT
-          
-          # provide release notes file path as output
-          echo "release_notes_path=release-notes.txt" >> $GITHUB_OUTPUT
-
   github-release:
+
     name: Publish GitHub release
     runs-on: ubuntu-latest
     needs: [prepare-release,maven-release]
@@ -212,12 +198,24 @@ jobs:
         with:
           ref: ${{needs.prepare-release.outputs.RELEASE_TAG}}
 
+      - name: Extract release notes
+        id: release-notes
+        run: |
+          awk '/^## /{if(seen==1)exit; seen++} seen' CHANGELOG.md > ./release-notes.txt
+
+          # Grab release name
+          name=$(grep -m 1 "^## " CHANGELOG.md | sed "s/^## //")
+          echo "release_name=$name" >> $GITHUB_OUTPUT
+
+          # provide release notes file path as output
+          echo "release_notes_path=release-notes.txt" >> $GITHUB_OUTPUT
+
       - name: Publish GitHub release
         uses: ncipollo/release-action@2c591bcc8ecdcd2db72b97d6147f871fcd833ba5
         id: github-release
         with:
-          name: ${{ needs.maven-release.outputs.RELEASE_NAME }}
-          bodyFile: ${{ needs.maven-release.outputs.RELEASE_NOTES_PATH }}
+          name: ${{ steps.release-notes.outputs.release_name }}
+          bodyFile: ${{ steps.release-notes.outputs.release_notes_path }}
           makeLatest: ${{ inputs.github_release_latest }}
           tag: ${{ needs.prepare-release.outputs.RELEASE_TAG }}
           token: ${{ github.token }}
