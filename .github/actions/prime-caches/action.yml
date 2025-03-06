@@ -41,9 +41,7 @@ runs:
     env:
       JDK_JAVA_OPTIONS: --add-exports java.base/sun.nio.ch=ALL-UNNAMED --add-exports java.base/sun.util.calendar=ALL-UNNAMED
     run: |
-      mvn --batch-mode --update-snapshots -Dspotless.check.skip clean compile test-compile
-      mvn --batch-mode package -Dspotless.check.skip -DskipTests -Dmaven.test.skip=true
-      mvn --batch-mode install -Dspotless.check.skip -DskipTests -Dmaven.test.skip=true -Dgpg.skip
+      mvn --batch-mode dependency:go-offline
     shell: bash
 
   - name: Save Maven packages cache

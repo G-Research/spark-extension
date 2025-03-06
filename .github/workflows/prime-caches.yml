@@ -79,7 +79,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Test
+      - name: Prime caches
         uses: ./.github/actions/prime-caches
         with:
           spark-version: ${{ matrix.spark-compat-version }}.${{ matrix.spark-patch-version }}
