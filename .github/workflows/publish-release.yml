@@ -217,6 +217,8 @@ jobs:
           name: ${{ steps.release-notes.outputs.release_name }}
           bodyFile: ${{ steps.release-notes.outputs.release_notes_path }}
           makeLatest: ${{ inputs.github_release_latest }}
+          # don't block release process if release already exists (we might perform a job rerun or partial release)
+          skipIfReleaseExists: true
           tag: ${{ needs.prepare-release.outputs.RELEASE_TAG }}
           token: ${{ github.token }}
 
