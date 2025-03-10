@@ -86,6 +86,8 @@ class SparkTest(unittest.TestCase):
             logging.info('Running inside existing Spark environment')
         else:
             logging.info('Setting up Spark environment')
+            # setting conf spark.pyspark.python does not work
+            os.environ['PYSPARK_PYTHON'] = sys.executable
             path = cls.get_pom_path()
             conf = cls.get_spark_config(path)
             builder.config(conf=conf)
