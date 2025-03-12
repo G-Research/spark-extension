@@ -41,7 +41,8 @@ jobs:
     # secrets are provided by environment
     environment:
       name: snapshot
-      url: '${{ github.event.head_commit.url}}?spark=${{ matrix.params.spark-version }}&scala=${{ matrix.params.scala-version }}'
+      # a different URL for each point in the matrix, but the same URLs accross commits
+      url: 'https://github.com/G-Research/spark-extension?spark=${{ matrix.params.spark-version }}&scala=${{ matrix.params.scala-version }}&snapshot'
     permissions: {}
     strategy:
       fail-fast: false
