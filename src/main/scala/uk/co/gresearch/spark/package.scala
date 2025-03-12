@@ -76,10 +76,14 @@ package object spark extends Logging with SparkVersion with BuildVersion {
   private[spark] def warning(msg: String): Unit = logWarning(msg)
 
   /**
-   * Encloses the given strings with backticks if needed. Multiple strings will be enclosed individually and
-   * concatenated with dots (`.`).
+   * Encloses the given strings with backticks (backquotes) if needed.
    *
-   * This is useful when referencing column names that contain special characters like dots (`.`).
+   * Backticks are not needed for strings that start with a letter (`a`-`z` and `A`-`Z`) or an underscore, and contain
+   * only letters, numbers and underscores.
+   *
+   * Multiple strings will be enclosed individually and concatenated with dots (`.`).
+   *
+   * This is useful when referencing column names that contain special characters like dots (`.`) or backquotes.
    *
    * Examples:
    * {{{
@@ -87,6 +91,7 @@ package object spark extends Logging with SparkVersion with BuildVersion {
    *   col("`a.column`")                      // this reference the column with the name "a.column"
    *   col(backticks("column"))               // produces "column"
    *   col(backticks("a.column"))             // produces "`a.column`"
+   *   col(backticks("a column"))             // produces "`a column`"
    *   col(backticks("`a.column`"))           // produces "`a.column`"
    *   col(backticks("a.column", "a.field"))  // produces "`a.column`.`a.field`"
    * }}}
