@@ -9,14 +9,40 @@ env:
   PYTHON_VERSION: "3.10"
 
 jobs:
+  check-version:
+    name: Check SNAPSHOT version
+    if: ( ! github.event.repository.fork )
+    runs-on: ubuntu-latest
+    permissions: {}
+    outputs:
+      is-snapshot: ${{ steps.check.outputs.is-snapshot }}
+
+    steps:
+      - name: Check if this is a SNAPSHOT version
+        id: check
+        run: |
+          # check is snapshot version
+          if grep -q "<version>.*-SNAPSHOT</version>" pom.xml
+          then
+            echo "Version in pom IS a SNAPSHOT version"
+            echo "is-snapshot=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Version in pom is NOT a SNAPSHOT version"
+            echo "is-snapshot=false" >> "$GITHUB_OUTPUT"
+          fi
+
   snapshot:
-    name: Release snapshot Spark:${{ matrix.params.spark-version }} - Scala:${{ matrix.params.scala-version }}
-    if: ${{ !github.event.repository.fork }}
+    name: Snapshot Spark ${{ matrix.params.spark-version }} Scala ${{ matrix.params.scala-version }}
+    needs: check-version
+    # when we release from master, this workflow will see a commit that does not have a SNAPSHOT version
+    # we want this workflow to skip over that commit
+    if: needs.check-version.outputs.is-snapshot == 'true'
     runs-on: ubuntu-latest
     # secrets are provided by environment
     environment:
       name: snapshot
-      url: '${{ github.event.head_commit.url}}?spark=${{ matrix.params.spark-version }}&scala=${{ matrix.params.scala-version }}'
+      # a different URL for each point in the matrix, but the same URLs accross commits
+      url: 'https://github.com/G-Research/spark-extension?spark=${{ matrix.params.spark-version }}&scala=${{ matrix.params.scala-version }}&snapshot'
     permissions: {}
     strategy:
       fail-fast: false
@@ -63,17 +89,7 @@ jobs:
           key: ${{ runner.os }}-mvn-build-${{ matrix.params.spark-version }}-${{ matrix.params.scala-version }}-${{ hashFiles('pom.xml') }}
           restore-keys: ${{ runner.os }}-mvn-build-${{ matrix.params.spark-version }}-${{ matrix.params.scala-version }}-
 
-      - name: Check if this is a SNAPSHOT version
-        id: check-snapshot
-        run: |
-          if ! grep -q "<version>.*-SNAPSHOT</version>" pom.xml
-          then
-            echo "Version in pom is not a SNAPSHOT version, cannot test all versions"
-            exit 1
-          fi
-
-      - name: Release snapshot
-        id: snapshot
+      - name: Publish snapshot
         run: |
           ./set-version.sh ${{ matrix.params.spark-version }} ${{ matrix.params.scala-version }}
           mvn clean deploy -Dsign -Dspotless.check.skip -DskipTests -Dmaven.test.skip=true
@@ -82,14 +98,22 @@ jobs:
           MAVEN_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE}}
 
-      - name: Prepare PyPi package to test release
+      - name: Prepare PyPi package to test snapshot
         if: ${{ matrix.params.scala-version }} == 2.12*
         run: |
           # Build whl
           ./build-whl.sh
 
-      - name: Test release
+      - name: Restore Spark Binaries cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/spark-${{ inputs.spark-version }}-${{ inputs.scala-compat-version }}
+          key: ${{ runner.os }}-spark-binaries-${{ inputs.spark-version }}-${{ inputs.scala-compat-version }}
+          restore-keys:
+            ${{ runner.os }}-spark-binaries-${{ inputs.spark-version }}-${{ inputs.scala-compat-version }}
+
+      - name: Test snapshot
         id: test-package
         run: |
-          # Test the release (needs whl)
+          # Test the snapshot (needs whl)
           ./test-release.sh
