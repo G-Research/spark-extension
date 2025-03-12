@@ -110,10 +110,14 @@ jobs:
       - name: Restore Spark Binaries cache
         uses: actions/cache/restore@v4
         with:
-          path: ~/spark-${{ matrix.params.spark-version }}-${{ matrix.params.scala-compat-version }}
+          path: ~/spark
           key: ${{ runner.os }}-spark-binaries-${{ matrix.params.spark-version }}-${{ matrix.params.scala-compat-version }}
           restore-keys:
             ${{ runner.os }}-spark-binaries-${{ matrix.params.spark-version }}-${{ matrix.params.scala-compat-version }}
+
+      - name: Rename Spark Binaries cache
+        run: |
+          mv ~/spark ./spark-${{ matrix.params.spark-version }}-${{ matrix.params.scala-compat-version }}
 
       - name: Test snapshot
         id: test-package
