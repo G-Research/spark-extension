@@ -14,7 +14,9 @@ jobs:
     if: ${{ !github.event.repository.fork }}
     runs-on: ubuntu-latest
     # secrets are provided by environment
-    environment: snapshot
+    environment:
+      name: snapshot
+      url: '${{ github.event.head_commit.url}}?spark=${{ matrix.params.spark-version }}&scala=${{ matrix.params.scala-version }}'
     permissions: {}
     strategy:
       fail-fast: false
