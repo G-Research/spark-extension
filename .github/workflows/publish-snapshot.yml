@@ -89,7 +89,6 @@ jobs:
           ./build-whl.sh
 
       - name: Restore Spark Binaries cache
-        if: github.event_name != 'schedule' && ! contains(inputs.spark-version, '-SNAPSHOT')
         uses: actions/cache/restore@v4
         with:
           path: ~/spark-${{ inputs.spark-version }}-${{ inputs.scala-compat-version }}
