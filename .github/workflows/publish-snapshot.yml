@@ -80,8 +80,14 @@ jobs:
           MAVEN_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE}}
 
+      - name: Prepare PyPi package to test release
+        if: ${{ matrix.params.scala-version }} == 2.12*
+        run: |
+          # Build whl
+          ./build-whl.sh
+
       - name: Test release
         id: test-package
         run: |
-          # Test the release
+          # Test the release (needs whl)
           ./test-release.sh
