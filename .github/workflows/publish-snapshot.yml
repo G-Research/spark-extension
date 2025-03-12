@@ -51,16 +51,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - params: {"spark-version": "3.0.3", "scala-version": "2.12.10"}
-          - params: {"spark-version": "3.1.3", "scala-version": "2.12.10"}
-          - params: {"spark-version": "3.2.4", "scala-version": "2.12.15"}
-          - params: {"spark-version": "3.3.4", "scala-version": "2.12.15"}
-          - params: {"spark-version": "3.4.4", "scala-version": "2.12.17"}
-          - params: {"spark-version": "3.5.5", "scala-version": "2.12.18"}
-          - params: {"spark-version": "3.2.4", "scala-version": "2.13.5"}
-          - params: {"spark-version": "3.3.4", "scala-version": "2.13.8"}
-          - params: {"spark-version": "3.4.4", "scala-version": "2.13.8"}
-          - params: {"spark-version": "3.5.5", "scala-version": "2.13.8"}
+          - params: {"spark-version": "3.0.3", "scala-version": "2.12.10", "scala-compat-version": "2.12"}
+          - params: {"spark-version": "3.1.3", "scala-version": "2.12.10", "scala-compat-version": "2.12"}
+          - params: {"spark-version": "3.2.4", "scala-version": "2.12.15", "scala-compat-version": "2.12"}
+          - params: {"spark-version": "3.3.4", "scala-version": "2.12.15", "scala-compat-version": "2.12"}
+          - params: {"spark-version": "3.4.4", "scala-version": "2.12.17", "scala-compat-version": "2.12"}
+          - params: {"spark-version": "3.5.5", "scala-version": "2.12.18", "scala-compat-version": "2.12"}
+          - params: {"spark-version": "3.2.4", "scala-version": "2.13.5", "scala-compat-version": "2.13"}
+          - params: {"spark-version": "3.3.4", "scala-version": "2.13.8", "scala-compat-version": "2.13"}
+          - params: {"spark-version": "3.4.4", "scala-version": "2.13.8", "scala-compat-version": "2.13"}
+          - params: {"spark-version": "3.5.5", "scala-version": "2.13.8", "scala-compat-version": "2.13"}
 
     steps:
       - name: Checkout code
@@ -110,10 +110,10 @@ jobs:
       - name: Restore Spark Binaries cache
         uses: actions/cache/restore@v4
         with:
-          path: ~/spark-${{ inputs.spark-version }}-${{ inputs.scala-compat-version }}
-          key: ${{ runner.os }}-spark-binaries-${{ inputs.spark-version }}-${{ inputs.scala-compat-version }}
+          path: ~/spark-${{ matrix.params.spark-version }}-${{ matrix.params.scala-compat-version }}
+          key: ${{ runner.os }}-spark-binaries-${{ matrix.params.spark-version }}-${{ matrix.params.scala-compat-version }}
           restore-keys:
-            ${{ runner.os }}-spark-binaries-${{ inputs.spark-version }}-${{ inputs.scala-compat-version }}
+            ${{ runner.os }}-spark-binaries-${{ matrix.params.spark-version }}-${{ matrix.params.scala-compat-version }}
 
       - name: Test snapshot
         id: test-package
