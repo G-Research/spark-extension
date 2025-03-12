@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions: {}
     outputs:
-      is-snapshot: ${{ steps.check.output.is-snapshot }}
+      is-snapshot: ${{ steps.check.outputs.is-snapshot }}
 
     steps:
       - name: Check if this is a SNAPSHOT version
