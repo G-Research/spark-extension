@@ -10,7 +10,7 @@ env:
 
 jobs:
   snapshot:
-    name: Release snapshot Spark:${{ matrix.params.spark-version }} - Scala:${{ matrix.params.scala-version }}
+    name: Snapshot Spark ${{ matrix.params.spark-version }} Scala ${{ matrix.params.scala-version }}
     if: ${{ !github.event.repository.fork }}
     runs-on: ubuntu-latest
     # secrets are provided by environment
