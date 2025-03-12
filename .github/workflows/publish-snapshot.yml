@@ -18,6 +18,9 @@ jobs:
       is-snapshot: ${{ steps.check.outputs.is-snapshot }}
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Check if this is a SNAPSHOT version
         id: check
         run: |
