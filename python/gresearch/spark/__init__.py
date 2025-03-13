@@ -41,6 +41,7 @@ else:
     from pyspark.sql.column import _to_java_column
 
 try:
+    from pyspark.sql.connect.column import Column as ConnectColumn
     from pyspark.sql.connect.dataframe import DataFrame as ConnectDataFrame
     from pyspark.sql.connect.readwriter import DataFrameReader as ConnectDataFrameReader
     from pyspark.sql.connect.session import SparkSession as ConnectSparkSession
@@ -52,6 +53,14 @@ if TYPE_CHECKING:
     from pyspark.sql._typing import ColumnOrName
 
 _java_pkg_is_installed: Optional[bool] = None
+
+
+column_types = (Column,)
+dataframe_types = (DataFrame,)
+if has_connect:
+    column_types += (ConnectColumn, )
+    dataframe_types += (ConnectDataFrame, )
+str_or_column_types = (str,) + column_types
 
 
 def _check_java_pkg_is_installed(jvm: JVMView) -> bool:
@@ -113,6 +122,8 @@ def _to_map(jvm: JVMView, map: Mapping[Any, Any]) -> JavaObject:
 
 
 def backticks(*name_parts: str) -> str:
+    for np in name_parts:
+        assert isinstance(np, str), np
     return '.'.join([f'`{part}`'
                      if '.' in part and not part.startswith('`') and not part.endswith('`')
                      else part
@@ -120,6 +131,10 @@ def backticks(*name_parts: str) -> str:
 
 
 def distinct_prefix_for(existing: List[str]) -> str:
+    assert isinstance(existing, Iterable)
+    for e in existing:
+        assert isinstance(e, str), e
+
     # count number of suffix _ for each existing column name
     length = 1
     if existing:
@@ -133,21 +148,46 @@ def handle_configured_case_sensitivity(column_name: str, case_sensitive: bool) -
     Produces a column name that considers configured case-sensitivity of column names. When case sensitivity is
     deactivated, it lower-cases the given column name and no-ops otherwise.
     """
+    assert isinstance(column_name, str), column_name
+    assert isinstance(case_sensitive, bool), case_sensitive
+
     if case_sensitive:
         return column_name
     return column_name.lower()
 
 
 def list_contains_case_sensitivity(column_names: Iterable[str], columnName: str, case_sensitive: bool) -> bool:
+    assert isinstance(column_names, Iterable), column_names
+    for cn in column_names:
+        assert isinstance(cn, str), cn
+    assert isinstance(columnName, str), columnName
+    assert isinstance(case_sensitive, bool), case_sensitive
+
     return handle_configured_case_sensitivity(columnName, case_sensitive) in [handle_configured_case_sensitivity(c, case_sensitive) for c in column_names]
 
 
 def list_filter_case_sensitivity(column_names: Iterable[str], filter: Iterable[str], case_sensitive: bool) -> List[str]:
+    assert isinstance(column_names, Iterable), column_names
+    for cn in column_names:
+        assert isinstance(cn, str), cn
+    assert isinstance(filter, Iterable), filter
+    for f in filter:
+        assert isinstance(f, str), f
+    assert isinstance(case_sensitive, bool), case_sensitive
+
     filter_set = {handle_configured_case_sensitivity(f, case_sensitive) for f in filter}
     return [c for c in column_names if handle_configured_case_sensitivity(c, case_sensitive) in filter_set]
 
 
 def list_diff_case_sensitivity(column_names: Iterable[str], other: Iterable[str], case_sensitive: bool) -> List[str]:
+    assert isinstance(column_names, Iterable), column_names
+    for cn in column_names:
+        assert isinstance(cn, str), cn
+    assert isinstance(other, Iterable), filter
+    for o in other:
+        assert isinstance(o, str), o
+    assert isinstance(case_sensitive, bool), case_sensitive
+
     other_set = {handle_configured_case_sensitivity(f, case_sensitive) for f in other}
     return [c for c in column_names if handle_configured_case_sensitivity(c, case_sensitive) not in other_set]
 
@@ -174,7 +214,7 @@ def dotnet_ticks_to_timestamp(tick_column: Union[str, Column]) -> Column:
     :param tick_column: column with a tick value (str or Column)
     :return: timestamp column
     """
-    if not isinstance(tick_column, (str, Column)):
+    if not isinstance(tick_column, str_or_column_types):
         raise ValueError(f"Given column must be a column name (str) or column instance (Column): {type(tick_column)}")
 
     jvm = _get_jvm(SparkContext._active_spark_context)
@@ -204,7 +244,7 @@ def dotnet_ticks_to_unix_epoch(tick_column: Union[str, Column]) -> Column:
     :param tick_column: column with a tick value (str or Column)
     :return: Unix epoch column
     """
-    if not isinstance(tick_column, (str, Column)):
+    if not isinstance(tick_column, str_or_column_types):
         raise ValueError(f"Given column must be a column name (str) or column instance (Column): {type(tick_column)}")
 
     jvm = _get_jvm(SparkContext._active_spark_context)
@@ -234,7 +274,7 @@ def dotnet_ticks_to_unix_epoch_nanos(tick_column: Union[str, Column]) -> Column:
     :param tick_column: column with a tick value (str or Column)
     :return: Unix epoch column
     """
-    if not isinstance(tick_column, (str, Column)):
+    if not isinstance(tick_column, str_or_column_types):
         raise ValueError(f"Given column must be a column name (str) or column instance (Column): {type(tick_column)}")
 
     jvm = _get_jvm(SparkContext._active_spark_context)
@@ -263,7 +303,7 @@ def timestamp_to_dotnet_ticks(timestamp_column: Union[str, Column]) -> Column:
     :param timestamp_column: column with a timestamp value
     :return: tick value column
     """
-    if not isinstance(timestamp_column, (str, Column)):
+    if not isinstance(timestamp_column, str_or_column_types):
         raise ValueError(f"Given column must be a column name (str) or column instance (Column): {type(timestamp_column)}")
 
     jvm = _get_jvm(SparkContext._active_spark_context)
@@ -294,7 +334,7 @@ def unix_epoch_to_dotnet_ticks(unix_column: Union[str, Column]) -> Column:
     :param unix_column: column with a unix epoch value
     :return: tick value column
     """
-    if not isinstance(unix_column, (str, Column)):
+    if not isinstance(unix_column, str_or_column_types):
         raise ValueError(f"Given column must be a column name (str) or column instance (Column): {type(unix_column)}")
 
     jvm = _get_jvm(SparkContext._active_spark_context)
@@ -326,7 +366,7 @@ def unix_epoch_nanos_to_dotnet_ticks(unix_column: Union[str, Column]) -> Column:
     :param unix_column: column with a unix epoch value
     :return: tick value column
     """
-    if not isinstance(unix_column, (str, Column)):
+    if not isinstance(unix_column, str_or_column_types):
         raise ValueError(f"Given column must be a column name (str) or column instance (Column): {type(unix_column)}")
 
     jvm = _get_jvm(SparkContext._active_spark_context)
@@ -349,6 +389,9 @@ def count_null(e: "ColumnOrName") -> Column:
     """
     if isinstance(e, str):
         e = col(e)
+    if not isinstance(e, column_types):
+        raise ValueError(f"Given column must be a column name (str) or column instance (Column): {type(e)}")
+
     return count(when(e.isNull(), lit(1)))
 
 
@@ -457,7 +500,11 @@ if has_connect:
     ConnectDataFrame.session_or_ctx = session_or_ctx
 
 
-def set_description(description: str, if_not_set: bool = False):
+def set_description(description: Optional[str], if_not_set: bool = False):
+    if description is not None:
+        assert isinstance(description, str), description
+    assert isinstance(if_not_set, bool), if_not_set
+
     context = SparkContext._active_spark_context
     jvm = _get_jvm(context)
     spark_package = jvm.uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$")
@@ -494,6 +541,9 @@ def job_description(description: str, if_not_set: bool = False):
 
 
 def append_description(extra_description: str, separator: str = " - "):
+    assert isinstance(extra_description, str), extra_description
+    assert isinstance(separator, str), separator
+
     context = SparkContext._active_spark_context
     jvm = _get_jvm(context)
     spark_package = jvm.uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$")
@@ -551,6 +601,9 @@ def install_pip_package(spark: Union[SparkSession, SparkContext], *package_or_pi
     if __version__.startswith('2.') or __version__.startswith('3.0.'):
         raise NotImplementedError(f'Not supported for PySpark __version__')
 
+    for option in package_or_pip_option:
+        assert isinstance(option, str), option
+
     # just here to assert JVM is accessible
     _get_jvm(spark)
 
@@ -595,6 +648,15 @@ def install_poetry_project(spark: Union[SparkSession, SparkContext],
     # and we want to fail quickly here
     if __version__.startswith('2.') or __version__.startswith('3.0.'):
         raise NotImplementedError(f'Not supported for PySpark __version__')
+
+    for p in project:
+        assert isinstance(p, str), p
+
+    if poetry_python is not None:
+        assert isinstance(poetry_python, str), poetry_python
+    if pip_args is not None:
+        for pa in pip_args:
+            assert isinstance(pa, str), pa
 
     # just here to assert JVM is accessible
     _get_jvm(spark)
