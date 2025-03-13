@@ -13,11 +13,11 @@ jobs:
   prepare-release:
     name: Prepare release
     runs-on: ubuntu-latest
-    if: ${{ !github.event.repository.fork }}
+    if: ( ! github.event.repository.fork )
     permissions:
       contents: write # required to push to a branch
     outputs:
-      RELEASE_TAG: ${{ steps.versions.outputs.release_tag_version }}
+      release-tag: ${{ steps.versions.outputs.release-tag }}
 
     steps:
       - name: Checkout code
@@ -28,14 +28,13 @@ jobs:
       - name: Get versions
         id: versions
         run: |
-          # get latest and release version
-          latest=$(grep --max-count=1 "<version>.*</version>" README.md | sed -E -e "s/\s*<[^>]+>//g" -e "s/-[0-9.]+//g")
+          # get release version
           version=$(grep --max-count=1 "<version>.*</version>" pom.xml | sed -E -e "s/\s*<[^>]+>//g" -e "s/-SNAPSHOT//" -e "s/-[0-9.]+//g")
+          is_snapshot=$(if grep -q "<version>.*-SNAPSHOT</version>" pom.xml; then echo "true"; else echo "false"; fi)
 
           # share versions
-          echo "release_tag_version=v${version}" >> "$GITHUB_OUTPUT"
-          is_snapshot=$(if grep -q "<version>.*-SNAPSHOT</version>" pom.xml; then echo "true"; else echo "false"; fi)
-          echo "is_snapshot=$is_snapshot" >> "$GITHUB_OUTPUT"
+          echo "release-tag=v${version}" >> "$GITHUB_OUTPUT"
+          echo "is-snapshot=$is_snapshot" >> "$GITHUB_OUTPUT"
 
       - name: Check branch setup
         run: |
@@ -47,7 +46,7 @@ jobs:
           fi
 
       - name: Tag and bump version
-        if: steps.versions.outputs.is_snapshot
+        if: steps.versions.outputs.is-snapshot
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -138,7 +137,7 @@ jobs:
       - name: Checkout release tag
         uses: actions/checkout@v4
         with:
-          ref: ${{needs.prepare-release.outputs.RELEASE_TAG}}
+          ref: ${{needs.prepare-release.outputs.release-tag}}
 
       - name: Extract release notes
         id: release-notes
@@ -159,5 +158,5 @@ jobs:
           name: ${{ steps.release-notes.outputs.release_name }}
           bodyFile: ${{ steps.release-notes.outputs.release_notes_path }}
           makeLatest: ${{ inputs.github_release_latest }}
-          tag: ${{ needs.prepare-release.outputs.RELEASE_TAG }}
+          tag: ${{ needs.prepare-release.outputs.release-tag }}
           token: ${{ github.token }}

@@ -35,7 +35,8 @@ jobs:
     # secrets are provided by environment
     environment:
       name: release
-      url: '${{ github.event.head_commit.url}}?spark=${{ matrix.params.spark-version }}&scala=${{ matrix.params.scala-version }}'
+      # a different URL for each point in the matrix, but the same URLs accross commits
+      url: 'https://github.com/G-Research/spark-extension?spark=${{ matrix.params.spark-version }}&scala=${{ matrix.params.scala-version }}'
     permissions:
       id-token: write # required for PiPy publish
     strategy:
@@ -49,14 +50,13 @@ jobs:
       - name: Get versions
         id: versions
         run: |
-          # get latest and release version
-          latest=$(grep --max-count=1 "<version>.*</version>" README.md | sed -E -e "s/\s*<[^>]+>//g" -e "s/-[0-9.]+//g")
+          # get release version
           version=$(grep --max-count=1 "<version>.*</version>" pom.xml | sed -E -e "s/\s*<[^>]+>//g" -e "s/-SNAPSHOT//" -e "s/-[0-9.]+//g")
+          is_snapshot=$(if grep -q "<version>.*-SNAPSHOT</version>" pom.xml; then echo "true"; else echo "false"; fi)
 
           # share versions
-          echo "release_tag_version=v${version}" >> "$GITHUB_OUTPUT"
-          is_snapshot=$(if grep -q "<version>.*-SNAPSHOT</version>" pom.xml; then echo "true"; else echo "false"; fi)
-          echo "is_snapshot=$is_snapshot" >> "$GITHUB_OUTPUT"
+          echo "release-tag=v${version}" >> "$GITHUB_OUTPUT"
+          echo "is-snapshot=$is_snapshot" >> "$GITHUB_OUTPUT"
 
       - name: Check tag setup
         run: |
@@ -67,20 +67,20 @@ jobs:
             exit 1
           fi
 
-          if [ "${{ steps.versions.outputs.is_snapshot }}" == "true" ]
+          if [ "${{ steps.versions.outputs.is-snapshot }}" == "true" ]
           then
             echo "This is a tagged SNAPSHOT version. This is not allowed for release!"
             exit 1
           fi
 
-          if [ "${{ github.ref_name }}" != "${{ steps.versions.outputs.release_tag_version }}" ]
+          if [ "${{ github.ref_name }}" != "${{ steps.versions.outputs.release-tag }}" ]
           then
-            echo "The version in the pom.xml is ${{ steps.versions.outputs.release_tag_version }}"
+            echo "The version in the pom.xml is ${{ steps.versions.outputs.release-tag }}"
             echo "This tag is ${{ github.ref_name }}, which is different!"
             exit 1
           fi
 
-      - name: Set up JDK 8 and Maven Central Repository
+      - name: Set up JDK and publish to Maven Central
         uses: actions/setup-java@3a4f6e1af504cf6a31855fa899c6aa5355ba6c12  # v4.7.0
         with:
           java-version: '8'
