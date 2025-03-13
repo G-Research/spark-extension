@@ -96,6 +96,7 @@ class DiffOptions:
         :return: new immutable DiffOptions instance
         :rtype: DiffOptions
         """
+        assert isinstance(diff_column, str), diff_column
         return dataclasses.replace(self, diff_column=diff_column)
 
     def with_left_column_prefix(self, left_column_prefix: str) -> 'DiffOptions':
@@ -108,6 +109,7 @@ class DiffOptions:
         :return: new immutable DiffOptions instance
         :rtype: DiffOptions
         """
+        assert isinstance(left_column_prefix, str), left_column_prefix
         return dataclasses.replace(self, left_column_prefix=left_column_prefix)
 
     def with_right_column_prefix(self, right_column_prefix: str) -> 'DiffOptions':
@@ -120,6 +122,7 @@ class DiffOptions:
         :return: new immutable DiffOptions instance
         :rtype: DiffOptions
         """
+        assert isinstance(right_column_prefix, str), right_column_prefix
         return dataclasses.replace(self, right_column_prefix=right_column_prefix)
 
     def with_insert_diff_value(self, insert_diff_value: str) -> 'DiffOptions':
@@ -132,6 +135,7 @@ class DiffOptions:
         :return: new immutable DiffOptions instance
         :rtype: DiffOptions
         """
+        assert isinstance(insert_diff_value, str), insert_diff_value
         return dataclasses.replace(self, insert_diff_value=insert_diff_value)
 
     def with_change_diff_value(self, change_diff_value: str) -> 'DiffOptions':
@@ -144,6 +148,7 @@ class DiffOptions:
         :return: new immutable DiffOptions instance
         :rtype: DiffOptions
         """
+        assert isinstance(change_diff_value, str), change_diff_value
         return dataclasses.replace(self, change_diff_value=change_diff_value)
 
     def with_delete_diff_value(self, delete_diff_value: str) -> 'DiffOptions':
@@ -156,6 +161,7 @@ class DiffOptions:
         :return: new immutable DiffOptions instance
         :rtype: DiffOptions
         """
+        assert isinstance(delete_diff_value, str), delete_diff_value
         return dataclasses.replace(self, delete_diff_value=delete_diff_value)
 
     def with_nochange_diff_value(self, nochange_diff_value: str) -> 'DiffOptions':
@@ -168,6 +174,7 @@ class DiffOptions:
         :return: new immutable DiffOptions instance
         :rtype: DiffOptions
         """
+        assert isinstance(nochange_diff_value, str), nochange_diff_value
         return dataclasses.replace(self, nochange_diff_value=nochange_diff_value)
 
     def with_change_column(self, change_column: str) -> 'DiffOptions':
@@ -180,6 +187,7 @@ class DiffOptions:
         :return: new immutable DiffOptions instance
         :rtype: DiffOptions
         """
+        assert isinstance(change_column, str), change_column
         return dataclasses.replace(self, change_column=change_column)
 
     def without_change_column(self) -> 'DiffOptions':
@@ -202,6 +210,7 @@ class DiffOptions:
         :return: new immutable DiffOptions instance
         :rtype: DiffOptions
         """
+        assert isinstance(diff_mode, DiffMode), diff_mode
         return dataclasses.replace(self, diff_mode=diff_mode)
 
     def with_sparse_mode(self, sparse_mode: bool) -> 'DiffOptions':
@@ -214,12 +223,18 @@ class DiffOptions:
         :return: new immutable DiffOptions instance
         :rtype: DiffOptions
         """
+        assert isinstance(sparse_mode, bool), sparse_mode
         return dataclasses.replace(self, sparse_mode=sparse_mode)
 
     def with_default_comparator(self, comparator: DiffComparator) -> 'DiffOptions':
+        assert isinstance(comparator, DiffComparator), comparator
         return dataclasses.replace(self, default_comparator=comparator)
 
     def with_data_type_comparator(self, comparator: DiffComparator, *data_type: DataType) -> 'DiffOptions':
+        assert isinstance(comparator, DiffComparator), comparator
+        for dt in data_type:
+            assert isinstance(dt, DataType), dt
+
         existing_data_types = {dt.simpleString() for dt in data_type if dt in self.data_type_comparators.keys()}
         if existing_data_types:
             existing_data_types = sorted(list(existing_data_types))
@@ -231,6 +246,10 @@ class DiffOptions:
         return dataclasses.replace(self, data_type_comparators=data_type_comparators)
 
     def with_column_name_comparator(self, comparator: DiffComparator, *column_name: str) -> 'DiffOptions':
+        assert isinstance(comparator, DiffComparator), comparator
+        for cn in column_name:
+            assert isinstance(cn, str), cn
+
         existing_column_names = {cn for cn in column_name if cn in self.column_name_comparators.keys()}
         if existing_column_names:
             existing_column_names = sorted(list(existing_column_names))
@@ -242,6 +261,7 @@ class DiffOptions:
         return dataclasses.replace(self, column_name_comparators=column_name_comparators)
 
     def comparator_for(self, column: StructField) -> DiffComparator:
+        assert isinstance(column, StructField), column
         cmp = self.column_name_comparators.get(column.name)
         if cmp is None:
             cmp = self.data_type_comparators.get(column.dataType)
@@ -332,6 +352,11 @@ class Differ:
         :return: the diff DataFrame
         :rtype DataFrame
         """
+        assert isinstance(left, DataFrame), left
+        assert isinstance(right, DataFrame), right
+        assert isinstance(id_or_ignore_columns, (str, Iterable)), id_or_ignore_columns
+        if isinstance(id_or_ignore_columns, (str, Iterable))
+
         if len(id_or_ignore_columns) == 2 and all([isinstance(lst, Iterable) and not isinstance(lst, str) for lst in id_or_ignore_columns]):
             id_columns, ignore_columns = id_or_ignore_columns
         else:

@@ -108,6 +108,8 @@ def _to_map(jvm: JVMView, map: Mapping[Any, Any]) -> JavaObject:
 
 
 def backticks(*name_parts: str) -> str:
+    for np in name_parts:
+        assert isinstance(np, str), np
     return '.'.join([f'`{part}`'
                      if '.' in part and not part.startswith('`') and not part.endswith('`')
                      else part
@@ -115,6 +117,10 @@ def backticks(*name_parts: str) -> str:
 
 
 def distinct_prefix_for(existing: List[str]) -> str:
+    assert isinstance(existing, Iterable)
+    for e in existing:
+        assert isinstance(e, str), e
+
     # count number of suffix _ for each existing column name
     length = 1
     if existing:
@@ -128,21 +134,46 @@ def handle_configured_case_sensitivity(column_name: str, case_sensitive: bool) -
     Produces a column name that considers configured case-sensitivity of column names. When case sensitivity is
     deactivated, it lower-cases the given column name and no-ops otherwise.
     """
+    assert isinstance(column_name, str), column_name
+    assert isinstance(case_sensitive, bool), case_sensitive
+
     if case_sensitive:
         return column_name
     return column_name.lower()
 
 
 def list_contains_case_sensitivity(column_names: Iterable[str], columnName: str, case_sensitive: bool) -> bool:
+    assert isinstance(column_names, Iterable), column_names
+    for cn in column_names:
+        assert isinstance(cn, str), cn
+    assert isinstance(columnName, str), columnName
+    assert isinstance(case_sensitive, bool), case_sensitive
+
     return handle_configured_case_sensitivity(columnName, case_sensitive) in [handle_configured_case_sensitivity(c, case_sensitive) for c in column_names]
 
 
 def list_filter_case_sensitivity(column_names: Iterable[str], filter: Iterable[str], case_sensitive: bool) -> List[str]:
+    assert isinstance(column_names, Iterable), column_names
+    for cn in column_names:
+        assert isinstance(cn, str), cn
+    assert isinstance(filter, Iterable), filter
+    for f in filter:
+        assert isinstance(f, str), f
+    assert isinstance(case_sensitive, bool), case_sensitive
+
     filter_set = {handle_configured_case_sensitivity(f, case_sensitive) for f in filter}
     return [c for c in column_names if handle_configured_case_sensitivity(c, case_sensitive) in filter_set]
 
 
 def list_diff_case_sensitivity(column_names: Iterable[str], other: Iterable[str], case_sensitive: bool) -> List[str]:
+    assert isinstance(column_names, Iterable), column_names
+    for cn in column_names:
+        assert isinstance(cn, str), cn
+    assert isinstance(other, Iterable), filter
+    for o in other:
+        assert isinstance(o, str), o
+    assert isinstance(case_sensitive, bool), case_sensitive
+
     other_set = {handle_configured_case_sensitivity(f, case_sensitive) for f in other}
     return [c for c in column_names if handle_configured_case_sensitivity(c, case_sensitive) not in other_set]
 
@@ -344,6 +375,9 @@ def count_null(e: "ColumnOrName") -> Column:
     """
     if isinstance(e, str):
         e = col(e)
+    if not isinstance(e, Column):
+        raise ValueError(f"Given column must be a column name (str) or column instance (Column): {type(e)}")
+
     return count(when(e.isNull(), lit(1)))
 
 
@@ -453,6 +487,9 @@ if has_connect:
 
 
 def set_description(description: str, if_not_set: bool = False):
+    assert isinstance(description, str), description
+    assert isinstance(if_not_set, bool), if_not_set
+
     context = SparkContext._active_spark_context
     jvm = _get_jvm(context)
     spark_package = jvm.uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$")
@@ -489,6 +526,9 @@ def job_description(description: str, if_not_set: bool = False):
 
 
 def append_description(extra_description: str, separator: str = " - "):
+    assert isinstance(description, str), description
+    assert isinstance(separator, str), separator
+
     context = SparkContext._active_spark_context
     jvm = _get_jvm(context)
     spark_package = jvm.uk.co.gresearch.spark.__getattr__("package$").__getattr__("MODULE$")
@@ -546,6 +586,9 @@ def install_pip_package(spark: Union[SparkSession, SparkContext], *package_or_pi
     if __version__.startswith('2.') or __version__.startswith('3.0.'):
         raise NotImplementedError(f'Not supported for PySpark __version__')
 
+    for option in package_or_pip_option:
+        assert isinstance(option, str), option
+
     # just here to assert JVM is accessible
     _get_jvm(spark)
 
@@ -590,6 +633,15 @@ def install_poetry_project(spark: Union[SparkSession, SparkContext],
     # and we want to fail quickly here
     if __version__.startswith('2.') or __version__.startswith('3.0.'):
         raise NotImplementedError(f'Not supported for PySpark __version__')
+
+    for p in project:
+        assert isinstance(p, str), p
+
+    if poetry_python is not None:
+        assert isinstance(poetry_python, str), poetry_python
+    if pip_args is not None:
+        for pa in pip_args:
+            assert isinstance(pa, str), pa
 
     # just here to assert JVM is accessible
     _get_jvm(spark)

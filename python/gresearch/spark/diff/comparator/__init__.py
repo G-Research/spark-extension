@@ -40,23 +40,31 @@ class DiffComparators:
 
     @staticmethod
     def epsilon(epsilon: float) -> 'EpsilonDiffComparator':
+        assert isinstance(epsilon, float), epsilon
         return EpsilonDiffComparator(epsilon)
 
     @staticmethod
     def string(whitespace_agnostic: bool = True) -> 'StringDiffComparator':
+        assert isinstance(whitespace_agnostic, bool), whitespace_agnostic
         return StringDiffComparator(whitespace_agnostic)
 
     @staticmethod
     def duration(duration: str) -> 'DurationDiffComparator':
+        assert isinstance(duration, str), duration
         return DurationDiffComparator(duration)
 
     @staticmethod
     def map(key_type: DataType, value_type: DataType, key_order_sensitive: bool = False) -> 'MapDiffComparator':
+        assert isinstance(key_type, DataType), key_type
+        assert isinstance(value_type, DataType), value_type
+        assert isinstance(key_order_sensitive, bool), key_order_sensitive
         return MapDiffComparator(key_type, value_type, key_order_sensitive)
 
 
 class NullSafeEqualDiffComparator(DiffComparator):
     def equiv(self, left: Column, right: Column) -> Column:
+        assert isinstance(left, Column), left
+        assert isinstance(right, Column), right
         return left.eqNullSafe(right)
 
 
@@ -85,6 +93,9 @@ class EpsilonDiffComparator(DiffComparator):
         return dataclasses.replace(self, inclusive=False)
 
     def equiv(self, left: Column, right: Column) -> Column:
+        assert isinstance(left, Column), left
+        assert isinstance(right, Column), right
+
         threshold = greatest(abs(left), abs(right)) * self.epsilon if self.relative else lit(self.epsilon)
 
         def inclusive_epsilon(diff: Column) -> Column:
@@ -102,6 +113,8 @@ class StringDiffComparator(DiffComparator):
     whitespace_agnostic: bool
 
     def equiv(self, left: Column, right: Column) -> Column:
+        assert isinstance(left, Column), left
+        assert isinstance(right, Column), right
         return left.eqNullSafe(right)
 
 
@@ -117,6 +130,8 @@ class DurationDiffComparator(DiffComparator):
         return dataclasses.replace(self, inclusive=False)
 
     def equiv(self, left: Column, right: Column) -> Column:
+        assert isinstance(left, Column), left
+        assert isinstance(right, Column), right
         return left.eqNullSafe(right)
 
 
@@ -127,4 +142,6 @@ class MapDiffComparator(DiffComparator):
     key_order_sensitive: bool
 
     def equiv(self, left: Column, right: Column) -> Column:
+        assert isinstance(left, Column), left
+        assert isinstance(right, Column), right
         return left.eqNullSafe(right)
