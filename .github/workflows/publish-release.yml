@@ -31,7 +31,7 @@ jobs:
   maven-release:
     name: Publish maven release
     runs-on: ubuntu-latest
-    if: ${{ !github.event.repository.fork }}
+    if: ( ! github.event.repository.fork )
     # secrets are provided by environment
     environment:
       name: release
@@ -122,19 +122,7 @@ jobs:
         run: |
           ./build-whl.sh
 
-      - name: Publish package distributions to Test PyPI
-        id: publish-test-pypi
-        uses: pypa/gh-action-pypi-publish@release/v1
-        if: ${{ matrix.params.scala-version }} == 2.12*
-        with:
-          user: ${{ secrets.TEST_PYPI_USERNAME }}
-          password: ${{ secrets.TEST_PYPI_PASSWORD }}
-          repository-url: https://test.pypi.org/legacy/
-          packages-dir: python/dist
-          verbose: true
-
       - name: Publish package distributions to PyPI
-        id: publish-pypi
         uses: pypa/gh-action-pypi-publish@release/v1
         if: ${{ matrix.params.scala-version }} == 2.12*
         with:
