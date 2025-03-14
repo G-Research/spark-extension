@@ -75,7 +75,7 @@ jobs:
 
           # commit changes to local repo
           echo "Committing release to local git"
-          git add pom.xml python/setup.py CHANGELOG.md README.md python/README.md
+          git add pom.xml python/setup.py CHANGELOG.md README.md PYSPARK-DEPS.md python/README.md
           git commit -m "Releasing $version"
           git tag -a "v${version}" -m "Release v${version}"
 
