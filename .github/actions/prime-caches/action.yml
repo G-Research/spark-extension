@@ -33,7 +33,7 @@ runs:
 
   - name: Check Maven packages cache
     id: mvn-build-cache
-    uses: actions/cache@v4
+    uses: actions/cache/restore@v4
     with:
       lookup-only: true
       path: ~/.m2/repository
@@ -41,7 +41,7 @@ runs:
 
   - name: Check Spark Binaries cache
     id: spark-binaries-cache
-    uses: actions/cache@v4
+    uses: actions/cache/restore@v4
     with:
       lookup-only: true
       path: ~/spark
