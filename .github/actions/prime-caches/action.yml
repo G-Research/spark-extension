@@ -25,19 +25,52 @@ inputs:
 runs:
   using: 'composite'
   steps:
+  - name: Check Maven packages cache
+    id: mvn-build-cache
+    uses: actions/cache@v4
+    with:
+      lookup-only: true
+      path: ~/.m2/repository
+      key: ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-${{ hashFiles('pom.xml') }}
+
+  - name: Check Spark Binaries cache
+    id: spark-binaries-cache
+    uses: actions/cache@v4
+    with:
+      lookup-only: true
+      path: ~/spark
+      key: ${{ runner.os }}-spark-binaries-${{ inputs.spark-version }}-${{ inputs.scala-compat-version }}
+
+  - name: Prepare priming caches
+    id: setup
+    run: |
+      # Prepare priming caches
+      if [ -z "${{ steps.mvn-build-cache.outputs.cache-hit }}" ]; then
+        echo "prime-mvn-cache=true" >> "$GITHUB_ENV"
+        echo "prime-some-cache=true" >> "$GITHUB_ENV"
+      fi;
+      if [ -z "${{ steps.spark-binaries-cache.outputs.cache-hit }}" ]; then
+        echo "prime-spark-cache=true" >> "$GITHUB_ENV"
+        echo "prime-some-cache=true" >> "$GITHUB_ENV"
+      fi;
+    shell: bash
+
   - name: Set versions in pom.xml
+    if: env.prime-some-cache
     run: |
       ./set-version.sh ${{ inputs.spark-version }} ${{ inputs.scala-version }}
       git diff
     shell: bash
 
   - name: Setup JDK ${{ inputs.java-compat-version }}
+    if: env.prime-some-cache
     uses: actions/setup-java@v4
     with:
       java-version: ${{ inputs.java-compat-version }}
       distribution: 'zulu'
 
   - name: Build
+    if: env.prime-mvn-cache
     env:
       JDK_JAVA_OPTIONS: --add-exports java.base/sun.nio.ch=ALL-UNNAMED --add-exports java.base/sun.util.calendar=ALL-UNNAMED
     run: |
@@ -48,13 +81,14 @@ runs:
     shell: bash
 
   - name: Save Maven packages cache
+    if: env.prime-mvn-cache
     uses: actions/cache/save@v4
     with:
       path: ~/.m2/repository
       key: ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-${{ hashFiles('pom.xml') }}-${{ github.run_id }}
 
   - name: Setup Spark Binaries
-    if: ( ! contains(inputs.spark-version, '-SNAPSHOT') )
+    if: env.prime-spark-cache && ! contains(inputs.spark-version, '-SNAPSHOT')
     env:
       SPARK_PACKAGE: spark-${{ inputs.spark-version }}/spark-${{ inputs.spark-version }}-bin-hadoop${{ inputs.hadoop-version }}${{ startsWith(inputs.spark-version, '3.') && inputs.scala-compat-version == '2.13' && '-scala2.13' || '' }}.tgz
     run: |
@@ -63,7 +97,7 @@ runs:
     shell: bash
 
   - name: Save Spark Binaries cache
-    if: ( ! contains(inputs.spark-version, '-SNAPSHOT') )
+    if: env.prime-spark-cache && ! contains(inputs.spark-version, '-SNAPSHOT')
     uses: actions/cache/save@v4
     with:
       path: ~/spark
