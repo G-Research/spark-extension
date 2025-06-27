@@ -153,6 +153,19 @@
         <updatePolicy>daily</updatePolicy>
       </snapshots>
     </repository>
+    <!-- required to resolve Spark release candidates -->
+    <!-- update temporary url and enable releases when needed-->
+    <repository>
+      <id>apache release candidate</id>
+      <name>Apache staging</name>
+      <url>https://repository.apache.org/content/repositories/orgapachespark-1478/</url>
+      <releases>
+        <enabled>false</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
   </repositories>
 
   <distributionManagement>

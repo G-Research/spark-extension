@@ -7,7 +7,7 @@ description: 'A GitHub Action that tests Python spark-extension'
 # so this action only works with scala 2.12 and non-snapshot spark versions
 inputs:
   spark-version:
-    description: Spark version, e.g. 3.4.0
+    description: Spark version, e.g. 3.4.0 or 4.0.0-preview1
     required: true
   scala-version:
     description: Scala version, e.g. 2.12.15
@@ -15,11 +15,20 @@ inputs:
   spark-compat-version:
     description: Spark compatibility version, e.g. 3.4
     required: true
-  hadoop-version:
-    description: Hadoop version, e.g. 2.7 or 2
-    required: true
+  spark-archive-url:
+    description: The URL to download the Spark binary distribution
+    required: false
+  spark-package-repo:
+    description: The URL of an alternate maven repository to fetch Spark packages
+    required: false
   scala-compat-version:
     description: Scala compatibility version, e.g. 2.12
+    required: true
+  java-compat-version:
+    description: Java compatibility version, e.g. 8
+    required: true
+  hadoop-version:
+    description: Hadoop version, e.g. 2.7 or 2
     required: true
   python-version:
     description: Python version, e.g. 3.8
@@ -44,7 +53,7 @@ runs:
     shell: bash
 
   - name: Restore Spark Binaries cache
-    if: github.event_name != 'schedule' && inputs.scala-compat-version == '2.12' && ! contains(inputs.spark-version, '-SNAPSHOT')
+    if: github.event_name != 'schedule' && ( startsWith(inputs.spark-version, '3.') && inputs.scala-compat-version == '2.12' || startsWith(inputs.spark-version, '4.') ) && ! contains(inputs.spark-version, '-SNAPSHOT')
     uses: actions/cache/restore@v4
     with:
       path: ~/spark
@@ -53,14 +62,15 @@ runs:
         ${{ runner.os }}-spark-binaries-${{ inputs.spark-version }}-${{ inputs.scala-compat-version }}
 
   - name: Setup Spark Binaries
-    if: inputs.scala-compat-version == '2.12' && ! contains(inputs.spark-version, '-SNAPSHOT')
+    if: ( startsWith(inputs.spark-version, '3.') && inputs.scala-compat-version == '2.12' || startsWith(inputs.spark-version, '4.') ) && ! contains(inputs.spark-version, '-SNAPSHOT')
     env:
-      SPARK_PACKAGE: spark-${{ inputs.spark-version }}/spark-${{ inputs.spark-version }}-bin-hadoop${{ inputs.hadoop-version }}${{ inputs.scala-compat-version == '2.13' && '-scala2.13' || '' }}.tgz
+      SPARK_PACKAGE: spark-${{ inputs.spark-version }}/spark-${{ inputs.spark-version }}-bin-hadoop${{ inputs.hadoop-version }}${{ startsWith(inputs.spark-version, '3.') && inputs.scala-compat-version == '2.13' && '-scala2.13' || '' }}.tgz
     run: |
       # Setup Spark Binaries
       if [[ ! -e ~/spark ]]
       then
-        wget --progress=dot:giga "https://www.apache.org/dyn/closer.lua/spark/${SPARK_PACKAGE}?action=download" -O - | tar -xzC "${{ runner.temp }}"
+        url="${{ inputs.spark-archive-url }}"
+        wget --progress=dot:giga "${url:-https://www.apache.org/dyn/closer.lua/spark/${SPARK_PACKAGE}?action=download}" -O - | tar -xzC "${{ runner.temp }}"
         archive=$(basename "${SPARK_PACKAGE}") bash -c "mv -v "${{ runner.temp }}/\${archive/%.tgz/}" ~/spark"
       fi
       echo "SPARK_BIN_HOME=$(cd ~/spark; pwd)" >> $GITHUB_ENV
@@ -76,10 +86,10 @@ runs:
         ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-${{ hashFiles('pom.xml') }}
         ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-
 
-  - name: Setup JDK 1.8
+  - name: Setup JDK ${{ inputs.java-compat-version }}
     uses: actions/setup-java@v4
     with:
-      java-version: '8'
+      java-version: ${{ inputs.java-compat-version }}
       distribution: 'zulu'
 
   - name: Setup Python
@@ -91,14 +101,19 @@ runs:
     run: |
       # Install Python dependencies
       echo "::group::pip install"
-      python -m pip install --upgrade pip
-      pip install pypandoc
-      pip install -r python/requirements-${{ inputs.spark-compat-version }}_${{ inputs.scala-compat-version }}.txt
-      pip install -r python/test/requirements.txt
+      python -m venv .pytest-venv
+      .pytest-venv/bin/python -m pip install --upgrade pip
+      .pytest-venv/bin/pip install pypandoc
+      .pytest-venv/bin/pip install -r python/requirements-${{ inputs.spark-compat-version }}_${{ inputs.scala-compat-version }}.txt
+      .pytest-venv/bin/pip install -r python/test/requirements.txt
       echo "::endgroup::"
 
-      SPARK_HOME=$(python -c "import pyspark; import os; print(os.path.dirname(pyspark.__file__))")
-      echo "SPARK_HOME=$SPARK_HOME" | tee -a "$GITHUB_ENV"
+      PYSPARK_HOME=$(.pytest-venv/bin/python -c "import os; import pyspark; print(os.path.dirname(pyspark.__file__))")
+      PYSPARK_BIN_HOME="$(cd ".pytest-venv/"; pwd)"
+      PYSPARK_PYTHON="$PYSPARK_BIN_HOME/bin/python"
+      echo "PYSPARK_HOME=$PYSPARK_HOME" | tee -a "$GITHUB_ENV"
+      echo "PYSPARK_BIN_HOME=$PYSPARK_BIN_HOME" | tee -a "$GITHUB_ENV"
+      echo "PYSPARK_PYTHON=$PYSPARK_PYTHON" | tee -a "$GITHUB_ENV"
     shell: bash
 
   - name: Prepare Poetry tests
@@ -122,9 +137,10 @@ runs:
 
   - name: Python Unit Tests
     env:
+      SPARK_HOME: ${{ env.PYSPARK_HOME }}
       PYTHONPATH: python:python/test
     run: |
-      python -m pytest python/test --junit-xml test-results/pytest-$(date +%s.%N)-$RANDOM.xml
+      .pytest-venv/bin/python -m pytest python/test --junit-xml test-results/pytest-$(date +%s.%N)-$RANDOM.xml
     shell: bash
 
   - name: Install Spark Extension
@@ -137,13 +153,15 @@ runs:
 
   - name: Start Spark Connect
     id: spark-connect
-    if: (inputs.spark-compat-version == '3.4' || inputs.spark-compat-version == '3.5' || startsWith('4.', inputs.spark-compat-version)) && inputs.scala-compat-version == '2.12' && ! contains(inputs.spark-version, '-SNAPSHOT')
+    if: ( contains('3.4,3.5', inputs.spark-compat-version) && inputs.scala-compat-version == '2.12' || startsWith(inputs.spark-version, '4.') ) && ! contains(inputs.spark-version, '-SNAPSHOT')
     env:
       SPARK_HOME: ${{ env.SPARK_BIN_HOME }}
+      CONNECT_GRPC_BINDING_ADDRESS: 127.0.0.1
+      CONNECT_GRPC_BINDING_PORT: 15002
     run: |
       # Start Spark Connect
-      while true; do
-        $SPARK_HOME/sbin/start-connect-server.sh --packages org.apache.spark:spark-connect_${{ inputs.scala-compat-version }}:${{ inputs.spark-version }}
+      for attempt in {1..10}; do
+        $SPARK_HOME/sbin/start-connect-server.sh --packages org.apache.spark:spark-connect_${{ inputs.scala-compat-version }}:${{ inputs.spark-version }} --repositories "${{ inputs.spark-package-repo }}"
         sleep 10
         for log in $SPARK_HOME/logs/spark-*-org.apache.spark.sql.connect.service.SparkConnectServer-*.out; do
           echo "::group::Spark Connect server log: $log"
@@ -157,24 +175,31 @@ runs:
         if netstat -an | grep 15002; then
           break;
         fi
+        echo "::warning title=Starting Spark Connect server failed::Attempt #$attempt to start Spark Connect server failed"
         $SPARK_HOME/sbin/stop-connect-server.sh --packages org.apache.spark:spark-connect_${{ inputs.scala-compat-version }}:${{ inputs.spark-version }}
         sleep 5
       done
+
+      if ! netstat -an | grep 15002; then
+        echo "::error title=Starting Spark Connect server failed::All attempts to start Spark Connect server failed"
+        exit 1
+      fi
     shell: bash
 
   - name: Python Unit Tests (Spark Connect)
     if: steps.spark-connect.outcome == 'success'
     env:
+      SPARK_HOME: ${{ env.PYSPARK_HOME }}
       PYTHONPATH: python:python/test
-      TEST_SPARK_CONNECT_SERVER: sc://localhost:15002
+      TEST_SPARK_CONNECT_SERVER: sc://127.0.0.1:15002
     run: |
       # Python Unit Tests (Spark Connect)
 
       echo "::group::pip install"
-      pip install pyspark[connect]
+      .pytest-venv/bin/pip install pyspark[connect]
       echo "::endgroup::"
 
-      python -m pytest python/test --junit-xml test-results-connect/pytest-$(date +%s.%N)-$RANDOM.xml
+      .pytest-venv/bin/python -m pytest python/test --junit-xml test-results-connect/pytest-$(date +%s.%N)-$RANDOM.xml
     shell: bash
 
   - name: Stop Spark Connect
@@ -196,6 +221,7 @@ runs:
 
   - name: Python Integration Tests
     env:
+      SPARK_HOME: ${{ env.PYSPARK_HOME }}
       PYTHONPATH: python:python/test
     run: |
       # Python Integration Tests
@@ -203,7 +229,7 @@ runs:
       while read test
       do
         echo "::group::spark-submit $test"
-        if ! $SPARK_HOME/bin/spark-submit --master "local[2]" --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION "$test" test-results-submit
+        if ! $PYSPARK_BIN_HOME/bin/spark-submit --master "local[2]" --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION "$test" test-results-submit
         then
           state="fail"
         fi
@@ -213,18 +239,22 @@ runs:
     shell: bash
 
   - name: Python Release Test
+    env:
+      SPARK_HOME: ${{ env.PYSPARK_HOME }}
     run: |
       # Python Release Test
       echo "::group::spark-submit"
-      $SPARK_HOME/bin/spark-submit --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION test-release.py
+      $PYSPARK_BIN_HOME/bin/spark-submit --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION test-release.py
       echo "::endgroup::"
     shell: bash
 
   - name: Scala Release Test
+    env:
+      SPARK_HOME: ${{ env.SPARK_BIN_HOME }}
     run: |
       # Scala Release Test
       echo "::group::spark-shell"
-      $SPARK_HOME/bin/spark-shell --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION < test-release.scala
+      $SPARK_BIN_HOME/bin/spark-shell --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION < test-release.scala
       echo "::endgroup::"
     shell: bash
 
