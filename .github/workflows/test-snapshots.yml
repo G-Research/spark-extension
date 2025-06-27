@@ -30,7 +30,7 @@ jobs:
           - spark-compat-version: '3.5'
             spark-version: '3.5.8-SNAPSHOT'
             scala-compat-version: '2.12'
-            scala-version: '2.12.17'
+            scala-version: '2.12.18'
             java-compat-version: '8'
 
           - spark-compat-version: '3.2'
