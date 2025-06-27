@@ -52,6 +52,31 @@ jobs:
             hadoop-version: '3'
 
           - spark-compat-version: '3.2'
+            scala-compat-version: '2.12'
+            scala-version: '2.12.15'
+            spark-patch-version: '5'
+            spark-snapshot-version: true
+            hadoop-version: '2.7'
+          - spark-compat-version: '3.3'
+            scala-compat-version: '2.12'
+            scala-version: '2.12.15'
+            spark-patch-version: '5'
+            spark-snapshot-version: true
+            hadoop-version: '3'
+          - spark-compat-version: '3.4'
+            scala-compat-version: '2.12'
+            scala-version: '2.12.17'
+            spark-patch-version: '5'
+            spark-snapshot-version: true
+            hadoop-version: '3'
+          - spark-compat-version: '3.5'
+            scala-compat-version: '2.12'
+            scala-version: '2.12.18'
+            spark-patch-version: '8'
+            spark-snapshot-version: true
+            hadoop-version: '3'
+
+          - spark-compat-version: '3.2'
             scala-compat-version: '2.13'
             scala-version: '2.13.5'
             spark-patch-version: '4'
@@ -75,6 +100,30 @@ jobs:
             spark-patch-version: '5'
             hadoop-version: '3'
 
+          - spark-compat-version: '3.2'
+            scala-compat-version: '2.13'
+            scala-version: '2.13.5'
+            spark-patch-version: '5'
+            spark-snapshot-version: true
+            hadoop-version: '3.2'
+          - spark-compat-version: '3.3'
+            scala-compat-version: '2.13'
+            scala-version: '2.13.8'
+            spark-patch-version: '5'
+            spark-snapshot-version: true
+            hadoop-version: '3'
+          - spark-compat-version: '3.4'
+            scala-compat-version: '2.13'
+            scala-version: '2.13.8'
+            spark-patch-version: '5'
+            hadoop-version: '3'
+          - spark-compat-version: '3.5'
+            scala-compat-version: '2.13'
+            scala-version: '2.13.8'
+            spark-patch-version: '8'
+            spark-snapshot-version: true
+            hadoop-version: '3'
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -82,7 +131,7 @@ jobs:
       - name: Prime caches
         uses: ./.github/actions/prime-caches
         with:
-          spark-version: ${{ matrix.spark-compat-version }}.${{ matrix.spark-patch-version }}
+          spark-version: ${{ matrix.spark-compat-version }}.${{ matrix.spark-patch-version }}${{ matrix.spark-snapshot-version && '-SNAPSHOT' }}
           scala-version: ${{ matrix.scala-version }}
           spark-compat-version: ${{ matrix.spark-compat-version }}
           scala-compat-version: ${{ matrix.scala-compat-version }}
