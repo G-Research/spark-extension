@@ -1,4 +1,0 @@
-py4j
-# keep in-sync with pom.xml
-pyspark==3.0.3
-typing_extensions>=4.5.0

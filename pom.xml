@@ -43,7 +43,6 @@
     <scala.patch.version>8</scala.patch.version>
     <scala.compat.version>${scala.major.version}.${scala.minor.version}</scala.compat.version>
     <scala.version>${scala.compat.version}.${scala.patch.version}</scala.version>
-    <!-- keep in-sync with python/requirements-3.3_2.13.txt -->
     <spark.major.version>3</spark.major.version>
     <spark.minor.version>5</spark.minor.version>
     <spark.patch.version>1</spark.patch.version>
@@ -184,7 +183,6 @@
         <directory>python</directory>
         <includes>
           <include>gresearch/**/*.py</include>
-          <include>requirements.txt</include>
         </includes>
       </resource>
     </resources>
@@ -238,24 +236,6 @@
             </goals>
             <configuration>
               <outputFile>${project.build.outputDirectory}/spark-extension-build.properties</outputFile>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <groupId>com.coderplus.maven.plugins</groupId>
-        <artifactId>copy-rename-maven-plugin</artifactId>
-        <version>1.0.1</version>
-        <executions>
-          <execution>
-            <id>provide-requirements-txt</id>
-            <phase>compile</phase>
-            <goals>
-              <goal>copy</goal>
-            </goals>
-            <configuration>
-              <sourceFile>${project.basedir}/python/requirements-${spark.compat.version}_${scala.compat.version}.txt</sourceFile>
-              <destinationFile>${project.basedir}/python/requirements.txt</destinationFile>
             </configuration>
           </execution>
         </executions>
