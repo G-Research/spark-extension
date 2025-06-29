@@ -398,13 +398,14 @@ Given a `DiffOptions`, a customized `Differ` can be instantiated as `Differ diff
 
 ## Methods (Python)
 
-All Python methods come in two variants, one without (as shown below) and one with an `options: DiffOptions` argument.
-The latter variant is prefixed with `_with_options`.
-
 * `def diff(self: DataFrame, other: DataFrame, *id_columns: str) -> DataFrame`
 * `def diff(self: DataFrame, other: DataFrame, id_columns: List[str], ignore_columns: List[str]) -> DataFrame`
+* `def diff(self: DataFrame, other: DataFrame, options: DiffOptions, *id_columns: str) -> DataFrame`
+* `def diff(self: DataFrame, other: DataFrame, options: DiffOptions, id_columns: List[str], ignore_columns: List[str]) -> DataFrame`
 * `def diffwith(self: DataFrame, other: DataFrame, *id_columns: str) -> DataFrame:`
 * `def diffwith(self: DataFrame, other: DataFrame, id_columns: List[str], ignore_columns: List[str]) -> DataFrame`
+* `def diffwith(self: DataFrame, other: DataFrame, options: DiffOptions, *id_columns: str) -> DataFrame:`
+* `def diffwith(self: DataFrame, other: DataFrame, options: DiffOptions, id_columns: List[str], ignore_columns: List[str]) -> DataFrame`
 
 ## Diff Spark application
 

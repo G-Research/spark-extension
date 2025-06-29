@@ -208,7 +208,7 @@ def dotnet_ticks_to_timestamp(tick_column: Union[str, Column]) -> Column:
     """
     Convert a .Net `DateTime.Ticks` timestamp to a Spark timestamp. The input column must be
     convertible to a number (e.g. string, int, long). The Spark timestamp type does not support
-    nanoseconds, so the the last digit of the timestamp (1/10 of a microsecond) is lost.
+    nanoseconds, so the last digit of the timestamp (1/10 of a microsecond) is lost.
     {{{
       df.select(col("ticks"), dotNetTicksToTimestamp("ticks").alias("timestamp")).show(false)
     }}}
