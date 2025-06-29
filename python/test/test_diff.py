@@ -28,6 +28,12 @@ class DiffTest(SparkTest):
 
     expected_diff = None
 
+    @contextlib.contextmanager
+    def assert_requirement(self, error_message: str):
+        with self.assertRaises(ValueError) as e:
+            yield
+        self.assertEqual((error_message,), e.exception.args)
+
     @classmethod
     def setUpClass(cls):
         super(DiffTest, cls).setUpClass()
@@ -188,19 +194,13 @@ class DiffTest(SparkTest):
         ]
 
     def test_check_schema(self):
-        @contextlib.contextmanager
-        def test_requirement(error_message: str):
-            with self.assertRaises(ValueError) as e:
-                yield
-            self.assertEqual((error_message, ), e.exception.args)
-
         with self.subTest("duplicate columns"):
-            with test_requirement("The datasets have duplicate columns.\n"
+            with self.assert_requirement("The datasets have duplicate columns.\n"
                                   "Left column names: id, id\nRight column names: id, id"):
                 self.left_df.select("id", "id").diff(self.right_df.select("id", "id"), "id")
 
         with self.subTest("case-sensitive id column"):
-            with test_requirement("Some id columns do not exist: ID missing among id, val, label"):
+            with self.assert_requirement("Some id columns do not exist: ID missing among id, val, label"):
                 with self.sql_conf({"spark.sql.caseSensitive": "true"}):
                     self.left_df.diff(self.right_df, "ID")
 
@@ -208,15 +208,15 @@ class DiffTest(SparkTest):
         right = self.right_df.withColumnRenamed("val", "diff")
 
         with self.subTest("id column 'diff'"):
-            with test_requirement("The id columns must not contain the diff column name 'diff': id, diff, label"):
+            with self.assert_requirement("The id columns must not contain the diff column name 'diff': id, diff, label"):
                 left.diff(right)
-            with test_requirement("The id columns must not contain the diff column name 'diff': diff"):
+            with self.assert_requirement("The id columns must not contain the diff column name 'diff': diff"):
                 left.diff(right, "diff")
-            with test_requirement("The id columns must not contain the diff column name 'diff': diff, id"):
+            with self.assert_requirement("The id columns must not contain the diff column name 'diff': diff, id"):
                 left.diff(right, "diff", "id")
 
             with self.sql_conf({"spark.sql.caseSensitive": "false"}):
-                with test_requirement("The id columns must not contain the diff column name 'diff': Diff, id"):
+                with self.assert_requirement("The id columns must not contain the diff column name 'diff': Diff, id"):
                     left.withColumnRenamed("diff", "Diff") \
                         .diff(right.withColumnRenamed("diff", "Diff"), "Diff", "id")
 
@@ -236,10 +236,10 @@ class DiffTest(SparkTest):
                 .with_left_column_prefix("a") \
                 .with_right_column_prefix("b")
 
-            with test_requirement("The column prefixes 'a' and 'b', together with these non-id columns " +
+            with self.assert_requirement("The column prefixes 'a' and 'b', together with these non-id columns " +
                                   "must not produce the diff column name 'a_val': val, label"):
                 self.left_df.diff_with_options(self.right_df, options, "id")
-            with test_requirement("The column prefixes 'a' and 'b', together with these non-id columns " +
+            with self.assert_requirement("The column prefixes 'a' and 'b', together with these non-id columns " +
                                   "must not produce the diff column name 'b_val': val, label"):
                 self.left_df.diff_with_options(self.right_df, options.with_diff_column("b_val"), "id")
 
@@ -265,7 +265,7 @@ class DiffTest(SparkTest):
                     .with_diff_column("a_val") \
                     .with_left_column_prefix("A") \
                     .with_right_column_prefix("b")
-                with test_requirement("The column prefixes 'A' and 'b', together with these non-id columns " +
+                with self.assert_requirement("The column prefixes 'A' and 'b', together with these non-id columns " +
                                       "must not produce the diff column name 'a_val': val, label"):
                     self.left_df.diff_with_options(self.right_df, options, "id")
 
@@ -303,15 +303,15 @@ class DiffTest(SparkTest):
         with self.subTest("id column 'change'"):
             options = DiffOptions() \
                 .with_change_column("change")
-            with test_requirement("The id columns must not contain the change column name 'change': id, change, label"):
+            with self.assert_requirement("The id columns must not contain the change column name 'change': id, change, label"):
                 left.diff_with_options(right, options)
-            with test_requirement("The id columns must not contain the change column name 'change': change"):
+            with self.assert_requirement("The id columns must not contain the change column name 'change': change"):
                 left.diff_with_options(right, options, "change")
-            with test_requirement("The id columns must not contain the change column name 'change': change, id"):
+            with self.assert_requirement("The id columns must not contain the change column name 'change': change, id"):
                 left.diff_with_options(right, options, "change", "id")
 
             with self.sql_conf({"spark.sql.caseSensitive": "false"}):
-                with test_requirement("The id columns must not contain the change column name 'change': Change, id"):
+                with self.assert_requirement("The id columns must not contain the change column name 'change': Change, id"):
                     left.withColumnRenamed("change", "Change") \
                         .diff_with_options(right.withColumnRenamed("change", "Change"), options, "Change", "id")
 
@@ -340,7 +340,7 @@ class DiffTest(SparkTest):
                 .with_change_column("a_val") \
                 .with_left_column_prefix("a") \
                 .with_right_column_prefix("b")
-            with test_requirement("The column prefixes 'a' and 'b', together with these non-id columns " +
+            with self.assert_requirement("The column prefixes 'a' and 'b', together with these non-id columns " +
                                   "must not produce the change column name 'a_val': val, label"):
                 self.left_df.diff_with_options(self.right_df, options, "id")
 
@@ -350,7 +350,7 @@ class DiffTest(SparkTest):
                     .with_change_column("a_val") \
                     .with_left_column_prefix("A") \
                     .with_right_column_prefix("B")
-                with test_requirement("The column prefixes 'A' and 'B', together with these non-id columns " +
+                with self.assert_requirement("The column prefixes 'A' and 'B', together with these non-id columns " +
                                       "must not produce the change column name 'a_val': val, label"):
                     self.left_df.diff_with_options(self.right_df, options, "id")
 
@@ -371,7 +371,7 @@ class DiffTest(SparkTest):
             options = DiffOptions() \
                 .with_left_column_prefix("first") \
                 .with_right_column_prefix("second")
-            with test_requirement("The column prefixes 'first' and 'second', together with these non-id columns " +
+            with self.assert_requirement("The column prefixes 'first' and 'second', together with these non-id columns " +
                                   "must not produce any id column name 'first_id': id, label"):
                 left.diff_with_options(right, options, "first_id")
 
@@ -380,7 +380,7 @@ class DiffTest(SparkTest):
                 options = DiffOptions() \
                     .with_left_column_prefix("FIRST") \
                     .with_right_column_prefix("SECOND")
-                with test_requirement("The column prefixes 'FIRST' and 'SECOND', together with these non-id columns " +
+                with self.assert_requirement("The column prefixes 'FIRST' and 'SECOND', together with these non-id columns " +
                                       "must not produce any id column name 'first_id': id, label"):
                     left.diff_with_options(right, options, "first_id")
 
@@ -395,15 +395,15 @@ class DiffTest(SparkTest):
                 self.assertEqual(actual.collect(), self.expected_diff)
 
         with self.subTest("empty schema"):
-            with test_requirement("The schema must not be empty"):
+            with self.assert_requirement("The schema must not be empty"):
                 self.left_df.select().diff(self.right_df.select())
 
         with self.subTest("empty schema after ignored columns"):
-            with test_requirement("The schema except ignored columns must not be empty"):
+            with self.assert_requirement("The schema except ignored columns must not be empty"):
                 self.left_df.select("id", "val").diff(self.right_df.select("id", "label"), [], ["id", "val", "label"])
 
         with self.subTest("different types"):
-            with test_requirement("The datasets do not have the same schema.\n" +
+            with self.assert_requirement("The datasets do not have the same schema.\n" +
                                   "Left extra columns: val (double)\n" +
                                   "Right extra columns: val (string)"):
                 self.left_df.select("id", "val").diff(self.right_df.select("id", col("label").alias("val")))
@@ -419,7 +419,7 @@ class DiffTest(SparkTest):
             self.assertEqual([(f.name, f.dataType) for f in actual.schema], expected_schema)
 
         with self.subTest("diff with different column names"):
-            with test_requirement("The datasets do not have the same schema.\n" +
+            with self.assert_requirement("The datasets do not have the same schema.\n" +
                                   "Left extra columns: val (double)\n" +
                                   "Right extra columns: label (string)"):
                 self.left_df.select("id", "val").diff(self.right_df.select("id", "label"))
@@ -437,17 +437,17 @@ class DiffTest(SparkTest):
 
         with self.sql_conf({"spark.sql.caseSensitive": "true"}):
             with self.subTest("case-sensitive column names"):
-                with test_requirement("The datasets do not have the same schema.\n" +
+                with self.assert_requirement("The datasets do not have the same schema.\n" +
                                       "Left extra columns: id (long), val (double)\n" +
                                       "Right extra columns: ID (long), VaL (double)"):
                     left.diff(right, "id")
 
         with self.subTest("non-existing id column"):
-            with test_requirement("Some id columns do not exist: does not exists missing among id, val, label"):
+            with self.assert_requirement("Some id columns do not exist: does not exists missing among id, val, label"):
                 self.left_df.diff(self.right_df, "does not exists")
 
         with self.subTest("different number of columns"):
-            with test_requirement("The number of columns doesn't match.\n" +
+            with self.assert_requirement("The number of columns doesn't match.\n" +
                                   "Left column names (2): id, val\n" +
                                   "Right column names (3): id, val, label"):
                 self.left_df.select("id", "val").diff(self.right_df, "id")
@@ -455,38 +455,78 @@ class DiffTest(SparkTest):
         with self.subTest("different number of columns after ignoring columns"):
             left = self.left_df.select("id", "val", col("label").alias("meta"))
             right = self.right_df.select("id", col("label").alias("seq"), "val")
-            with test_requirement("The number of columns doesn't match.\n" +
+            with self.assert_requirement("The number of columns doesn't match.\n" +
                                   "Left column names except ignored columns (2): id, val\n" +
                                   "Right column names except ignored columns (3): id, seq, val"):
                 left.diff(right, ["id"], ["meta"])
 
         with self.subTest("diff column name in value columns in left-side diff mode"):
             options = DiffOptions().with_diff_column("val").with_diff_mode(DiffMode.LeftSide)
-            with test_requirement("The left non-id columns must not contain the diff column name 'val': val, label"):
+            with self.assert_requirement("The left non-id columns must not contain the diff column name 'val': val, label"):
                 self.left_df.diff_with_options(self.right_df, options, "id")
 
         with self.subTest("diff column name in value columns in right-side diff mode"):
             options = DiffOptions().with_diff_column("val").with_diff_mode(DiffMode.RightSide)
-            with test_requirement("The right non-id columns must not contain the diff column name 'val': val, label"):
+            with self.assert_requirement("The right non-id columns must not contain the diff column name 'val': val, label"):
                 self.left_df.diff_with_options(self.right_df, options, "id")
 
         with self.subTest("change column name in value columns in left-side diff mode"):
             options = DiffOptions().with_change_column("val").with_diff_mode(DiffMode.LeftSide)
-            with test_requirement("The left non-id columns must not contain the change column name 'val': val, label"):
+            with self.assert_requirement("The left non-id columns must not contain the change column name 'val': val, label"):
                 self.left_df.diff_with_options(self.right_df, options, "id")
 
         with self.subTest("change column name in value columns in right-side diff mode"):
             options = DiffOptions().with_change_column("val").with_diff_mode(DiffMode.RightSide)
-            with test_requirement("The right non-id columns must not contain the change column name 'val': val, label"):
+            with self.assert_requirement("The right non-id columns must not contain the change column name 'val': val, label"):
                 self.left_df.diff_with_options(self.right_df, options, "id")
 
     def test_dataframe_diff(self):
         diff = self.left_df.diff(self.right_df, 'id').orderBy('id').collect()
         self.assertEqual(self.expected_diff, diff)
 
-    def test_dataframe_diff_with_ignored(self):
+    def test_dataframe_diff_with_ids_ignored(self):
         diff = self.left_df.diff(self.right_df, ['id'], ['label']).orderBy('id').collect()
         self.assertEqual(self.expected_diff_ignored, diff)
+
+    def test_dataframe_diff_with_wrong_argument_types(self):
+        with self.subTest("id columns is not string"):
+            with self.assert_requirement("The id_or_ignore_columns argument must either all be strings "
+                                       "or exactly two iterables of strings: int"):
+                self.left_df.diff(self.right_df, 1)
+        with self.subTest("one of two id columns is not string"):
+            with self.assert_requirement("The id_or_ignore_columns argument must either all be strings "
+                                       "or exactly two iterables of strings: str, int"):
+                self.left_df.diff(self.right_df, "id", 1)
+        with self.subTest("one of three id columns is not string"):
+            with self.assert_requirement("The id_or_ignore_columns argument must either all be strings "
+                                       "or exactly two iterables of strings: str, int, str"):
+                self.left_df.diff(self.right_df, "id", 1, "val")
+
+        with self.subTest("id columns is not list"):
+            with self.assert_requirement("The id_or_ignore_columns argument must either all be strings "
+                                       "or exactly two iterables of strings: int, list"):
+                self.left_df.diff(self.right_df, 1, ['val'])
+        with self.subTest("one of id columns is not string"):
+            with self.assert_requirement("The id_columns must all be strings: str, int"):
+                self.left_df.diff(self.right_df, ['id', 1], ['val'])
+
+        with self.subTest("ignore columns is not list"):
+            with self.assert_requirement("The id_or_ignore_columns argument must either all be strings "
+                                       "or exactly two iterables of strings: list, int"):
+                self.left_df.diff(self.right_df, ['id'], 1)
+        with self.subTest("one of ignore columns is not string"):
+            with self.assert_requirement("The ignore_columns must all be strings: str, int"):
+                self.left_df.diff(self.right_df, ['id'], ['val', 1])
+
+        with self.subTest("one list of string id columns"):
+            with self.assert_requirement("The id_or_ignore_columns argument must either all be strings "
+                                       "or exactly two iterables of strings: list"):
+                self.left_df.diff(self.right_df, ['id'])
+
+        with self.subTest("three lists of string id and ignore columns"):
+            with self.assert_requirement("The id_or_ignore_columns argument must either all be strings "
+                                       "or exactly two iterables of strings: list, list, list"):
+                self.left_df.diff(self.right_df, ['id'], ['val'], ['three'])
 
     def test_dataframe_diffwith(self):
         diff = self.left_df.diffwith(self.right_df, 'id').orderBy('id').collect()
@@ -497,6 +537,46 @@ class DiffTest(SparkTest):
         diff = self.left_df.diffwith(self.right_df, ['id'], ['label']).orderBy('id').collect()
         self.assertSetEqual(set(self.expected_diffwith_ignored), set(diff))
         self.assertEqual(len(self.expected_diffwith_ignored), len(diff))
+
+    def test_dataframe_diffwith_with_wrong_argument_types(self):
+        with self.subTest("id columns is not string"):
+            with self.assert_requirement("The id_or_ignore_columns argument must either all be strings "
+                                       "or exactly two iterables of strings: int"):
+                self.left_df.diffwith(self.right_df, 1)
+        with self.subTest("one of two id columns is not string"):
+            with self.assert_requirement("The id_or_ignore_columns argument must either all be strings "
+                                       "or exactly two iterables of strings: str, int"):
+                self.left_df.diffwith(self.right_df, "id", 1)
+        with self.subTest("one of three id columns is not string"):
+            with self.assert_requirement("The id_or_ignore_columns argument must either all be strings "
+                                       "or exactly two iterables of strings: str, int, str"):
+                self.left_df.diffwith(self.right_df, "id", 1, "val")
+
+        with self.subTest("id columns is not list"):
+            with self.assert_requirement("The id_or_ignore_columns argument must either all be strings "
+                                       "or exactly two iterables of strings: int, list"):
+                self.left_df.diffwith(self.right_df, 1, ['val'])
+        with self.subTest("one of id columns is not string"):
+            with self.assert_requirement("The id_columns must all be strings: str, int"):
+                self.left_df.diffwith(self.right_df, ['id', 1], ['val'])
+
+        with self.subTest("ignore columns is not list"):
+            with self.assert_requirement("The id_or_ignore_columns argument must either all be strings "
+                                       "or exactly two iterables of strings: list, int"):
+                self.left_df.diffwith(self.right_df, ['id'], 1)
+        with self.subTest("one of ignore columns is not string"):
+            with self.assert_requirement("The ignore_columns must all be strings: str, int"):
+                self.left_df.diffwith(self.right_df, ['id'], ['val', 1])
+
+        with self.subTest("one list of string id columns"):
+            with self.assert_requirement("The id_or_ignore_columns argument must either all be strings "
+                                       "or exactly two iterables of strings: list"):
+                self.left_df.diffwith(self.right_df, ['id'])
+
+        with self.subTest("three lists of string id and ignore columns"):
+            with self.assert_requirement("The id_or_ignore_columns argument must either all be strings "
+                                       "or exactly two iterables of strings: list, list, list"):
+                self.left_df.diffwith(self.right_df, ['id'], ['val'], ['three'])
 
     def test_dataframe_diff_with_default_options(self):
         diff = self.left_df.diff_with_options(self.right_df, DiffOptions(), 'id').orderBy('id').collect()
