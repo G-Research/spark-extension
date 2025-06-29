@@ -24,7 +24,7 @@ from pyspark.sql.types import DataType, StructField, ArrayType
 
 from gresearch.spark import _get_jvm, _to_seq, _to_map, backticks, distinct_prefix_for, \
     handle_configured_case_sensitivity, list_contains_case_sensitivity, list_filter_case_sensitivity, list_diff_case_sensitivity, \
-    has_connect, dataframe_types
+    has_connect, _is_dataframe
 from gresearch.spark.diff.comparator import DiffComparator, DiffComparators, DefaultDiffComparator
 
 
@@ -347,8 +347,8 @@ class Differ:
         :return: the diff DataFrame
         :rtype DataFrame
         """
-        assert isinstance(left, dataframe_types), left
-        assert isinstance(right, dataframe_types), right
+        assert _is_dataframe(left), left
+        assert _is_dataframe(right), right
         assert isinstance(id_or_ignore_columns, (str, Iterable)), id_or_ignore_columns
 
         if len(id_or_ignore_columns) == 2 and all(isinstance(lst, Iterable) and not isinstance(lst, str) for lst in id_or_ignore_columns):
@@ -393,8 +393,8 @@ class Differ:
         :return: the diff DataFrame
         :rtype DataFrame
         """
-        assert isinstance(left, dataframe_types), left
-        assert isinstance(right, dataframe_types), right
+        assert _is_dataframe(left), left
+        assert _is_dataframe(right), right
         assert isinstance(id_or_ignore_columns, (str, Iterable)), id_or_ignore_columns
 
         if len(id_or_ignore_columns) == 2 and all([isinstance(lst, Iterable) for lst in id_or_ignore_columns]):

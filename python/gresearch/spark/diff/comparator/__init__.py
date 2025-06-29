@@ -21,7 +21,7 @@ from pyspark.sql import Column
 from pyspark.sql.functions import abs, greatest, lit
 from pyspark.sql.types import DataType
 
-from gresearch.spark import column_types
+from gresearch.spark import _is_column
 
 
 class DiffComparator(abc.ABC):
@@ -64,8 +64,8 @@ class DiffComparators:
 
 class NullSafeEqualDiffComparator(DiffComparator):
     def equiv(self, left: Column, right: Column) -> Column:
-        assert isinstance(left, column_types), left
-        assert isinstance(right, column_types), right
+        assert _is_column(left), left
+        assert _is_column(right), right
         return left.eqNullSafe(right)
 
 
@@ -94,8 +94,8 @@ class EpsilonDiffComparator(DiffComparator):
         return dataclasses.replace(self, inclusive=False)
 
     def equiv(self, left: Column, right: Column) -> Column:
-        assert isinstance(left, column_types), left
-        assert isinstance(right, column_types), right
+        assert _is_column(left), left
+        assert _is_column(right), right
 
         threshold = greatest(abs(left), abs(right)) * self.epsilon if self.relative else lit(self.epsilon)
 
@@ -114,8 +114,8 @@ class StringDiffComparator(DiffComparator):
     whitespace_agnostic: bool
 
     def equiv(self, left: Column, right: Column) -> Column:
-        assert isinstance(left, column_types), left
-        assert isinstance(right, column_types), right
+        assert _is_column(left), left
+        assert _is_column(right), right
         return left.eqNullSafe(right)
 
 
@@ -131,8 +131,8 @@ class DurationDiffComparator(DiffComparator):
         return dataclasses.replace(self, inclusive=False)
 
     def equiv(self, left: Column, right: Column) -> Column:
-        assert isinstance(left, column_types), left
-        assert isinstance(right, column_types), right
+        assert _is_column(left), left
+        assert _is_column(right), right
         return left.eqNullSafe(right)
 
 
@@ -143,6 +143,6 @@ class MapDiffComparator(DiffComparator):
     key_order_sensitive: bool
 
     def equiv(self, left: Column, right: Column) -> Column:
-        assert isinstance(left, column_types), left
-        assert isinstance(right, column_types), right
+        assert _is_column(left), left
+        assert _is_column(right), right
         return left.eqNullSafe(right)

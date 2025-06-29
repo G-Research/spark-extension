@@ -55,12 +55,24 @@ if TYPE_CHECKING:
 _java_pkg_is_installed: Optional[bool] = None
 
 
-column_types = (Column,)
-dataframe_types = (DataFrame,)
+_column_types = (Column,)
+_dataframe_types = (DataFrame,)
 if has_connect:
-    column_types += (ConnectColumn, )
-    dataframe_types += (ConnectDataFrame, )
-str_or_column_types = (str,) + column_types
+    _column_types += (ConnectColumn, )
+    _dataframe_types += (ConnectDataFrame, )
+_column_types_and_str = (str,) + _column_types
+
+
+def _is_column(obj: Any) -> bool:
+    return isinstance(obj, _column_types)
+
+
+def _is_column_or_str(obj: Any) -> bool:
+    return isinstance(obj, _column_types_and_str)
+
+
+def _is_dataframe(obj: Any) -> bool:
+    return isinstance(obj, _dataframe_types)
 
 
 def _check_java_pkg_is_installed(jvm: JVMView) -> bool:
@@ -214,7 +226,7 @@ def dotnet_ticks_to_timestamp(tick_column: Union[str, Column]) -> Column:
     :param tick_column: column with a tick value (str or Column)
     :return: timestamp column
     """
-    if not isinstance(tick_column, str_or_column_types):
+    if not _is_column_or_str(tick_column):
         raise ValueError(f"Given column must be a column name (str) or column instance (Column): {type(tick_column)}")
 
     jvm = _get_jvm(SparkContext._active_spark_context)
@@ -244,7 +256,7 @@ def dotnet_ticks_to_unix_epoch(tick_column: Union[str, Column]) -> Column:
     :param tick_column: column with a tick value (str or Column)
     :return: Unix epoch column
     """
-    if not isinstance(tick_column, str_or_column_types):
+    if not _is_column_or_str(tick_column):
         raise ValueError(f"Given column must be a column name (str) or column instance (Column): {type(tick_column)}")
 
     jvm = _get_jvm(SparkContext._active_spark_context)
@@ -274,7 +286,7 @@ def dotnet_ticks_to_unix_epoch_nanos(tick_column: Union[str, Column]) -> Column:
     :param tick_column: column with a tick value (str or Column)
     :return: Unix epoch column
     """
-    if not isinstance(tick_column, str_or_column_types):
+    if not _is_column_or_str(tick_column):
         raise ValueError(f"Given column must be a column name (str) or column instance (Column): {type(tick_column)}")
 
     jvm = _get_jvm(SparkContext._active_spark_context)
@@ -303,7 +315,7 @@ def timestamp_to_dotnet_ticks(timestamp_column: Union[str, Column]) -> Column:
     :param timestamp_column: column with a timestamp value
     :return: tick value column
     """
-    if not isinstance(timestamp_column, str_or_column_types):
+    if not _is_column_or_str(timestamp_column):
         raise ValueError(f"Given column must be a column name (str) or column instance (Column): {type(timestamp_column)}")
 
     jvm = _get_jvm(SparkContext._active_spark_context)
@@ -334,7 +346,7 @@ def unix_epoch_to_dotnet_ticks(unix_column: Union[str, Column]) -> Column:
     :param unix_column: column with a unix epoch value
     :return: tick value column
     """
-    if not isinstance(unix_column, str_or_column_types):
+    if not _is_column_or_str(unix_column):
         raise ValueError(f"Given column must be a column name (str) or column instance (Column): {type(unix_column)}")
 
     jvm = _get_jvm(SparkContext._active_spark_context)
@@ -366,7 +378,7 @@ def unix_epoch_nanos_to_dotnet_ticks(unix_column: Union[str, Column]) -> Column:
     :param unix_column: column with a unix epoch value
     :return: tick value column
     """
-    if not isinstance(unix_column, str_or_column_types):
+    if not _is_column_or_str(unix_column):
         raise ValueError(f"Given column must be a column name (str) or column instance (Column): {type(unix_column)}")
 
     jvm = _get_jvm(SparkContext._active_spark_context)
@@ -389,7 +401,7 @@ def count_null(e: "ColumnOrName") -> Column:
     """
     if isinstance(e, str):
         e = col(e)
-    if not isinstance(e, column_types):
+    if not _is_column(e):
         raise ValueError(f"Given column must be a column name (str) or column instance (Column): {type(e)}")
 
     return count(when(e.isNull(), lit(1)))
