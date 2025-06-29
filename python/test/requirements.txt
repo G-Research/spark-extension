@@ -1,5 +1,0 @@
-grpcio>=1.48.1
-pandas>=1.0.5
-pyarrow>=4.0.0
-pytest
-unittest-xml-reporting
