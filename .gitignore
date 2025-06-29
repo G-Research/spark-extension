@@ -42,6 +42,5 @@ build.log
 
 # project specific
 python/**/__pycache__
-python/requirements.txt
 spark-*
 .cache

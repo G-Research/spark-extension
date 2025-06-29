@@ -342,13 +342,12 @@ Run the Scala tests via `mvn test`.
 
 ### Setup Python environment
 
-In order to run the Python tests, setup a Python environment as follows (replace `[SCALA-COMPAT-VERSION]` and `[SPARK-COMPAT-VERSION]` with the respective values):
+In order to run the Python tests, setup a Python environment as follows (replace `[SPARK-COMPAT-VERSION]` with the respective value, e.g. `4.0`):
 
 ```shell script
 virtualenv -p python3 venv
 source venv/bin/activate
-pip install -r python/requirements-[SPARK-COMPAT-VERSION]_[SCALA-COMPAT-VERSION].txt
-pip install pytest
+pip install python/[test]
 ```
 
 ### Run Python tests
