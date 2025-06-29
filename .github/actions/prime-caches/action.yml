@@ -51,11 +51,11 @@ runs:
     id: setup
     run: |
       # Prepare priming caches
-      if [ -z "${{ steps.mvn-build-cache.outputs.cache-hit }}" ]; then
+      if [[ "${{ inputs.spark-version }}" == *"-SNAPSHOT" ]] || [[ -z "${{ steps.mvn-build-cache.outputs.cache-hit }}" ]]; then
         echo "prime-mvn-cache=true" >> "$GITHUB_ENV"
         echo "prime-some-cache=true" >> "$GITHUB_ENV"
       fi;
-      if [ -z "${{ steps.spark-binaries-cache.outputs.cache-hit }}" ]; then
+      if [[ "${{ inputs.spark-version }}" == *"-SNAPSHOT" ]] || [[ -z "${{ steps.spark-binaries-cache.outputs.cache-hit }}" ]]; then
         echo "prime-spark-cache=true" >> "$GITHUB_ENV"
         echo "prime-some-cache=true" >> "$GITHUB_ENV"
       fi;
