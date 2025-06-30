@@ -50,18 +50,26 @@ jobs:
     needs: build-jvm
     uses: "./.github/workflows/check.yml"
 
+  # A single job that succeeds if all jobs listed under 'needs' succeed.
+  # This allows to configure a single job as a required check.
+  # The 'needed' jobs then can be changed through pull-requests.
   test_success:
     name: "Test success"
     if: always()
     runs-on: ubuntu-latest
+    # the if clauses below have to reflect the number of jobs listed here
     needs: [build-jvm, build-python, test-jvm, test-python]
+    env:
+      RESULTS: ${{ join(needs.*.result, ',') }}
 
     steps:
       - name: "Success"
-        if: success()
+        # we expect all required jobs to have success result
+        if: env.RESULTS == 'success,success,success,success'
         run: true
         shell: bash
       - name: "Failure"
-        if: failure()
+        # we expect all required jobs to have success result, fail otherwise
+        if: env.RESULTS != 'success,success,success,success'
         run: false
         shell: bash
