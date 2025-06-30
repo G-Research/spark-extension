@@ -195,7 +195,7 @@ runs:
       # Python Unit Tests (Spark Connect)
 
       echo "::group::pip install"
-      .pytest-venv/bin/pip install "pyspark[connect]~=${{ inputs.spark-compat-version }}"
+      .pytest-venv/bin/pip install "pyspark[connect]~=${{ inputs.spark-compat-version }}.0"
       echo "::endgroup::"
 
       .pytest-venv/bin/python -m pytest python/test --junit-xml test-results-connect/pytest-$(date +%s.%N)-$RANDOM.xml
