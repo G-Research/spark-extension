@@ -44,7 +44,7 @@ class custom_sdist(sdist):
         if not jar_dst_path.exists():
             if not jar_src_path.exists():
                 # first set version for scala sources
-                set_version_command = ["set-version.sh", f"{spark_compat_version}.0", scala_version]
+                set_version_command = ["./set-version.sh", f"{spark_compat_version}.0", scala_version]
                 # then package Scala sources
                 mvn_command = ["mvn", "--batch-mode", "package", "-Dspotless.check.skip", "-DskipTests", "-Dmaven.test.skip=true"]
 
