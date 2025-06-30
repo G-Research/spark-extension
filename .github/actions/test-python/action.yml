@@ -221,9 +221,10 @@ runs:
   - name: Python Integration Tests
     env:
       SPARK_HOME: ${{ env.PYSPARK_HOME }}
-      PYTHONPATH: python/test
+      PYTHONPATH: python:python/test
     run: |
       # Python Integration Tests
+      source .pytest-venv/bin/activate
       find python/test -name 'test*.py' > tests
       while read test
       do
