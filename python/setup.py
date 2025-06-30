@@ -90,7 +90,7 @@ setup(
             "pandas>=1.0.5",
             "py4j",
             "pyarrow>=4.0.0",
-            f"pyspark~={spark_compat_version}",
+            f"pyspark~={spark_compat_version}.0",
             "pytest",
             "unittest-xml-reporting",
         ],

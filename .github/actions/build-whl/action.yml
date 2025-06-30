@@ -79,7 +79,7 @@ runs:
       # Test whl
       echo "::group::test-release.py"
       twine check python/dist/*
-      pip install python/dist/*.whl "pyspark~=${{ inputs.spark-compat-version }}"
+      pip install python/dist/*.whl "pyspark~=${{ inputs.spark-compat-version }}.0"
       python test-release.py
       echo "::endgroup::"
     shell: bash

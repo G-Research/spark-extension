@@ -56,7 +56,7 @@ then
     then
       python3 -m venv venv-$spark
     fi
-    ./venv-$spark/bin/pip install "pyspark~=$spark_compat"
+    ./venv-$spark/bin/pip install "pyspark~=$spark_compat.0"
     ./venv-$spark/bin/pip install python/dist/pyspark_extension-${version/-*/}.$spark_compat${version/*-SNAPSHOT/.dev0}-py3-none-any.whl
     ./venv-$spark/bin/python3 test-release.py
 fi
