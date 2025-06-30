@@ -41,35 +41,33 @@ class custom_sdist(sdist):
         jar_src_path = project_root / "target" / jar_file
         jar_dst_path = project_root / "python" / "pyspark" / "jars" / jar_file
 
-        if not jar_dst_path.exists():
+        if not jar_src_path.exists():
+            # first set version for scala sources
+            set_version_command = ["./set-version.sh", f"{spark_compat_version}.0", scala_version]
+            # then package Scala sources
+            mvn_command = ["mvn", "--batch-mode", "package", "-Dspotless.check.skip", "-DskipTests", "-Dmaven.test.skip=true"]
+
+            print(' '.join(set_version_command))
+            try:
+                subprocess.check_call(set_version_command, cwd=str(project_root.absolute()))
+            except OSError as e:
+                raise RuntimeError(f'setting versions failed: {e}')
+
+            print(f"building {jar_src_path}")
+            print(' '.join(mvn_command))
+            try:
+                subprocess.check_call(mvn_command, cwd=str(project_root.absolute()))
+            except OSError as e:
+                raise RuntimeError(f'mvn command failed: {e}')
+
             if not jar_src_path.exists():
-                # first set version for scala sources
-                set_version_command = ["./set-version.sh", f"{spark_compat_version}.0", scala_version]
-                # then package Scala sources
-                mvn_command = ["mvn", "--batch-mode", "package", "-Dspotless.check.skip", "-DskipTests", "-Dmaven.test.skip=true"]
+                print(f"Building jar file succeeded but file does still not exist: {jar_src_path}")
+                sys.exit(1)
 
-                print(f"setting versions spark={spark_compat_version} scala={scala_version}")
-                print(' '.join(set_version_command))
-                try:
-                    subprocess.check_call(set_version_command, cwd=str(project_root.absolute()))
-                except OSError as e:
-                    raise RuntimeError(f'setting versions failed: {e}')
-
-                print(f"building {jar_src_path}")
-                print(' '.join(mvn_command))
-                try:
-                    subprocess.check_call(mvn_command, cwd=str(project_root.absolute()))
-                except OSError as e:
-                    raise RuntimeError(f'mvn command failed: {e}')
-
-                if not jar_src_path.exists():
-                    print(f"Building jar file succeeded but file does still not exist: {jar_src_path}")
-                    sys.exit(1)
-
-            print(f"copying {jar_src_path} -> {jar_dst_path}")
-            jar_dst_path.parent.mkdir(exist_ok=True)
-            shutil.copy2(jar_src_path, jar_dst_path)
-            self._add_data_files([("pyspark.jars", "pyspark/jars", ".", [jar_file])])
+        print(f"copying {jar_src_path} -> {jar_dst_path}")
+        jar_dst_path.parent.mkdir(exist_ok=True)
+        shutil.copy2(jar_src_path, jar_dst_path)
+        self._add_data_files([("pyspark.jars", "pyspark/jars", ".", [jar_file])])
 
         sdist.make_distribution(self)
 
