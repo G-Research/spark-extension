@@ -6,7 +6,7 @@ on:
       versions:
         required: true
         type: string
-        description: 'Example: {"include": [{"params": {"spark-version": "3.0.3","scala-version": "2.12.10"}}]}'
+        description: 'Example: {"include": [{"params": {"spark-version": "4.0.0","scala-version": "2.13.16"}}]}'
         default: |
           {
             "include": [
@@ -15,11 +15,12 @@ on:
               {"params": {"spark-version": "3.2.4","scala-version": "2.12.15"}},
               {"params": {"spark-version": "3.3.4","scala-version": "2.12.15"}},
               {"params": {"spark-version": "3.4.4","scala-version": "2.12.17"}},
-              {"params": {"spark-version": "3.5.5","scala-version": "2.12.18"}},
+              {"params": {"spark-version": "3.5.6","scala-version": "2.12.18"}},
               {"params": {"spark-version": "3.2.4","scala-version": "2.13.5"}},
               {"params": {"spark-version": "3.3.4","scala-version": "2.13.8"}},
               {"params": {"spark-version": "3.4.4","scala-version": "2.13.8"}},
-              {"params": {"spark-version": "3.5.5","scala-version": "2.13.8"}}
+              {"params": {"spark-version": "3.5.6","scala-version": "2.13.8"}},
+              {"params": {"spark-version": "4.0.0","scala-version": "2.13.16"}}
             ]
           }
 
