@@ -12,10 +12,6 @@ jobs:
       fail-fast: false
       # keep in-sync with .github/workflows/prime-caches.yml
       matrix:
-        scala-compat-version: ['2.12', '2.13']
-        spark-compat-version: ['3.4', '3.5']
-        spark-patch-version: ['0', '1', '2', '3', '4']
-
         include:
           - spark-compat-version: '3.0'
             scala-compat-version: '2.12'
@@ -44,17 +40,13 @@ jobs:
           - spark-compat-version: '3.4'
             scala-compat-version: '2.12'
             scala-version: '2.12.17'
+            spark-patch-version: '4'
             java-compat-version: '8'
             hadoop-version: '3'
           - spark-compat-version: '3.5'
             scala-compat-version: '2.12'
             scala-version: '2.12.18'
-            java-compat-version: '8'
-            hadoop-version: '3'
-          - spark-compat-version: '3.5'
-            scala-compat-version: '2.12'
-            scala-version: '2.12.18'
-            spark-patch-version: '5'
+            spark-patch-version: '6'
             java-compat-version: '8'
             hadoop-version: '3'
 
@@ -73,17 +65,13 @@ jobs:
           - spark-compat-version: '3.4'
             scala-compat-version: '2.13'
             scala-version: '2.13.8'
+            spark-patch-version: '4'
             java-compat-version: '8'
             hadoop-version: '3'
           - spark-compat-version: '3.5'
             scala-compat-version: '2.13'
             scala-version: '2.13.8'
-            java-compat-version: '8'
-            hadoop-version: '3'
-          - spark-compat-version: '3.5'
-            scala-compat-version: '2.13'
-            scala-version: '2.13.8'
-            spark-patch-version: '5'
+            spark-patch-version: '6'
             java-compat-version: '8'
             hadoop-version: '3'
           - spark-compat-version: '4.0'
