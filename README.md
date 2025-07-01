@@ -342,7 +342,7 @@ Run the Scala tests via `mvn test`.
 
 ### Setup Python environment
 
-In order to run the Python tests, setup a Python environment as follows (replace `[SPARK-COMPAT-VERSION]` with the respective value, e.g. `4.0`):
+In order to run the Python tests, setup a Python environment as follows:
 
 ```shell script
 virtualenv -p python3 venv
@@ -352,21 +352,18 @@ pip install python/[test]
 
 ### Run Python tests
 
-Run the Python tests via `env PYTHONPATH=python:python/test python -m pytest python/test`.
-
-Note: you first have to [build the Scala sources](#build-the-scala-project).
+Run the Python tests via `env PYTHONPATH=python/test python -m pytest python/test`.
 
 ### Build Python package
 
-Run the following sequence of commands in the project root directory:
+Run the following commands in the project root directory to create a whl from the sources:
 
 ```shell script
-mkdir -p python/pyspark/jars/
-cp -v target/spark-extension_*-*.jar python/pyspark/jars/
 pip install build
+python -m build python/
 ```
 
-Then execute `python -m build python/` to create a whl from the sources. It can be found in `python/dist/`.
+It can be found in `python/dist/`.
 
 ## Publications
 
