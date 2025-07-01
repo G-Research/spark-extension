@@ -104,8 +104,7 @@ runs:
       python -m venv .pytest-venv
       .pytest-venv/bin/python -m pip install --upgrade pip
       .pytest-venv/bin/pip install pypandoc
-      .pytest-venv/bin/pip install -r python/requirements-${{ inputs.spark-compat-version }}_${{ inputs.scala-compat-version }}.txt
-      .pytest-venv/bin/pip install -r python/test/requirements.txt
+      .pytest-venv/bin/pip install -e python/[test]
       echo "::endgroup::"
 
       PYSPARK_HOME=$(.pytest-venv/bin/python -c "import os; import pyspark; print(os.path.dirname(pyspark.__file__))")
@@ -138,7 +137,7 @@ runs:
   - name: Python Unit Tests
     env:
       SPARK_HOME: ${{ env.PYSPARK_HOME }}
-      PYTHONPATH: python:python/test
+      PYTHONPATH: python/test
     run: |
       .pytest-venv/bin/python -m pytest python/test --junit-xml test-results/pytest-$(date +%s.%N)-$RANDOM.xml
     shell: bash
@@ -190,13 +189,13 @@ runs:
     if: steps.spark-connect.outcome == 'success'
     env:
       SPARK_HOME: ${{ env.PYSPARK_HOME }}
-      PYTHONPATH: python:python/test
+      PYTHONPATH: python/test
       TEST_SPARK_CONNECT_SERVER: sc://127.0.0.1:15002
     run: |
       # Python Unit Tests (Spark Connect)
 
       echo "::group::pip install"
-      .pytest-venv/bin/pip install pyspark[connect]
+      .pytest-venv/bin/pip install "pyspark[connect]~=${{ inputs.spark-compat-version }}.0"
       echo "::endgroup::"
 
       .pytest-venv/bin/python -m pytest python/test --junit-xml test-results-connect/pytest-$(date +%s.%N)-$RANDOM.xml
@@ -225,6 +224,7 @@ runs:
       PYTHONPATH: python:python/test
     run: |
       # Python Integration Tests
+      source .pytest-venv/bin/activate
       find python/test -name 'test*.py' > tests
       while read test
       do

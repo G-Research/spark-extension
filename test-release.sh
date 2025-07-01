@@ -54,12 +54,11 @@ then
     echo "Testing Python with whl package"
     if [ ! -e "venv-$spark" ]
     then
-      python -m venv venv-$spark
+      python3 -m venv venv-$spark
     fi
-    source venv-$spark/bin/activate
-    pip install -r python/requirements-${spark_compat}_$scala_compat.txt
-    pip install python/dist/pyspark_extension-${version/-*/}.$spark_compat${version/*-SNAPSHOT/.dev0}-py3-none-any.whl
-    python3 test-release.py
+    ./venv-$spark/bin/pip install "pyspark~=$spark_compat.0"
+    ./venv-$spark/bin/pip install python/dist/pyspark_extension-${version/-*/}.$spark_compat${version/*-SNAPSHOT/.dev0}-py3-none-any.whl
+    ./venv-$spark/bin/python3 test-release.py
 fi
 
 
