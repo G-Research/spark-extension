@@ -89,6 +89,22 @@ runs:
       java-version: ${{ inputs.java-compat-version }}
       distribution: 'zulu'
 
+  - name: Diff App test
+    env:
+      SPARK_HOME: ${{ env.SPARK_BIN_HOME }}
+    run: |
+      # Diff App test
+      echo "::group::spark-submit"
+      $SPARK_HOME/bin/spark-submit --packages com.github.scopt:scopt_${{ inputs.scala-compat-version }}:4.1.0 target/spark-extension_*.jar --format parquet --id id src/test/files/test.parquet/file1.parquet src/test/files/test.parquet/file2.parquet diff.parquet
+      echo
+      echo "::endgroup::"
+
+      echo "::group::spark-shell"
+      $SPARK_HOME/bin/spark-shell <<< 'val df = spark.read.parquet("diff.parquet").orderBy($"id").groupBy($"diff").count; df.show; if (df.count != 2) sys.exit(1)'
+      echo
+      echo "::endgroup::"
+    shell: bash
+
   - name: Install Spark Extension
     run: |
       # Install Spark Extension
