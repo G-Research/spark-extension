@@ -16,7 +16,6 @@ from dataclasses import dataclass
 from enum import Enum
 from functools import reduce
 from typing import Optional, Dict, Mapping, Any, Callable, List, Tuple, Union, Iterable, overload
-from typing_extensions import deprecated
 
 from py4j.java_gateway import JavaObject, JVMView
 from pyspark.sql import DataFrame, Column
@@ -27,6 +26,30 @@ from gresearch.spark import _get_jvm, _to_seq, _to_map, backticks, distinct_pref
     handle_configured_case_sensitivity, list_contains_case_sensitivity, list_filter_case_sensitivity, list_diff_case_sensitivity, \
     has_connect, _is_dataframe
 from gresearch.spark.diff.comparator import DiffComparator, DiffComparators, DefaultDiffComparator
+
+
+try:
+    # There is a chance users use the Python code contained in the jvm package with Spark
+    # without ever pip installing the whl package and thus lacking dependencies like this
+    #from typing_extensions import deprecated
+    raise ImportError()
+except ImportError:
+    from typing import TypeVar
+
+    _T = TypeVar("_T")
+
+    class deprecated:
+        def __init__(self, msg: str) -> None:
+            self.msg = msg
+
+        def __call__(self, func: _T) -> _T:
+            import warnings
+
+            def deprecated_func(*args, **kwargs):
+                warnings.warn(self.msg, DeprecationWarning, stacklevel=2)
+                return func(*args, **kwargs)
+
+            return deprecated_func
 
 
 class DiffMode(Enum):
