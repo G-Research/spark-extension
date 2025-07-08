@@ -1,0 +1,186 @@
+name: 'Test Release'
+author: 'EnricoMi'
+description: 'A GitHub Action that tests spark-extension release'
+
+# pyspark is not available for snapshots or scala other than 2.12
+# we would have to compile spark from sources for this, not worth it
+# so this action only works with scala 2.12 and non-snapshot spark versions
+inputs:
+  spark-version:
+    description: Spark version, e.g. 3.4.0 or 4.0.0-preview1
+    required: true
+  scala-version:
+    description: Scala version, e.g. 2.12.15
+    required: true
+  spark-compat-version:
+    description: Spark compatibility version, e.g. 3.4
+    required: true
+  spark-archive-url:
+    description: The URL to download the Spark binary distribution
+    required: false
+  scala-compat-version:
+    description: Scala compatibility version, e.g. 2.12
+    required: true
+  java-compat-version:
+    description: Java compatibility version, e.g. 8
+    required: true
+  hadoop-version:
+    description: Hadoop version, e.g. 2.7 or 2
+    required: true
+  python-version:
+    description: Python version, e.g. 3.8
+    default: ''
+    required: false
+
+runs:
+  using: 'composite'
+  steps:
+  - name: Fetch Binaries Artifact
+    uses: actions/download-artifact@v4
+    with:
+      name: Binaries-${{ inputs.spark-compat-version }}-${{ inputs.scala-compat-version }}
+      path: .
+
+  - name: Set versions in pom.xml
+    run: |
+      ./set-version.sh ${{ inputs.spark-version }} ${{ inputs.scala-version }}
+      git diff
+
+      SPARK_EXTENSION_VERSION=$(grep --max-count=1 "<version>.*</version>" pom.xml | sed -E -e "s/\s*<[^>]+>//g")
+      echo "SPARK_EXTENSION_VERSION=$SPARK_EXTENSION_VERSION" | tee -a "$GITHUB_ENV"
+    shell: bash
+
+  - name: Restore Spark Binaries cache
+    if: github.event_name != 'schedule'
+    uses: actions/cache/restore@v4
+    with:
+      path: ~/spark
+      key: ${{ runner.os }}-spark-binaries-${{ inputs.spark-version }}-${{ inputs.scala-compat-version }}
+      restore-keys: |
+        ${{ runner.os }}-spark-binaries-${{ inputs.spark-version }}-${{ inputs.scala-compat-version }}
+
+  - name: Setup Spark Binaries
+    env:
+      SPARK_PACKAGE: spark-${{ inputs.spark-version }}/spark-${{ inputs.spark-version }}-bin-hadoop${{ inputs.hadoop-version }}${{ startsWith(inputs.spark-version, '3.') && inputs.scala-compat-version == '2.13' && '-scala2.13' || '' }}.tgz
+    run: |
+      # Setup Spark Binaries
+      if [[ ! -e ~/spark ]]
+      then
+        url="${{ inputs.spark-archive-url }}"
+        wget --progress=dot:giga "${url:-https://www.apache.org/dyn/closer.lua/spark/${SPARK_PACKAGE}?action=download}" -O - | tar -xzC "${{ runner.temp }}"
+        archive=$(basename "${SPARK_PACKAGE}") bash -c "mv -v "${{ runner.temp }}/\${archive/%.tgz/}" ~/spark"
+      fi
+      echo "SPARK_BIN_HOME=$(cd ~/spark; pwd)" >> $GITHUB_ENV
+    shell: bash
+
+  - name: Restore Maven packages cache
+    if: github.event_name != 'schedule'
+    uses: actions/cache/restore@v4
+    with:
+      path: ~/.m2/repository
+      key: ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-${{ hashFiles('pom.xml') }}
+      restore-keys: |
+        ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-${{ hashFiles('pom.xml') }}
+        ${{ runner.os }}-mvn-build-${{ inputs.spark-version }}-${{ inputs.scala-version }}-
+
+  - name: Setup JDK ${{ inputs.java-compat-version }}
+    uses: actions/setup-java@v4
+    with:
+      java-version: ${{ inputs.java-compat-version }}
+      distribution: 'zulu'
+
+  - name: Install Spark Extension
+    run: |
+      # Install Spark Extension
+      echo "::group::mvn install"
+      mvn --batch-mode --update-snapshots install -Dspotless.check.skip -DskipTests -Dmaven.test.skip=true -Dgpg.skip
+      echo "::endgroup::"
+    shell: bash
+
+  - name: Scala Release Test
+    env:
+      SPARK_HOME: ${{ env.SPARK_BIN_HOME }}
+    run: |
+      # Scala Release Test
+      echo "::group::spark-shell"
+      $SPARK_BIN_HOME/bin/spark-shell --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION < test-release.scala
+      echo
+      echo "::endgroup::"
+    shell: bash
+
+  - name: Setup Python
+    uses: actions/setup-python@v5
+    if: inputs.python-version != ''
+    with:
+      python-version: ${{ inputs.python-version }}
+
+  - name: Python Release Test
+    if: inputs.python-version != ''
+    env:
+      SPARK_HOME: ${{ env.SPARK_BIN_HOME }}
+    run: |
+      # Python Release Test
+      echo "::group::spark-submit"
+      $SPARK_BIN_HOME/bin/spark-submit --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION test-release.py
+      echo
+      echo "::endgroup::"
+    shell: bash
+
+  - name: Install Python dependencies
+    if: inputs.python-version != ''
+    run: |
+      # Install Python dependencies
+      echo "::group::pip install"
+      python -m venv .pytest-venv
+      .pytest-venv/bin/python -m pip install --upgrade pip
+      .pytest-venv/bin/pip install pypandoc
+      .pytest-venv/bin/pip install -e python/[test]
+      echo "::endgroup::"
+
+      PYSPARK_HOME=$(.pytest-venv/bin/python -c "import os; import pyspark; print(os.path.dirname(pyspark.__file__))")
+      PYSPARK_BIN_HOME="$(cd ".pytest-venv/"; pwd)"
+      PYSPARK_PYTHON="$PYSPARK_BIN_HOME/bin/python"
+      echo "PYSPARK_HOME=$PYSPARK_HOME" | tee -a "$GITHUB_ENV"
+      echo "PYSPARK_BIN_HOME=$PYSPARK_BIN_HOME" | tee -a "$GITHUB_ENV"
+      echo "PYSPARK_PYTHON=$PYSPARK_PYTHON" | tee -a "$GITHUB_ENV"
+    shell: bash
+
+  - name: PySpark Release Test
+    if: inputs.python-version != ''
+    run: |
+      .pytest-venv/bin/python3 test-release.py
+    shell: bash
+
+  - name: Python Integration Tests
+    if: inputs.python-version != ''
+    env:
+      SPARK_HOME: ${{ env.PYSPARK_HOME }}
+      PYTHONPATH: python:python/test
+    run: |
+      # Python Integration Tests
+      source .pytest-venv/bin/activate
+      find python/test -name 'test*.py' > tests
+      while read test
+      do
+        echo "::group::spark-submit $test"
+        if ! $PYSPARK_BIN_HOME/bin/spark-submit --master "local[2]" --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION "$test" test-results-submit
+        then
+          state="fail"
+        fi
+        echo
+        echo "::endgroup::"
+      done < tests
+      if [[ "$state" == "fail" ]]; then exit 1; fi
+    shell: bash
+
+  - name: Upload Test Results
+    if: always() && inputs.python-version != ''
+    uses: actions/upload-artifact@v4
+    with:
+      name: Python Release Test Results (Spark ${{ inputs.spark-version }} Scala ${{ inputs.scala-version }} Python ${{ inputs.python-version }})
+      path: |
+        test-results-submit/*.xml
+
+branding:
+  icon: 'check-circle'
+  color: 'green'
