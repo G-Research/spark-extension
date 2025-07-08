@@ -3,6 +3,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [UNRELEASED] - YYYY-MM-DD
+
+### Added
+- Support for Spark 4.0 (#269, #272, #293)
+
+### Changed
+- Improve backticks (#265)
+
+  New: This escapes backticks that already exist in column names.
+
+  Change: This does not quote columns that only contain letters, numbers
+  and underscores, which were quoted before.
+- Move Python dependencies into `setup.py`, build jar from `setup.py` (#301)
+
 ## [2.13.0] - 2024-11-04
 
 ### Fixes
@@ -14,11 +28,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [2.12.0] - 2024-04-26
 
-## Fixes
+### Fixes
 
 - Diff change column should respect comparators (#238)
 
-## Changed
+### Changed
 
 - Make create_temporary_dir work with pyspark-extension only (#222).
   This allows [installing PIP packages and Poetry projects](PYSPARK-DEPS.md)
