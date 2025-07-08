@@ -10,7 +10,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Changed
 - Improve backticks (#265)
+
   New: This escapes backticks that already exist in column names.
+
   Change: This does not quote columns that only contain letters, numbers
   and underscores, which were quoted before.
 - Move Python dependencies into `setup.py`, build jar from `setup.py` (#301)
