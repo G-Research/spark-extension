@@ -86,7 +86,7 @@ jobs:
         with:
           java-version: '8'
           distribution: 'corretto'
-          server-id: ossrh
+          server-id: central
           server-username: MAVEN_USERNAME
           server-password: MAVEN_PASSWORD
           gpg-private-key: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
