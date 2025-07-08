@@ -97,6 +97,35 @@ runs:
     with:
       python-version: ${{ inputs.python-version }}
 
+  - name: Install Spark Extension
+    run: |
+      # Install Spark Extension
+      echo "::group::mvn install"
+      mvn --batch-mode --update-snapshots install -Dspotless.check.skip -DskipTests -Dmaven.test.skip=true -Dgpg.skip
+      echo "::endgroup::"
+    shell: bash
+
+  # These release tests come first as they should work without spark-extensions dependnecies being installed
+  - name: Python Release Test
+    env:
+      SPARK_HOME: ${{ env.PYSPARK_HOME }}
+    run: |
+      # Python Release Test
+      echo "::group::spark-submit"
+      $SPARK_BIN_HOME/bin/spark-submit --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION test-release.py
+      echo "::endgroup::"
+    shell: bash
+
+  - name: Scala Release Test
+    env:
+      SPARK_HOME: ${{ env.SPARK_BIN_HOME }}
+    run: |
+      # Scala Release Test
+      echo "::group::spark-shell"
+      $SPARK_BIN_HOME/bin/spark-shell --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION < test-release.scala
+      echo "::endgroup::"
+    shell: bash
+
   - name: Install Python dependencies
     run: |
       # Install Python dependencies
@@ -140,14 +169,6 @@ runs:
       PYTHONPATH: python/test
     run: |
       .pytest-venv/bin/python -m pytest python/test --junit-xml test-results/pytest-$(date +%s.%N)-$RANDOM.xml
-    shell: bash
-
-  - name: Install Spark Extension
-    run: |
-      # Install Spark Extension
-      echo "::group::mvn install"
-      mvn --batch-mode --update-snapshots install -Dspotless.check.skip -DskipTests -Dmaven.test.skip=true -Dgpg.skip
-      echo "::endgroup::"
     shell: bash
 
   - name: Start Spark Connect
@@ -236,26 +257,6 @@ runs:
         echo "::endgroup::"
       done < tests
       if [[ "$state" == "fail" ]]; then exit 1; fi
-    shell: bash
-
-  - name: Python Release Test
-    env:
-      SPARK_HOME: ${{ env.PYSPARK_HOME }}
-    run: |
-      # Python Release Test
-      echo "::group::spark-submit"
-      $PYSPARK_BIN_HOME/bin/spark-submit --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION test-release.py
-      echo "::endgroup::"
-    shell: bash
-
-  - name: Scala Release Test
-    env:
-      SPARK_HOME: ${{ env.SPARK_BIN_HOME }}
-    run: |
-      # Scala Release Test
-      echo "::group::spark-shell"
-      $SPARK_BIN_HOME/bin/spark-shell --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION < test-release.scala
-      echo "::endgroup::"
     shell: bash
 
   - name: Upload Test Results
