@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Added
 - Support for Spark 4.0 (#269, #272, #293)
 
-## Changed
+### Changed
 - Improve backticks (#265)
 
   New: This escapes backticks that already exist in column names.
