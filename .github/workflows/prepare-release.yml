@@ -14,6 +14,11 @@ jobs:
     name: Prepare release
     runs-on: ubuntu-latest
     if: ( ! github.event.repository.fork )
+    # secrets are provided by environment
+    environment:
+      name: tagged
+      # a different URL for each point in the matrix, but the same URLs accross commits
+      url: 'https://github.com/G-Research/spark-extension?spark=${{ matrix.params.spark-version }}&scala=${{ matrix.params.scala-version }}'
     permissions:
       contents: write # required to push to a branch
     outputs:
@@ -23,6 +28,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
+          token: ${{ secrets.APP_TOKEN }}
           fetch-depth: 0
 
       - name: Get versions
@@ -47,8 +53,6 @@ jobs:
 
       - name: Tag and bump version
         if: steps.versions.outputs.is-snapshot
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # check for unreleased entry in CHANGELOG.md
           readarray -t changes < <(grep -A 100 "^## \[UNRELEASED\] - YYYY-MM-DD" CHANGELOG.md | grep -B 100 --max-count=1 -E "^## \[[0-9.]+\]" | grep "^-")
