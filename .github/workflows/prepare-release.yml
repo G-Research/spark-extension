@@ -10,16 +10,37 @@ on:
         type: boolean
 
 jobs:
+  get-version:
+    name: Get version
+    runs-on: ubuntu-latest
+    outputs:
+      release-tag: ${{ steps.versions.outputs.release-tag }}
+      is-snapshot: ${{ steps.versions.outputs.is-snapshot }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get versions
+        id: versions
+        run: |
+          # get release version
+          version=$(grep --max-count=1 "<version>.*</version>" pom.xml | sed -E -e "s/\s*<[^>]+>//g" -e "s/-SNAPSHOT//" -e "s/-[0-9.]+//g")
+          is_snapshot=$(if grep -q "<version>.*-SNAPSHOT</version>" pom.xml; then echo "true"; else echo "false"; fi)
+
+          # share versions
+          echo "release-tag=v${version}" >> "$GITHUB_OUTPUT"
+          echo "is-snapshot=$is_snapshot" >> "$GITHUB_OUTPUT"
+
   prepare-release:
     name: Prepare release
     runs-on: ubuntu-latest
+    needs: get-version
     # secrets are provided by environment
     environment:
       name: tagged
-      # a different URL for each point in the matrix, but the same URLs accross commits
-      url: 'https://github.com/G-Research/spark-extension?spark=${{ matrix.params.spark-version }}&scala=${{ matrix.params.scala-version }}'
-    outputs:
-      release-tag: ${{ steps.versions.outputs.release-tag }}
+      url: 'https://github.com/G-Research/spark-extension?version=${{ needs.get-version.outputs.release-tag }}'
 
     steps:
       - uses: actions/create-github-app-token@v2
@@ -42,17 +63,6 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           fetch-depth: 0
 
-      - name: Get versions
-        id: versions
-        run: |
-          # get release version
-          version=$(grep --max-count=1 "<version>.*</version>" pom.xml | sed -E -e "s/\s*<[^>]+>//g" -e "s/-SNAPSHOT//" -e "s/-[0-9.]+//g")
-          is_snapshot=$(if grep -q "<version>.*-SNAPSHOT</version>" pom.xml; then echo "true"; else echo "false"; fi)
-
-          # share versions
-          echo "release-tag=v${version}" >> "$GITHUB_OUTPUT"
-          echo "is-snapshot=$is_snapshot" >> "$GITHUB_OUTPUT"
-
       - name: Check branch setup
         if: false
         run: |
@@ -64,7 +74,7 @@ jobs:
           fi
 
       - name: Tag and bump version
-        if: steps.versions.outputs.is-snapshot
+        if: needs.get-version.outputs.is-snapshot
         run: |
           # check for unreleased entry in CHANGELOG.md
           readarray -t changes < <(grep -A 100 "^## \[UNRELEASED\] - YYYY-MM-DD" CHANGELOG.md | grep -B 100 --max-count=1 -E "^## \[[0-9.]+\]" | grep "^-")
@@ -145,7 +155,9 @@ jobs:
   github-release:
     name: Create GitHub release
     runs-on: ubuntu-latest
-    needs: prepare-release
+    needs:
+      - get-version
+      - prepare-release
     permissions:
       contents: write # required to create release
 
@@ -153,7 +165,7 @@ jobs:
       - name: Checkout release tag
         uses: actions/checkout@v4
         with:
-          ref: ${{needs.prepare-release.outputs.release-tag}}
+          ref: ${{ needs.get-version.outputs.release-tag }}
 
       - name: Extract release notes
         id: release-notes
@@ -174,5 +186,5 @@ jobs:
           name: ${{ steps.release-notes.outputs.release_name }}
           bodyFile: ${{ steps.release-notes.outputs.release_notes_path }}
           makeLatest: ${{ inputs.github_release_latest }}
-          tag: ${{ needs.prepare-release.outputs.release-tag }}
+          tag: ${{ needs.get-version.outputs.release-tag }}
           token: ${{ github.token }}
