@@ -41,8 +41,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ steps.app-token.outputs.token }}
-          # Make sure the value of GITHUB_TOKEN will not be persisted in repo's config
-          persist-credentials: false
           fetch-depth: 0
 
       - name: Get versions
