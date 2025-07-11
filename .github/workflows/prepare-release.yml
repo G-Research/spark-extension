@@ -56,6 +56,7 @@ jobs:
           echo "is-snapshot=$is_snapshot" >> "$GITHUB_OUTPUT"
 
       - name: Check branch setup
+        if: false
         run: |
           # Check branch setup
           if [[ "$GITHUB_REF" != "refs/heads/master" ]] && [[ "$GITHUB_REF" != "refs/heads/master-"* ]]

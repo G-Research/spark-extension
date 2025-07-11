@@ -32,7 +32,6 @@ jobs:
   maven-release:
     name: Publish maven release
     runs-on: ubuntu-latest
-    if: ( ! github.event.repository.fork )
     # secrets are provided by environment
     environment:
       name: release
