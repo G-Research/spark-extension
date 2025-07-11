@@ -10,15 +10,12 @@ on:
         type: boolean
 
 jobs:
-  prepare-release:
-    name: Prepare release
+  get-version:
+    name: Get version
     runs-on: ubuntu-latest
-    if: ( ! github.event.repository.fork )
-    permissions:
-      contents: write # required to push to a branch
     outputs:
       release-tag: ${{ steps.versions.outputs.release-tag }}
-
+      is-snapshot: ${{ steps.versions.outputs.is-snapshot }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -36,6 +33,37 @@ jobs:
           echo "release-tag=v${version}" >> "$GITHUB_OUTPUT"
           echo "is-snapshot=$is_snapshot" >> "$GITHUB_OUTPUT"
 
+  prepare-release:
+    name: Prepare release
+    runs-on: ubuntu-latest
+    if: ( ! github.event.repository.fork )
+    needs: get-version
+    # secrets are provided by environment
+    environment:
+      name: tagged
+      url: 'https://github.com/G-Research/spark-extension?version=${{ needs.get-version.outputs.release-tag }}'
+
+    steps:
+      - uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.PRIVATE_KEY }}
+          # required to push to a branch
+          permission-contents: write
+
+      - name: Get GitHub App User ID
+        id: get-user-id
+        run: echo "user-id=$(gh api "/users/${{ steps.app-token.outputs.app-slug }}[bot]" --jq .id)" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          fetch-depth: 0
+
       - name: Check branch setup
         run: |
           # Check branch setup
@@ -46,9 +74,7 @@ jobs:
           fi
 
       - name: Tag and bump version
-        if: steps.versions.outputs.is-snapshot
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: needs.get-version.outputs.is-snapshot
         run: |
           # check for unreleased entry in CHANGELOG.md
           readarray -t changes < <(grep -A 100 "^## \[UNRELEASED\] - YYYY-MM-DD" CHANGELOG.md | grep -B 100 --max-count=1 -E "^## \[[0-9.]+\]" | grep "^-")
@@ -70,8 +96,8 @@ jobs:
           ./set-version.sh $version
 
           # configure git so we can commit changes
-          git config --local user.name "${{ github.actor }}"
-          git config --local user.email "github-action-${{ github.actor }}@users.noreply.github.com"
+          git config --global user.name '${{ steps.app-token.outputs.app-slug }}[bot]'
+          git config --global user.email '${{ steps.get-user-id.outputs.user-id }}+${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com'
 
           # commit changes to local repo
           echo "Committing release to local git"
@@ -129,7 +155,9 @@ jobs:
   github-release:
     name: Create GitHub release
     runs-on: ubuntu-latest
-    needs: prepare-release
+    needs:
+      - get-version
+      - prepare-release
     permissions:
       contents: write # required to create release
 
@@ -137,7 +165,7 @@ jobs:
       - name: Checkout release tag
         uses: actions/checkout@v4
         with:
-          ref: ${{needs.prepare-release.outputs.release-tag}}
+          ref: ${{ needs.get-version.outputs.release-tag }}
 
       - name: Extract release notes
         id: release-notes
@@ -158,5 +186,5 @@ jobs:
           name: ${{ steps.release-notes.outputs.release_name }}
           bodyFile: ${{ steps.release-notes.outputs.release_notes_path }}
           makeLatest: ${{ inputs.github_release_latest }}
-          tag: ${{ needs.prepare-release.outputs.release-tag }}
+          tag: ${{ needs.get-version.outputs.release-tag }}
           token: ${{ github.token }}
