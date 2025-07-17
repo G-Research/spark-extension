@@ -133,13 +133,13 @@ jobs:
 
       - name: Prepare PyPi package
         id: prepare-pypi-package
-        if: matrix.params.spark-version == 3.* && matrix.params.scala-version == 2.12.* || matrix.params.spark-version == 4.* && matrix.params.scala-version == 2.13.*
+        if: startsWith(matrix.params.spark-version, '3.') && startsWith(matrix.params.scala-version, '2.12.') || startsWith(matrix.params.spark-version, '4.') && startsWith(matrix.params.scala-version, '2.13.')
         run: |
           ./build-whl.sh
 
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
-        if: matrix.params.spark-version == 3.* && matrix.params.scala-version == 2.12.* || matrix.params.spark-version == 4.* && matrix.params.scala-version == 2.13.*
+        if: steps.prepare-pypi-package.outcome == 'success'
         with:
           user: ${{ secrets.PYPI_USERNAME }}
           password: ${{ secrets.PYPI_PASSWORD }}
