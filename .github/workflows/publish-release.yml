@@ -56,17 +56,20 @@ jobs:
           if [[ "$GITHUB_REF" != "refs/tags/v"* ]]
           then
             echo "This workflow must be run on a tag, not $GITHUB_REF"
+            exit 1
           fi
 
           if [ "${{ steps.versions.outputs.is-snapshot }}" == "true" ]
           then
             echo "This is a tagged SNAPSHOT version. This is not allowed for release!"
+            exit 1
           fi
 
           if [ "${{ github.ref_name }}" != "${{ steps.versions.outputs.release-tag }}" ]
           then
             echo "The version in the pom.xml is ${{ steps.versions.outputs.release-tag }}"
             echo "This tag is ${{ github.ref_name }}, which is different!"
+            exit 1
           fi
       - name: Show matrix
         run: |
