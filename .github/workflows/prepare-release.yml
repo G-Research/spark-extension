@@ -44,7 +44,8 @@ jobs:
       url: 'https://github.com/G-Research/spark-extension?version=${{ needs.get-version.outputs.release-tag }}'
 
     steps:
-      - uses: actions/create-github-app-token@v2
+      - name: Create GitHub App token
+        uses: actions/create-github-app-token@v2
         id: app-token
         with:
           app-id: ${{ vars.APP_ID }}
