@@ -122,6 +122,7 @@ jobs:
 
       - name: Publish maven artifacts
         id: publish-maven
+        if: false
         run: |
           ./set-version.sh ${{ matrix.params.spark-version }} ${{ matrix.params.scala-version }}
           mvn clean deploy -Dsign -Dspotless.check.skip -DskipTests -Dmaven.test.skip=true
