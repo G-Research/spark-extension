@@ -76,6 +76,7 @@ jobs:
     name: Publish maven release (Spark ${{ matrix.params.spark-version }}, Scala ${{ matrix.params.scala-version }})
     runs-on: ubuntu-latest
     needs: get-version
+    if: ( ! github.event.repository.fork )
     # secrets are provided by environment
     environment:
       name: release
