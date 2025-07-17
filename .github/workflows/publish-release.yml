@@ -10,17 +10,17 @@ on:
         default: |
           {
             "include": [
-              {"params": {"spark-version": "3.0.3","scala-version": "2.12.10", "java-compat-version": "8"}},
-              {"params": {"spark-version": "3.1.3","scala-version": "2.12.10", "java-compat-version": "8"}},
-              {"params": {"spark-version": "3.2.4","scala-version": "2.12.15", "java-compat-version": "8"}},
-              {"params": {"spark-version": "3.3.4","scala-version": "2.12.15", "java-compat-version": "8"}},
-              {"params": {"spark-version": "3.4.4","scala-version": "2.12.17", "java-compat-version": "8"}},
-              {"params": {"spark-version": "3.5.6","scala-version": "2.12.18", "java-compat-version": "8"}},
-              {"params": {"spark-version": "3.2.4","scala-version": "2.13.5", "java-compat-version": "8"}},
-              {"params": {"spark-version": "3.3.4","scala-version": "2.13.8", "java-compat-version": "8"}},
-              {"params": {"spark-version": "3.4.4","scala-version": "2.13.8", "java-compat-version": "8"}},
-              {"params": {"spark-version": "3.5.6","scala-version": "2.13.8", "java-compat-version": "8"}},
-              {"params": {"spark-version": "4.0.0","scala-version": "2.13.16", "java-compat-version": "17"}}
+              {"params": {"spark-version": "3.0.3", "scala-version": "2.12.10", "java-compat-version": "8"}},
+              {"params": {"spark-version": "3.1.3", "scala-version": "2.12.10", "java-compat-version": "8"}},
+              {"params": {"spark-version": "3.2.4", "scala-version": "2.12.15", "java-compat-version": "8"}},
+              {"params": {"spark-version": "3.3.4", "scala-version": "2.12.15", "java-compat-version": "8"}},
+              {"params": {"spark-version": "3.4.4", "scala-version": "2.12.17", "java-compat-version": "8"}},
+              {"params": {"spark-version": "3.5.6", "scala-version": "2.12.18", "java-compat-version": "8"}},
+              {"params": {"spark-version": "3.2.4", "scala-version": "2.13.5", "java-compat-version": "8"}},
+              {"params": {"spark-version": "3.3.4", "scala-version": "2.13.8", "java-compat-version": "8"}},
+              {"params": {"spark-version": "3.4.4", "scala-version": "2.13.8", "java-compat-version": "8"}},
+              {"params": {"spark-version": "3.5.6", "scala-version": "2.13.8", "java-compat-version": "8"}},
+              {"params": {"spark-version": "4.0.0", "scala-version": "2.13.16", "java-compat-version": "17"}}
             ]
           }
 
@@ -71,6 +71,9 @@ jobs:
             echo "This tag is ${{ github.ref_name }}, which is different!"
             exit 1
           fi
+      - name: Show matrix
+        run: |
+          echo '${{ github.event.inputs.versions }}' | jq .
 
   maven-release:
     name: Publish maven release (Spark ${{ matrix.params.spark-version }}, Scala ${{ matrix.params.scala-version }})
@@ -133,13 +136,13 @@ jobs:
 
       - name: Prepare PyPi package
         id: prepare-pypi-package
-        if: matrix.params.spark-version == 3.* && matrix.params.scala-version == 2.12.* || matrix.params.spark-version == 4.* && matrix.params.scala-version == 2.13.*
+        if: startsWith(matrix.params.spark-version, '3.') && startsWith(matrix.params.scala-version, '2.12.') || startsWith(matrix.params.spark-version, '4.') && startsWith(matrix.params.scala-version, '2.13.')
         run: |
           ./build-whl.sh
 
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
-        if: matrix.params.spark-version == 3.* && matrix.params.scala-version == 2.12.* || matrix.params.spark-version == 4.* && matrix.params.scala-version == 2.13.*
+        if: steps.prepare-pypi-package.outcome == 'success'
         with:
           user: ${{ secrets.PYPI_USERNAME }}
           password: ${{ secrets.PYPI_PASSWORD }}
