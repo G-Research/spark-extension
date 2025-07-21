@@ -84,10 +84,9 @@ jobs:
     environment:
       name: release
       # a different URL for each point in the matrix, but the same URLs accross commits
-      url: 'https://github.com/G-Research/spark-extension?version=${{ needs.get-version.outputs.release-tag }}&spark=${{ matrix.params.spark-version }}&scala=${{ matrix.params.scala-version }}'
+      url: 'https://github.com/G-Research/spark-extension?version=${{ needs.get-version.outputs.release-tag }}&spark=${{ matrix.params.spark-version }}&scala=${{ matrix.params.scala-version }}&package=maven'
 
-    permissions:
-      id-token: write # required for PiPy publish
+    permissions: {}
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(github.event.inputs.versions) }}
@@ -110,10 +109,6 @@ jobs:
       - name: Inspect GPG
         run: gpg -k
 
-      - uses: actions/setup-python@v5 
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
       - name: Restore Maven packages cache
         id: cache-maven
         uses: actions/cache/restore@v4
@@ -134,9 +129,56 @@ jobs:
           MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE}}
 
+  pypi-release:
+    name: Publish PyPi release (Spark ${{ matrix.params.spark-version }}, Scala ${{ matrix.params.scala-version }})
+    runs-on: ubuntu-latest
+    needs: get-version
+    if: ( ! github.event.repository.fork )
+    # secrets are provided by environment
+    environment:
+      name: release
+      # a different URL for each point in the matrix, but the same URLs accross commits
+      url: 'https://github.com/G-Research/spark-extension?version=${{ needs.get-version.outputs.release-tag }}&spark=${{ matrix.params.spark-version }}&scala=${{ matrix.params.scala-version }}&package=pypi'
+
+    permissions:
+      id-token: write # required for PiPy publish
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(github.event.inputs.versions) }}
+
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@3a4f6e1af504cf6a31855fa899c6aa5355ba6c12  # v4.7.0
+        with:
+          java-version: ${{ matrix.params.java-compat-version }}
+          distribution: 'corretto'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Restore Maven packages cache
+        id: cache-maven
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-mvn-build-${{ matrix.params.spark-version }}-${{ matrix.params.scala-version }}-${{ hashFiles('pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-mvn-build-${{ matrix.params.spark-version }}-${{ matrix.params.scala-version }}-${{ hashFiles('pom.xml') }}
+            ${{ runner.os }}-mvn-build-${{ matrix.params.spark-version }}-${{ matrix.params.scala-version }}-
+
+      - name: Build maven artifacts
+        id: maven
+        if: startsWith(matrix.params.spark-version, '3.') && startsWith(matrix.params.scala-version, '2.12.') || startsWith(matrix.params.spark-version, '4.') && startsWith(matrix.params.scala-version, '2.13.')
+        run: |
+          mvn clean package -Dspotless.check.skip -DskipTests -Dmaven.test.skip=true
+
       - name: Prepare PyPi package
         id: prepare-pypi-package
-        if: startsWith(matrix.params.spark-version, '3.') && startsWith(matrix.params.scala-version, '2.12.') || startsWith(matrix.params.spark-version, '4.') && startsWith(matrix.params.scala-version, '2.13.')
+        if: steps.maven.outcome == 'success'
         run: |
           ./build-whl.sh
 
