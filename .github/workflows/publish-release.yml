@@ -186,7 +186,5 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         if: steps.prepare-pypi-package.outcome == 'success'
         with:
-          user: ${{ secrets.PYPI_USERNAME }}
-          password: ${{ secrets.PYPI_PASSWORD }}
           packages-dir: python/dist
           verbose: true
