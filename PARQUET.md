@@ -255,6 +255,13 @@ spark.read.parquet_block_columns("/path/to/parquet", parallelism=100)
 spark.read.parquet_partitions("/path/to/parquet", parallelism=100)
 ```
 
+## Encryption
+
+Reading [encrypted Parquet is supported](https://spark.apache.org/docs/latest/sql-data-sources-parquet.html#columnar-encryption).
+Files encrypted with [plaintext footer](https://github.com/apache/parquet-format/blob/master/Encryption.md#55-plaintext-footer-mode)
+can be read without any encryption keys, while encrypted Parquet metadata are then show as `NULL` values in the result Dataframe.
+Encrypted Parquet files with encrypted footer requires the footer encryption key only. No column encryption keys are needed.
+
 ## Known Issues
 
 Note that this feature is not supported in Python when connected with a [Spark Connect server](README.md#spark-connect-server).
