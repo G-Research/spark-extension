@@ -17,12 +17,12 @@
 package uk.co.gresearch.spark.diff
 
 import org.apache.spark.sql.SaveMode
-import org.scalatest.funsuite.AnyFunSuite
 import uk.co.gresearch.spark.SparkTestSession
+import uk.co.gresearch.test.Suite
 
 import java.io.File
 
-class AppSuite extends AnyFunSuite with SparkTestSession {
+class AppSuite extends Suite with SparkTestSession {
 
   import spark.implicits._
 

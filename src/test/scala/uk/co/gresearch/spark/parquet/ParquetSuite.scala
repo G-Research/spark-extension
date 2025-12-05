@@ -20,12 +20,12 @@ import org.apache.spark.sql.Row.unapplySeq
 import org.apache.spark.sql.functions.{regexp_replace, spark_partition_id}
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{Column, DataFrame, Row}
-import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.tagobjects.Slow
 import uk.co.gresearch._
 import uk.co.gresearch.spark.{SparkTestSession, SparkVersion}
+import uk.co.gresearch.test.Suite
 
-class ParquetSuite extends AnyFunSuite with SparkTestSession with SparkVersion {
+class ParquetSuite extends Suite with SparkTestSession with SparkVersion {
 
   import spark.implicits._
 

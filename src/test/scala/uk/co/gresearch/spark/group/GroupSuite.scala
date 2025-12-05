@@ -16,9 +16,9 @@
 
 package uk.co.gresearch.spark.group
 
-import org.scalatest.funspec.AnyFunSpec
+import uk.co.gresearch.test.Spec
 
-class GroupSuite extends AnyFunSpec {
+class GroupSuite extends Spec {
 
   describe("GroupedIterator") {
 
