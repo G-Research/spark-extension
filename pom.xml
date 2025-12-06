@@ -48,6 +48,11 @@
     <spark.patch.version>1</spark.patch.version>
     <spark.compat.version>${spark.major.version}.${spark.minor.version}</spark.compat.version>
     <spark.version>${spark.compat.version}.${spark.patch.version}</spark.version>
+    <!-- SPARK-36796 for JDK-17 test-->
+    <extraJavaTestArgs>
+      -XX:+IgnoreUnrecognizedVMOptions
+      --add-opens=java.base/sun.util.calendar=ALL-UNNAMED
+    </extraJavaTestArgs>
   </properties>
 
   <dependencies>
@@ -64,6 +69,25 @@
       <artifactId>spark-sql_${scala.compat.version}</artifactId>
       <version>${spark.version}</version>
       <scope>provided</scope>
+        <exclusions>
+            <!-- we exclude parquet-hadoop and all its dependencies, as we depend on our own version -->
+            <exclusion>
+                <groupId>org.apache.parquet</groupId>
+                <artifactId>*</artifactId>
+            </exclusion>
+            <exclusion>
+                <groupId>io.airlift</groupId>
+                <artifactId>aircompressor</artifactId>
+            </exclusion>
+            <exclusion>
+                <groupId>org.xerial.snappy</groupId>
+                <artifactId>snappy-java</artifactId>
+            </exclusion>
+            <exclusion>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
+            </exclusion>
+        </exclusions>
     </dependency>
 
     <dependency>
@@ -78,6 +102,27 @@
       <artifactId>spark-hive_${scala.compat.version}</artifactId>
       <version>${spark.version}</version>
       <scope>provided</scope>
+    </dependency>
+
+    <!-- our own version of parquet-hadoop, which is more recent than what Spark depends on -->
+    <dependency>
+      <groupId>org.apache.parquet</groupId>
+      <artifactId>parquet-hadoop</artifactId>
+      <version>1.16.0</version>
+      <exclusions>
+        <exclusion>
+          <groupId>commons-pool</groupId>
+          <artifactId>commons-pool</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>javax.annotation</groupId>
+          <artifactId>javax.annotation-api</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.github.luben</groupId>
+          <artifactId>zstd-jni</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <dependency>
@@ -303,6 +348,7 @@
             <artifactId>maven-surefire-plugin</artifactId>
             <version>3.1.2</version>
             <configuration>
+                <argLine>${extraJavaTestArgs}</argLine>
                 <skipTests>false</skipTests>
                 <includes>
                     <include>**/*Tests.class</include>
@@ -382,6 +428,57 @@
             <phase>verify</phase>
             <goals>
               <goal>sign</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <!-- shade dependencies -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>3.6.0</version>
+        <configuration>
+          <minimizeJar>false</minimizeJar>
+          <transformers>
+            <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer" />
+          </transformers>
+          <artifactSet>
+            <!-- we include and relocate parquet-hadoop and all its dependencies to be independent of the version provided by Spark -->
+            <includes>
+              <include>org.apache.parquet:*</include>
+              <include>org.locationtech.jts:jts-core</include>
+              <include>org.xerial.snappy:snappy-java</include>
+              <include>io.airlift:aircompressor</include>
+            </includes>
+          </artifactSet>
+          <relocations>
+            <relocation>
+              <pattern>org.apache.parquet.</pattern>
+              <shadedPattern>uk.co.gresearch.thirdparty.org.apache.parquet.</shadedPattern>
+            </relocation>
+            <relocation>
+              <pattern>org.locationtech.jts.</pattern>
+              <shadedPattern>uk.co.gresearch.thirdparty.org.locationtech.jts.</shadedPattern>
+            </relocation>
+            <relocation>
+              <pattern>shaded.</pattern>
+              <shadedPattern>uk.co.gresearch.thirdparty.shaded.</shadedPattern>
+            </relocation>
+            <relocation>
+              <pattern>org.xerial.snappy.</pattern>
+              <shadedPattern>uk.co.gresearch.thirdparty.org.xerial.snappy.</shadedPattern>
+            </relocation>
+            <relocation>
+              <pattern>io.airlift.compress.</pattern>
+              <shadedPattern>uk.co.gresearch.thirdparty.io.airlift.compress.</shadedPattern>
+            </relocation>
+          </relocations>
+        </configuration>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
             </goals>
           </execution>
         </executions>
