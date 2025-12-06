@@ -471,10 +471,20 @@
             </configuration>
             <executions>
                 <execution>
+                    <id>spark-native</id>
                     <goals>
                         <goal>integration-test</goal>
                         <goal>verify</goal>
                     </goals>
+                    <configuration><environmentVariables><a>b</a></environmentVariables></configuration>
+                </execution>
+                <execution>
+                    <id>spark-connect</id>
+                    <goals>
+                        <goal>integration-test</goal>
+                        <goal>verify</goal>
+                    </goals>
+                    <configuration><environmentVariables><a>c</a></environmentVariables></configuration>
                 </execution>
             </executions>
         </plugin>
