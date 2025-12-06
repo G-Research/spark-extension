@@ -48,6 +48,11 @@
     <spark.patch.version>1</spark.patch.version>
     <spark.compat.version>${spark.major.version}.${spark.minor.version}</spark.compat.version>
     <spark.version>${spark.compat.version}.${spark.patch.version}</spark.version>
+    <!-- SPARK-36796 for JDK-17 test-->
+    <extraJavaTestArgs>
+      -XX:+IgnoreUnrecognizedVMOptions
+      --add-opens=java.base/sun.util.calendar=ALL-UNNAMED
+    </extraJavaTestArgs>
   </properties>
 
   <dependencies>
@@ -64,6 +69,25 @@
       <artifactId>spark-sql_${scala.compat.version}</artifactId>
       <version>${spark.version}</version>
       <scope>provided</scope>
+      <exclusions>
+        <!-- we exclude parquet-hadoop and all its dependencies, as we depend on our own version -->
+        <exclusion>
+          <groupId>org.apache.parquet</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>io.airlift</groupId>
+          <artifactId>aircompressor</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.xerial.snappy</groupId>
+          <artifactId>snappy-java</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-api</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <dependency>
@@ -78,6 +102,27 @@
       <artifactId>spark-hive_${scala.compat.version}</artifactId>
       <version>${spark.version}</version>
       <scope>provided</scope>
+    </dependency>
+
+    <!-- our own version of parquet-hadoop, which is more recent than what earlier Spark versons depends on -->
+    <dependency>
+      <groupId>org.apache.parquet</groupId>
+      <artifactId>parquet-hadoop</artifactId>
+      <version>1.16.0</version>
+      <exclusions>
+        <exclusion>
+          <groupId>commons-pool</groupId>
+          <artifactId>commons-pool</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>javax.annotation</groupId>
+          <artifactId>javax.annotation-api</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.github.luben</groupId>
+          <artifactId>zstd-jni</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <dependency>
@@ -303,6 +348,7 @@
             <artifactId>maven-surefire-plugin</artifactId>
             <version>3.1.2</version>
             <configuration>
+                <argLine>${extraJavaTestArgs}</argLine>
                 <skipTests>false</skipTests>
                 <includes>
                     <include>**/*Tests.class</include>

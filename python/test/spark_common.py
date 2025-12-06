@@ -14,6 +14,7 @@
 
 import logging
 import os
+import subprocess
 import sys
 import unittest
 from contextlib import contextmanager
@@ -63,6 +64,15 @@ class SparkTest(unittest.TestCase):
         raise RuntimeError('Could not find path to pom.xml, looked here: {}'.format(', '.join(paths)))
 
     @staticmethod
+    def get_classpath(path) -> str:
+        mvn_command = ["mvn", "--batch-mode", "-q", "exec:exec", "-Dexec.executable=echo", "-Dexec.args='%classpath'"]
+        print(' '.join(mvn_command))
+        try:
+            return subprocess.check_output(mvn_command, cwd=path).decode('utf-8')
+        except OSError as e:
+            raise RuntimeError(f'mvn command failed: {e}')
+
+    @staticmethod
     def get_spark_config(path) -> SparkConf:
         master = 'local[2]'
         conf = SparkConf().setAppName('unit test').setMaster(master)
@@ -70,10 +80,7 @@ class SparkTest(unittest.TestCase):
             ('spark.ui.showConsoleProgress', 'false'),
             ('spark.test.home', os.environ.get('SPARK_HOME')),
             ('spark.locality.wait', '0'),
-            ('spark.driver.extraClassPath', '{}'.format(':'.join([
-                os.path.join(os.getcwd(), path, 'target', 'classes'),
-                os.path.join(os.getcwd(), path, 'target', 'test-classes'),
-            ]))),
+            ('spark.driver.extraClassPath', SparkTest.get_classpath(path)),
         ])
 
     @classmethod
