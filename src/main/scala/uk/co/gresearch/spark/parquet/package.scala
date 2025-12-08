@@ -590,37 +590,17 @@ package object parquet {
   }
 
   /**
-   * Method to guard access to Parquet file information that are not accessible from
-   * encrypted Parquet files (with plaintext footer) when no footer key is available.
-   * Returns None if value cannot be extracted.
+   * Method to guard access to Parquet file information that are not accessible from encrypted Parquet files (with
+   * plaintext footer) when no footer key is available. Returns None if value cannot be accessed due to encryption and
+   * insufficient decryption config.
    */
   private def maybeEncrypted[T](footer: Footer)(f: => T): Option[T] = {
-    if (footer.getParquetMetadata.getFileMetaData.getFileDecryptor != null) {
-      // we are configured to decrypt this file so we are safe to access f
-      Option(f)
-    } else {
-      // we cannot decrypt this file
-      FileMetaDataUtil
-        .getEncryptionType(footer.getParquetMetadata.getFileMetaData)
-        .orElse {
-          // we don't know the encryption state of this file, so we have to catch decryption failures
-          // we only don't know the encryption state with Spark<3.5
-          try {
-            Option(f)
-          } catch {
-            case e: ParquetCryptoRuntimeException =>
-              throw new RuntimeException("Encrypted Parquet files with plaintext footer " +
-                "without footer key only supported with Spark 3.5 or above. " +
-                "Encrypted Parquet files with encrypted footer not supported " +
-                "without decryption keys.", e)
-          }
-        }.flatMap {
-          // this file is not encrypted
-          case "UNENCRYPTED" => Option(f)
-          // this property is encrypted, so we cannot access it
-          case encryptionType if Seq("PLAINTEXT_FOOTER", "ENCRYPTED_FOOTER").contains(encryptionType) => None
-        }
-    }
+    // when we are configured to decrypt this file, we are safe to access f
+    Option(footer.getParquetMetadata.getFileMetaData.getFileDecryptor)
+      // otherwise, when we have an unencrypted file, we are also safe to access f
+      .orElse(Some(footer.getParquetMetadata.getFileMetaData.getEncryptionType.name()).filter(_ == "UNENCRYPTED"))
+      // access f
+      .map(_ => f)
   }
 
 }
