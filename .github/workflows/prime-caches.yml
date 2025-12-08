@@ -67,7 +67,7 @@ jobs:
           - spark-compat-version: '4.0'
             scala-compat-version: '2.13'
             scala-version: '2.13.16'
-            spark-patch-version: '0'
+            spark-patch-version: '1'
             java-compat-version: '17'
             hadoop-version: '3'
 
@@ -123,7 +123,7 @@ jobs:
           - spark-compat-version: '4.0'
             scala-compat-version: '2.13'
             scala-version: '2.13.16'
-            spark-patch-version: '1'
+            spark-patch-version: '2'
             spark-snapshot-version: true
             hadoop-version: '3'
           - spark-compat-version: '4.1'
