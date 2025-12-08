@@ -113,13 +113,21 @@ runs:
       echo "::endgroup::"
     shell: bash
 
+  - name: Fetch Release Test Dependencies
+    run: |
+      # Fetch Release Test Dependencies
+      echo "::group::mvn dependency:get"
+      mvn dependency:get -Dtransitive=false -Dartifact=org.apache.parquet:parquet-hadoop:1.16.0:jar:tests
+      echo "::endgroup::"
+    shell: bash
+
   - name: Scala Release Test
     env:
       SPARK_HOME: ${{ env.SPARK_BIN_HOME }}
     run: |
       # Scala Release Test
       echo "::group::spark-shell"
-      $SPARK_BIN_HOME/bin/spark-shell --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION < test-release.scala
+      $SPARK_BIN_HOME/bin/spark-shell --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION --jars ~/.m2/repository/org/apache/parquet/parquet-hadoop/1.16.0/parquet-hadoop-1.16.0-tests.jar < test-release.scala
       echo
       echo "::endgroup::"
     shell: bash
