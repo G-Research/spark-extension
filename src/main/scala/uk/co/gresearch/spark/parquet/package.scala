@@ -113,10 +113,14 @@ package object parquet {
               maybeEncrypted(footer) { footer.getParquetMetadata.getBlocks.asScala.map(_.getTotalByteSize).sum },
               footer.getParquetMetadata.getBlocks.asScala.map(_.getRowCount).sum,
               footer.getParquetMetadata.getFileMetaData.getSchema.getColumns.size(),
-              maybeEncrypted(footer) { footer.getParquetMetadata.getBlocks.asScala.map(_.getColumns.map(_.getValueCount).sum).sum },
+              maybeEncrypted(footer) {
+                footer.getParquetMetadata.getBlocks.asScala.map(_.getColumns.map(_.getValueCount).sum).sum
+              },
               // when all columns have statistics, count the null values
               maybeEncrypted(footer) {
-                Option(footer.getParquetMetadata.getBlocks.asScala.flatMap(_.getColumns.map(c => Option(c.getStatistics))))
+                Option(
+                  footer.getParquetMetadata.getBlocks.asScala.flatMap(_.getColumns.map(c => Option(c.getStatistics)))
+                )
                   .filter(_.forall(_.isDefined))
                   .map(_.map(_.get.getNumNulls).sum)
               },
