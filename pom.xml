@@ -43,11 +43,14 @@
     <scala.patch.version>8</scala.patch.version>
     <scala.compat.version>${scala.major.version}.${scala.minor.version}</scala.compat.version>
     <scala.version>${scala.compat.version}.${scala.patch.version}</scala.version>
-    <spark.major.version>3</spark.major.version>
-    <spark.minor.version>5</spark.minor.version>
+    <spark.major.version>4</spark.major.version>
+    <spark.minor.version>0</spark.minor.version>
     <spark.patch.version>1</spark.patch.version>
     <spark.compat.version>${spark.major.version}.${spark.minor.version}</spark.compat.version>
     <spark.version>${spark.compat.version}.${spark.patch.version}</spark.version>
+    <!-- protobuf / grpc in-sync with Apache Spark -->
+    <protobuf.version>3.23.4</protobuf.version>
+    <grpc.version>1.56.0</grpc.version>
   </properties>
 
   <dependencies>
@@ -80,6 +83,44 @@
       <scope>provided</scope>
     </dependency>
 
+    <!-- Spark Connect -->
+    <dependency>
+      <groupId>org.apache.spark</groupId>
+      <artifactId>spark-connect_${scala.compat.version}</artifactId>
+      <version>${spark.version}</version>
+      <scope>provided</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>com.google.guava</groupId>
+          <artifactId>guava</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.spark</groupId>
+      <artifactId>spark-connect-common_${scala.compat.version}</artifactId>
+      <version>${spark.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-java</artifactId>
+      <version>${protobuf.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.grpc</groupId>
+      <artifactId>grpc-protobuf</artifactId>
+      <version>${grpc.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.grpc</groupId>
+      <artifactId>grpc-stub</artifactId>
+      <version>${grpc.version}</version>
+      <scope>provided</scope>
+    </dependency>
+
     <dependency>
       <groupId>com.github.scopt</groupId>
       <artifactId>scopt_${scala.compat.version}</artifactId>
@@ -97,6 +138,13 @@
     </dependency>
 
     <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.13.2</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
       <groupId>org.scalatest</groupId>
       <artifactId>scalatest_${scala.compat.version}</artifactId>
       <version>3.3.0-SNAP4</version>
@@ -104,9 +152,9 @@
     </dependency>
 
     <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>4.13.2</version>
+      <groupId>org.scalatestplus</groupId>
+      <artifactId>scalatestplus-junit_${scala.compat.version}</artifactId>
+      <version>1.0.0-M2</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -260,10 +308,88 @@
           <archive>
             <manifest>
               <addClasspath>true</addClasspath>
+              <!-- add Diff app as main class -->
               <mainClass>uk.co.gresearch.spark.diff.App</mainClass>
             </manifest>
           </archive>
         </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>test-jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <!-- protobuf  -->
+      <plugin>
+        <groupId>io.github.ascopes</groupId>
+        <artifactId>protobuf-maven-plugin</artifactId>
+        <version>2.2.3</version>
+        <configuration>
+          <protocVersion>${protobuf.version}</protocVersion>
+          <sourceDirectories>
+            <sourceDirectory>src/main/protobuf</sourceDirectory>
+          </sourceDirectories>
+        </configuration>
+        <executions>
+          <!-- generate Java code in default output directory -->
+          <execution>
+            <id>protoc-java</id>
+            <goals>
+              <goal>generate</goal>
+              <goal>generate-test</goal>
+            </goals>
+          </execution>
+          <!-- generate Python code in separate directory -->
+          <execution>
+            <id>protoc-python</id>
+            <goals>
+              <goal>generate</goal>
+              <goal>generate-test</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>python/gresearch/spark/proto/</outputDirectory>
+              <javaEnabled>false</javaEnabled>
+              <pythonEnabled>true</pythonEnabled>
+              <pythonStubsEnabled>true</pythonStubsEnabled>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <artifactId>maven-antrun-plugin</artifactId>
+        <version>3.1.0</version>
+        <executions>
+          <execution>
+            <id>generated-sources</id>
+            <phase>generate-sources</phase>
+            <configuration>
+              <target>
+                <replace token="com.google.protobuf." value="org.sparkproject.connect.protobuf." dir="target/generated-sources/protobuf">
+                  <include name="**/*.java"/>
+                </replace>
+              </target>
+            </configuration>
+            <goals>
+              <goal>run</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>generated-test-sources</id>
+            <phase>generate-test-sources</phase>
+            <configuration>
+              <target>
+                <replace token="com.google.protobuf." value="org.sparkproject.connect.protobuf." dir="target/generated-test-sources/protobuf">
+                  <include name="**/*.java"/>
+                </replace>
+              </target>
+            </configuration>
+            <goals>
+              <goal>run</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
       <!-- scalafmt -->
       <plugin>
@@ -289,34 +415,80 @@
           </execution>
         </executions>
       </plugin>
-      <!-- run java tests -->
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-surefire-plugin</artifactId>
-        <version>3.1.2</version>
-        <configuration>
-          <skipTests>false</skipTests>
-        </configuration>
-      </plugin>
-      <!-- run scalatest -->
-      <plugin>
-        <groupId>org.scalatest</groupId>
-        <artifactId>scalatest-maven-plugin</artifactId>
-        <version>2.2.0</version>
-        <configuration>
-          <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
-          <junitxml>.</junitxml>
-          <filereports>WDF TestSuite.txt</filereports>
-        </configuration>
-        <executions>
-          <execution>
-            <id>test</id>
-            <goals>
-              <goal>test</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
+      <!-- run tests -->
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <version>3.1.2</version>
+            <configuration>
+                <skipTests>false</skipTests>
+                <includes>
+                    <include>**/*Tests.class</include>
+                    <include>**/*Suite.class</include>
+                </includes>
+            </configuration>
+        </plugin>
+        <!-- packaging -->
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-source-plugin</artifactId>
+            <version>3.3.0</version>
+            <executions>
+                <execution>
+                    <id>attach-sources</id>
+                    <goals>
+                        <goal>jar-no-fork</goal>
+                    </goals>
+                </execution>
+            </executions>
+        </plugin>
+        <plugin>
+            <groupId>net.alchim31.maven</groupId>
+            <artifactId>scala-maven-plugin</artifactId>
+            <version>4.8.1</version>
+            <executions>
+                <execution>
+                    <id>attach-javadocs</id>
+                    <goals>
+                        <goal>doc-jar</goal>
+                    </goals>
+                </execution>
+            </executions>
+        </plugin>
+        <!-- run integration tests -->
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <version>3.3.0</version>
+            <configuration>
+                <additionalClasspathElements>
+                    <additionalClasspathElement>${project.build.directory}/${project.build.finalName}.jar</additionalClasspathElement>
+                </additionalClasspathElements>
+                <includes>
+                    <include>**/*Tests.class</include>
+                    <include>**/*Suite.class</include>
+                </includes>
+            </configuration>
+            <executions>
+                <execution>
+                    <id>spark-native</id>
+                    <goals>
+                        <goal>integration-test</goal>
+                        <goal>verify</goal>
+                    </goals>
+                    <configuration><environmentVariables><a>b</a></environmentVariables></configuration>
+                </execution>
+                <execution>
+                    <id>spark-connect</id>
+                    <goals>
+                        <goal>integration-test</goal>
+                        <goal>verify</goal>
+                    </goals>
+                    <configuration><environmentVariables><a>c</a></environmentVariables></configuration>
+                </execution>
+            </executions>
+        </plugin>
+      <!-- publishing -->
       <plugin>
         <groupId>org.sonatype.central</groupId>
         <artifactId>central-publishing-maven-plugin</artifactId>
@@ -338,32 +510,6 @@
             <phase>verify</phase>
             <goals>
               <goal>sign</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-source-plugin</artifactId>
-        <version>3.3.0</version>
-        <executions>
-          <execution>
-            <id>attach-sources</id>
-            <goals>
-              <goal>jar-no-fork</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <groupId>net.alchim31.maven</groupId>
-        <artifactId>scala-maven-plugin</artifactId>
-        <version>4.8.1</version>
-        <executions>
-          <execution>
-            <id>attach-javadocs</id>
-            <goals>
-              <goal>doc-jar</goal>
             </goals>
           </execution>
         </executions>

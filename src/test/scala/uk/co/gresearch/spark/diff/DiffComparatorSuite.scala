@@ -22,7 +22,6 @@ import org.apache.spark.sql.functions.{abs, lit, when}
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
 import org.apache.spark.unsafe.types.UTF8String
-import org.scalatest.funsuite.AnyFunSuite
 import uk.co.gresearch.spark.SparkTestSession
 import uk.co.gresearch.spark.diff.DiffComparatorSuite.{
   decimalEnc,
@@ -30,6 +29,7 @@ import uk.co.gresearch.spark.diff.DiffComparatorSuite.{
   optionsWithTightComparators
 }
 import uk.co.gresearch.spark.diff.comparator._
+import uk.co.gresearch.test.Suite
 
 import java.sql.{Date, Timestamp}
 import java.time.Duration
@@ -49,7 +49,7 @@ case class Dates(id: Int, date: Date)
 case class Times(id: Int, time: Timestamp)
 case class Maps(id: Int, map: Map[Int, Long])
 
-class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
+class DiffComparatorSuite extends Suite with SparkTestSession {
 
   import spark.implicits._
 
@@ -437,7 +437,7 @@ class DiffComparatorSuite extends AnyFunSuite with SparkTestSession {
 
       val rs = left.diff(right, changesetOptions, "id").where($"diff" === "C")
       assert(rs.count() == 1, "Only one row should differ with the numeric comparator applied")
-      val changesInDifferingRow: util.List[String] = rs.head.getList[String](1)
+      val changesInDifferingRow: util.List[String] = rs.head().getList[String](1)
       assert(
         changesInDifferingRow.get(0) == "floatValue",
         "Only floatVal differs after considering the comparators so the changeset should be size 1"

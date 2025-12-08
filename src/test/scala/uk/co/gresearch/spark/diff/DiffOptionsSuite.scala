@@ -20,11 +20,11 @@ import org.apache.spark.sql.Column
 import org.apache.spark.sql.functions.lit
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
-import org.scalatest.funsuite.AnyFunSuite
 import uk.co.gresearch.spark.SparkTestSession
 import uk.co.gresearch.spark.diff.comparator.{DefaultDiffComparator, DiffComparator, EquivDiffComparator}
+import uk.co.gresearch.test.Suite
 
-class DiffOptionsSuite extends AnyFunSuite with SparkTestSession {
+class DiffOptionsSuite extends Suite with SparkTestSession {
 
   import spark.implicits._
 
