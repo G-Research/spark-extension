@@ -1,7 +1,3 @@
-package uk.co.gresearch.spark
-
-import org.apache.spark.sql.catalyst.util.QuotingUtils
-
 /*
  * Copyright 2021 G-Research
  *
@@ -17,6 +13,10 @@ import org.apache.spark.sql.catalyst.util.QuotingUtils
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+package uk.co.gresearch.spark
+
+import org.apache.spark.sql.catalyst.util.QuotingUtils
 
 object Backticks {
 

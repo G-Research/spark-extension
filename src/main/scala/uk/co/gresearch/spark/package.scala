@@ -19,7 +19,7 @@ package uk.co.gresearch
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql._
 import org.apache.spark.sql.ColumnName
-import org.apache.spark.sql.catalyst.expressions.NamedExpression
+import org.apache.spark.sql.catalyst.expressions.{NamedExpression, UnixMicros}
 import org.apache.spark.sql.extension.{ColumnExtension, ExpressionExtension}
 import org.apache.spark.sql.functions.{col, count, lit, when}
 import org.apache.spark.sql.internal.SQLConf
@@ -280,7 +280,7 @@ package object spark extends Logging with SparkVersion with BuildVersion {
    *   result tick value column
    */
   def timestampToDotNetTicks(timestampColumn: Column): Column =
-    unixEpochTenthMicrosToDotNetTicks(UnixMicros.unixMicros(timestampColumn.expr).column * 10)
+    unixEpochTenthMicrosToDotNetTicks(UnixMicros(timestampColumn.expr).column * 10)
 
   /**
    * Convert a Spark timestamp to a .Net `DateTime.Ticks` timestamp. The input column must be of TimestampType.
