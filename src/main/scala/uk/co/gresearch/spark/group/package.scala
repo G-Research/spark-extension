@@ -76,7 +76,7 @@ package object group {
     }
   }
 
-  object SortedGroupByDataset {
+  private[spark] object SortedGroupByDataset {
     def apply[K: Ordering: Encoder, V](
         ds: Dataset[V],
         groupColumns: Seq[Column],
@@ -149,7 +149,7 @@ package object group {
     }
   }
 
-  class GroupedIterator[K: Ordering, V](iter: Iterator[(K, V)]) extends Iterator[(K, Iterator[V])] {
+  private[group] class GroupedIterator[K: Ordering, V](iter: Iterator[(K, V)]) extends Iterator[(K, Iterator[V])] {
     private val values = iter.buffered
     private var currentKey: Option[K] = None
     private var currentGroup: Option[Iterator[V]] = None
@@ -180,7 +180,7 @@ package object group {
     }
   }
 
-  class GroupIterator[K: Ordering, V](iter: BufferedIterator[(K, V)]) extends Iterator[V] {
+  private[group] class GroupIterator[K: Ordering, V](iter: BufferedIterator[(K, V)]) extends Iterator[V] {
     private val ordering = implicitly[Ordering[K]]
     private val key = iter.head._1
 

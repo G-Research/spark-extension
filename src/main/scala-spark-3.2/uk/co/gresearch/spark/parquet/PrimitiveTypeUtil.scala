@@ -18,7 +18,7 @@ package uk.co.gresearch.spark.parquet
 
 import org.apache.parquet.schema.PrimitiveType
 
-object PrimitiveTypeUtil {
+private[spark] object PrimitiveTypeUtil {
   def getLogicalTypeAnnotation(primitive: PrimitiveType): Option[String] =
     Option(primitive.getLogicalTypeAnnotation).map(_.toString)
 }

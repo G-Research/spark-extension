@@ -29,7 +29,7 @@ import scala.collection.JavaConverters.{collectionAsScalaIterableConverter, mapA
 import scala.collection.convert.ImplicitConversions.`iterable AsScalaIterable`
 
 package object parquet {
-  lazy val conf = new Configuration()
+  private lazy val conf = new Configuration()
 
   /**
    * Implicit class to extend a Spark DataFrameReader.

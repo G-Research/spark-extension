@@ -18,7 +18,7 @@ package uk.co.gresearch.spark.parquet
 
 import org.apache.parquet.hadoop.metadata.FileMetaData
 
-object FileMetaDataUtil {
+private[spark] object FileMetaDataUtil {
   def getEncryptionType(fileMetaData: FileMetaData): Option[String] =
     Some(fileMetaData.getEncryptionType.name())
 }
