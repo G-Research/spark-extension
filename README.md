@@ -186,12 +186,12 @@ val counts = withJobDescription("Counting rows") {
 
 ## Using Spark Extension
 
-The `spark-extension` package is available for all Spark 3.2, 3.3, 3.4 and 3.5 versions. Some earlier Spark versions may also be supported.
+The `spark-extension` package is available for all Spark 3.2, 3.3, 3.4 and 3.5 versions.
 The package version has the following semantics: `spark-extension_{SCALA_COMPAT_VERSION}-{VERSION}-{SPARK_COMPAT_VERSION}`:
 
 - `SCALA_COMPAT_VERSION`: Scala binary compatibility (minor) version. Available are `2.12` and `2.13`.
-- `SPARK_COMPAT_VERSION`: Apache Spark binary compatibility (minor) version. Available are `3.2`, `3.3`, `3.4` and `3.5`.
-- `VERSION`: The package version, e.g. `2.10.0`.
+- `SPARK_COMPAT_VERSION`: Apache Spark binary compatibility (minor) version. Available are `3.2`, `3.3`, `3.4`, `3.5` and `4.0`.
+- `VERSION`: The package version, e.g. `2.14.0`.
 
 ### SBT
 

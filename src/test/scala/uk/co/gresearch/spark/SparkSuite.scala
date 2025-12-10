@@ -668,13 +668,7 @@ class SparkSuite extends Suite with SparkTestSession with SparkSuiteHelper {
       }.getMessage
 
       // SparkMajorVersion == 2 no supported
-      if (SparkMajorVersion == 3 && SparkMinorVersion == 1) {
-        assert(
-          message.startsWith(
-            "cannot resolve 'unix_micros(`ts`)' due to data type mismatch: argument 1 requires timestamp type, however, '`ts`' is of bigint type.;"
-          )
-        )
-      } else if (SparkMajorVersion == 3 && SparkMinorVersion < 4) {
+      if (SparkMajorVersion == 3 && SparkMinorVersion < 4) {
         assert(
           message.startsWith(
             "cannot resolve 'unix_micros(ts)' due to data type mismatch: argument 1 requires timestamp type, however, 'ts' is of bigint type.;"
