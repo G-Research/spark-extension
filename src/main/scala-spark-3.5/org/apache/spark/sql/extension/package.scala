@@ -20,7 +20,7 @@ import org.apache.spark.sql.catalyst.expressions.Expression
 
 package object extension {
   implicit class ColumnExtension(col: Column) {
-    // Column.expr exists in this Spark version
+    // Column.expr exists in this Spark version and earlier
     def sql: String = col.expr.sql
   }
 
