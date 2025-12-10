@@ -24,7 +24,6 @@ import org.apache.spark.sql.catalyst.expressions.{BinaryExpression, BinaryOperat
 import org.apache.spark.sql.extension.{ColumnExtension, ExpressionExtension}
 import org.apache.spark.sql.types.{BooleanType, DataType}
 import org.apache.spark.sql.{Column, Encoder}
-import uk.co.gresearch.spark.BinaryLikeWithNewChildrenInternal
 
 trait EquivDiffComparator[T] extends DiffComparator {
   val equiv: math.Equiv[T]
@@ -64,7 +63,7 @@ object EquivDiffComparator {
   }
 }
 
-private trait EquivExpression[T] extends BinaryExpression with BinaryLikeWithNewChildrenInternal[Expression] {
+private trait EquivExpression[T] extends BinaryExpression {
   val equiv: math.Equiv[T]
 
   override def nullable: Boolean = false
