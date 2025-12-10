@@ -51,8 +51,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - params: {"spark-version": "3.0.3", "scala-version": "2.12.10", "scala-compat-version": "2.12", "java-compat-version": "8"}
-          - params: {"spark-version": "3.1.3", "scala-version": "2.12.10", "scala-compat-version": "2.12", "java-compat-version": "8"}
           - params: {"spark-version": "3.2.4", "scala-version": "2.12.15", "scala-compat-version": "2.12", "java-compat-version": "8"}
           - params: {"spark-version": "3.3.4", "scala-version": "2.12.15", "scala-compat-version": "2.12", "java-compat-version": "8"}
           - params: {"spark-version": "3.4.4", "scala-version": "2.12.17", "scala-compat-version": "2.12", "java-compat-version": "8"}

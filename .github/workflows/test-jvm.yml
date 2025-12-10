@@ -13,18 +13,6 @@ jobs:
       # keep in-sync with .github/workflows/prime-caches.yml
       matrix:
         include:
-          - spark-compat-version: '3.0'
-            scala-compat-version: '2.12'
-            scala-version: '2.12.10'
-            spark-patch-version: '3'
-            java-compat-version: '8'
-            hadoop-version: '2.7'
-          - spark-compat-version: '3.1'
-            scala-compat-version: '2.12'
-            scala-version: '2.12.10'
-            spark-patch-version: '3'
-            java-compat-version: '8'
-            hadoop-version: '2.7'
           - spark-compat-version: '3.2'
             scala-compat-version: '2.12'
             scala-version: '2.12.15'

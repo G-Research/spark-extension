@@ -306,7 +306,6 @@ class DiffComparatorSuite extends Suite with SparkTestSession {
     "encoder equiv" -> (DiffOptions.default
       .withDefaultComparator((_: Int, _: Int) => true),
     Seq(
-      "'(`longValue` ≡ `longValue`)' requires int type, not bigint", // Spark 3.0 and 3.1
       "'(longValue ≡ longValue)' requires int type, not bigint", // Spark 3.2 and 3.3
       "\"(longValue ≡ longValue)\" due to data type mismatch: " + // Spark 3.4 and beyond
         "the binary operator requires the input type \"INT\", not \"BIGINT\"."
@@ -314,7 +313,6 @@ class DiffComparatorSuite extends Suite with SparkTestSession {
     "typed equiv" -> (DiffOptions.default
       .withDefaultComparator(EquivDiffComparator((left: Int, right: Int) => left.abs == right.abs, IntegerType)),
     Seq(
-      "'(`longValue` ≡ `longValue`)' requires int type, not bigint", // Spark 3.0 and 3.1
       "'(longValue ≡ longValue)' requires int type, not bigint", // Spark 3.2 and 3.3
       "\"(longValue ≡ longValue)\" due to data type mismatch: " + // Spark 3.4 and beyond
         "the binary operator requires the input type \"INT\", not \"BIGINT\"."
