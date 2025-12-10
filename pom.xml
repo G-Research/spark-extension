@@ -64,6 +64,25 @@
       <artifactId>spark-sql_${scala.compat.version}</artifactId>
       <version>${spark.version}</version>
       <scope>provided</scope>
+      <exclusions>
+        <!-- we exclude parquet-hadoop and all its dependencies, as we depend on our own version -->
+        <exclusion>
+          <groupId>org.apache.parquet</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>io.airlift</groupId>
+          <artifactId>aircompressor</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.xerial.snappy</groupId>
+          <artifactId>snappy-java</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-api</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <dependency>
@@ -77,6 +96,28 @@
       <groupId>org.apache.spark</groupId>
       <artifactId>spark-hive_${scala.compat.version}</artifactId>
       <version>${spark.version}</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <!-- our own version of parquet-hadoop, which is more recent than what earlier Spark versions depends on -->
+    <dependency>
+      <groupId>org.apache.parquet</groupId>
+      <artifactId>parquet-hadoop</artifactId>
+      <version>1.16.0</version>
+      <exclusions>
+        <exclusion>
+          <groupId>commons-pool</groupId>
+          <artifactId>commons-pool</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>javax.annotation</groupId>
+          <artifactId>javax.annotation-api</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.github.luben</groupId>
+          <artifactId>zstd-jni</artifactId>
+        </exclusion>
+      </exclusions>
       <scope>provided</scope>
     </dependency>
 
