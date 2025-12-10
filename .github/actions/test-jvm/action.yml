@@ -86,7 +86,7 @@ runs:
     run: |
       # Scala and Java Tests
       echo "::group::mvn test"
-      mvn --batch-mode --update-snapshots -Dspotless.check.skip test
+      mvn --batch-mode --update-snapshots -Dspotless.check.skip test integration-test
       echo "::endgroup::"
     shell: bash
 

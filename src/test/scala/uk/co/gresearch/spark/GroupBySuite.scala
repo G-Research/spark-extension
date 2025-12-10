@@ -17,9 +17,9 @@
 package uk.co.gresearch.spark
 
 import org.apache.spark.sql.{DataFrame, Dataset, KeyValueGroupedDataset, Row}
-import org.scalatest.funspec.AnyFunSpec
 import uk.co.gresearch.spark.GroupBySortedSuite.{valueRowToTuple, valueToTuple}
 import uk.co.gresearch.spark.group.SortedGroupByDataset
+import uk.co.gresearch.test.Spec
 
 import scala.language.implicitConversions
 
@@ -33,7 +33,7 @@ case class State(init: Int) {
   }
 }
 
-class GroupBySuite extends AnyFunSpec with SparkTestSession {
+class GroupBySuite extends Spec with SparkTestSession {
 
   import spark.implicits._
 

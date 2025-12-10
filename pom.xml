@@ -97,6 +97,13 @@
     </dependency>
 
     <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.13.2</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
       <groupId>org.scalatest</groupId>
       <artifactId>scalatest_${scala.compat.version}</artifactId>
       <version>3.3.0-SNAP4</version>
@@ -104,9 +111,9 @@
     </dependency>
 
     <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>4.13.2</version>
+      <groupId>org.scalatestplus</groupId>
+      <artifactId>scalatestplus-junit_${scala.compat.version}</artifactId>
+      <version>1.0.0-M2</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -260,6 +267,7 @@
           <archive>
             <manifest>
               <addClasspath>true</addClasspath>
+              <!-- add Diff app as main class -->
               <mainClass>uk.co.gresearch.spark.diff.App</mainClass>
             </manifest>
           </archive>
@@ -289,59 +297,20 @@
           </execution>
         </executions>
       </plugin>
-      <!-- run java tests -->
+      <!-- run tests -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <version>3.1.2</version>
         <configuration>
           <skipTests>false</skipTests>
+          <includes>
+            <include>**/*Tests.class</include>
+            <include>**/*Suite.class</include>
+          </includes>
         </configuration>
       </plugin>
-      <!-- run scalatest -->
-      <plugin>
-        <groupId>org.scalatest</groupId>
-        <artifactId>scalatest-maven-plugin</artifactId>
-        <version>2.2.0</version>
-        <configuration>
-          <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
-          <junitxml>.</junitxml>
-          <filereports>WDF TestSuite.txt</filereports>
-        </configuration>
-        <executions>
-          <execution>
-            <id>test</id>
-            <goals>
-              <goal>test</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <groupId>org.sonatype.central</groupId>
-        <artifactId>central-publishing-maven-plugin</artifactId>
-        <version>0.8.0</version>
-        <extensions>true</extensions>
-        <configuration>
-          <publishingServerId>central</publishingServerId>
-          <autoPublish>true</autoPublish>
-          <waitUntil>published</waitUntil>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-gpg-plugin</artifactId>
-        <version>3.1.0</version>
-        <executions>
-          <execution>
-            <id>sign-artifacts</id>
-            <phase>verify</phase>
-            <goals>
-              <goal>sign</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
+      <!-- packaging -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-source-plugin</artifactId>
@@ -364,6 +333,60 @@
             <id>attach-javadocs</id>
             <goals>
               <goal>doc-jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <!-- run integration tests -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <version>3.3.0</version>
+        <configuration>
+          <additionalClasspathElements>
+            <additionalClasspathElement>${project.build.directory}/${project.build.finalName}.jar</additionalClasspathElement>
+          </additionalClasspathElements>
+          <includes>
+            <include>**/*Tests.class</include>
+            <include>**/*Suite.class</include>
+          </includes>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>integration-test</goal>
+              <goal>verify</goal>
+            </goals>
+            <configuration>
+              <environmentVariables>
+                <CI_INTEGRATION_TEST>true</CI_INTEGRATION_TEST>
+              </environmentVariables>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <!-- publishing -->
+      <plugin>
+        <groupId>org.sonatype.central</groupId>
+        <artifactId>central-publishing-maven-plugin</artifactId>
+        <version>0.8.0</version>
+        <extensions>true</extensions>
+        <configuration>
+          <publishingServerId>central</publishingServerId>
+          <autoPublish>true</autoPublish>
+          <waitUntil>published</waitUntil>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-gpg-plugin</artifactId>
+        <version>3.1.0</version>
+        <executions>
+          <execution>
+            <id>sign-artifacts</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>sign</goal>
             </goals>
           </execution>
         </executions>

@@ -16,14 +16,14 @@
 
 package uk.co.gresearch.spark
 
-import org.apache.spark.sql.{AnalysisException, Dataset, DataFrame}
+import org.apache.spark.sql.{AnalysisException, DataFrame, Dataset}
 import org.apache.spark.sql.types.{IntegerType, LongType, StringType, StructField, StructType}
-import org.scalatest.funsuite.AnyFunSuite
+import uk.co.gresearch.test.Suite
 
 case class IntValue(id: Int, title: String, value: Int)
 case class DoubleValue(id: Int, title: String, value: Double)
 
-class HistogramSuite extends AnyFunSuite with SparkTestSession {
+class HistogramSuite extends Suite with SparkTestSession {
 
   import spark.implicits._
 

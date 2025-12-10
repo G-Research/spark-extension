@@ -23,15 +23,15 @@ import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.storage.StorageLevel.{DISK_ONLY, MEMORY_AND_DISK, MEMORY_ONLY, NONE, OFF_HEAP}
-import org.scalatest.funsuite.AnyFunSuite
 import uk.co.gresearch.ExtendedAny
 import uk.co.gresearch.spark.SparkSuite.{Value, collectJobDescription}
+import uk.co.gresearch.test.Suite
 
 import java.nio.file.Paths
 import java.sql.Timestamp
 import java.time.Instant
 
-class SparkSuite extends AnyFunSuite with SparkTestSession with SparkSuiteHelper {
+class SparkSuite extends Suite with SparkTestSession with SparkSuiteHelper {
 
   import spark.implicits._
 

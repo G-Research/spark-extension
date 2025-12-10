@@ -20,8 +20,8 @@ import org.apache.spark.sql.functions.regexp_replace
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{Dataset, Encoders, Row, SparkSession}
-import org.scalatest.funsuite.AnyFunSuite
 import uk.co.gresearch.spark.{SparkTestSession, distinctPrefixFor}
+import uk.co.gresearch.test.Suite
 
 case class Empty()
 case class Value(id: Int, value: Option[String])
@@ -112,7 +112,7 @@ object DiffSuite {
 
 }
 
-class DiffSuite extends AnyFunSuite with SparkTestSession {
+class DiffSuite extends Suite with SparkTestSession {
 
   import spark.implicits._
 
