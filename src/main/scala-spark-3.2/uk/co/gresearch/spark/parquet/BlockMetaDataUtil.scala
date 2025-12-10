@@ -18,6 +18,6 @@ package uk.co.gresearch.spark.parquet
 
 import org.apache.parquet.hadoop.metadata.BlockMetaData
 
-object BlockMetaDataUtil {
+private[spark] object BlockMetaDataUtil {
   def getOrdinal(block: BlockMetaData): Option[Int] = Some(block.getOrdinal)
 }
