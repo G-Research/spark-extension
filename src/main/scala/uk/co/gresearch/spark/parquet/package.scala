@@ -120,7 +120,7 @@ package object parquet {
                 .map(_.map(_.get.getNumNulls).sum),
               footer.getParquetMetadata.getFileMetaData.getCreatedBy,
               footer.getParquetMetadata.getFileMetaData.getSchema.toString,
-              FileMetaDataUtil.getEncryptionType(footer.getParquetMetadata.getFileMetaData),
+              ParquetMetaDataUtil.getEncryptionType(footer.getParquetMetadata.getFileMetaData),
               footer.getParquetMetadata.getFileMetaData.getKeyValueMetaData.asScala,
             )
           }
@@ -215,7 +215,7 @@ package object parquet {
                 Option(column.getPrimitiveType).flatMap(v => Option(v.getPrimitiveTypeName)).map(_.name),
                 Option(column.getPrimitiveType).map(_.getTypeLength),
                 Option(column.getPrimitiveType).flatMap(v => Option(v.getOriginalType)).map(_.name),
-                Option(column.getPrimitiveType).flatMap(PrimitiveTypeUtil.getLogicalTypeAnnotation),
+                Option(column.getPrimitiveType).flatMap(ParquetMetaDataUtil.getLogicalTypeAnnotation),
                 column.getPrimitiveType.isPrimitive,
                 Option(column.getPrimitiveType).map(_.getPrimitiveTypeName.name),
                 Option(column.getPrimitiveType).flatMap(v => Option(v.columnOrder)).map(_.getColumnOrderName.name),
@@ -304,7 +304,7 @@ package object parquet {
             footer.getParquetMetadata.getBlocks.asScala.zipWithIndex.map { case (block, idx) =>
               (
                 footer.getFile.toString,
-                BlockMetaDataUtil.getOrdinal(block).getOrElse(idx) + 1,
+                ParquetMetaDataUtil.getOrdinal(block).getOrElse(idx) + 1,
                 block.getStartingPos,
                 block.getCompressedSize,
                 block.getTotalByteSize,
@@ -403,7 +403,7 @@ package object parquet {
               block.getColumns.asScala.map { column =>
                 (
                   footer.getFile.toString,
-                  BlockMetaDataUtil.getOrdinal(block).getOrElse(idx) + 1,
+                  ParquetMetaDataUtil.getOrdinal(block).getOrElse(idx) + 1,
                   column.getPath.toSeq,
                   column.getCodec.toString,
                   column.getPrimitiveType.toString,

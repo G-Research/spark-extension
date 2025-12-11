@@ -68,7 +68,7 @@ class ParquetSuite extends Suite with SparkTestSession with SparkVersion {
     assert(replaced.collect() === expectedRows)
   }
 
-  val hasEncryption: Boolean = SparkMajorVersion > 3 || SparkMinorVersion > 4
+  val hasEncryption: Boolean = ParquetMetaDataUtil.getEncryptionTypeIsSupported
   val UNENCRYPTED: String = if (hasEncryption) "UNENCRYPTED" else null
 
   parallelisms.foreach { parallelism =>
