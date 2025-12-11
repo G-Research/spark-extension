@@ -31,4 +31,4 @@ jobs:
           commit: ${{ github.event.workflow_run.head_sha }}
           event_file: artifacts/Event File/event.json
           event_name: ${{ github.event.workflow_run.event }}
-          junit_files: "artifacts/* Test Results*/**/*.xml"
+          files: "artifacts/* Test Results*/**/*.xml"
