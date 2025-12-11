@@ -90,24 +90,13 @@ runs:
       echo "::endgroup::"
     shell: bash
 
-  - name: Generate Unit Test Report
-    if: failure()
-    run: |
-      # Generate Unit Test Report
-      echo "::group::mvn report-only"
-      mvn --batch-mode surefire-report:report-only
-      echo "::endgroup::"
-    shell: bash
-
-  - name: Upload Unit Test Results
+  - name: Upload Test Results
     if: always()
     uses: actions/upload-artifact@v4
     with:
       name: JVM Test Results (Spark ${{ inputs.spark-version }} Scala ${{ inputs.scala-version }})
       path: |
-        target/surefire-reports/*.xml
-        !target/surefire-reports/TEST-org.scalatest*.xml
-        target/site/surefire-report.html
+        target/surefire-*reports/*.xml
 
 branding:
   icon: 'check-circle'

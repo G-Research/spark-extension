@@ -350,6 +350,7 @@
             <include>**/*Tests.class</include>
             <include>**/*Suite.class</include>
           </includes>
+          <reportsDirectory>${project.build.directory}/surefire-integration-reports/</reportsDirectory>
         </configuration>
         <executions>
           <execution>
