@@ -106,18 +106,19 @@ package object parquet {
       files
         .flatMap { case (_, file) =>
           readFooters(file).map { footer =>
+            val guard = FooterGuard(footer)
             (
               footer.getFile.toString,
               footer.getParquetMetadata.getBlocks.size(),
-              maybeEncrypted(footer) { footer.getParquetMetadata.getBlocks.asScala.map(_.getCompressedSize).sum },
-              maybeEncrypted(footer) { footer.getParquetMetadata.getBlocks.asScala.map(_.getTotalByteSize).sum },
+              guard { footer.getParquetMetadata.getBlocks.asScala.map(_.getCompressedSize).sum },
+              guard { footer.getParquetMetadata.getBlocks.asScala.map(_.getTotalByteSize).sum },
               footer.getParquetMetadata.getBlocks.asScala.map(_.getRowCount).sum,
               footer.getParquetMetadata.getFileMetaData.getSchema.getColumns.size(),
-              maybeEncrypted(footer) {
+              guard {
                 footer.getParquetMetadata.getBlocks.asScala.map(_.getColumns.map(_.getValueCount).sum).sum
               },
               // when all columns have statistics, count the null values
-              maybeEncrypted(footer) {
+              guard {
                 Option(
                   footer.getParquetMetadata.getBlocks.asScala.flatMap(_.getColumns.map(c => Option(c.getStatistics)))
                 )
@@ -307,18 +308,19 @@ package object parquet {
       files
         .flatMap { case (_, file) =>
           readFooters(file).flatMap { footer =>
+            val guard = FooterGuard(footer)
             footer.getParquetMetadata.getBlocks.asScala.zipWithIndex.map { case (block, idx) =>
               (
                 footer.getFile.toString,
                 ParquetMetaDataUtil.getOrdinal(block).getOrElse(idx) + 1,
                 block.getStartingPos,
-                maybeEncrypted(footer) { block.getCompressedSize },
+                guard { block.getCompressedSize },
                 block.getTotalByteSize,
                 block.getRowCount,
                 block.getColumns.asScala.size,
-                maybeEncrypted(footer) { block.getColumns.asScala.map(_.getValueCount).sum },
+                guard { block.getColumns.asScala.map(_.getValueCount).sum },
                 // when all columns have statistics, count the null values
-                maybeEncrypted(footer) {
+                guard {
                   Option(block.getColumns.asScala.map(c => Option(c.getStatistics)))
                     .filter(_.forall(_.isDefined))
                     .map(_.map(_.get.getNumNulls).sum)
@@ -407,23 +409,24 @@ package object parquet {
       files
         .flatMap { case (_, file) =>
           readFooters(file).flatMap { footer =>
+            val guard = FooterGuard(footer)
             footer.getParquetMetadata.getBlocks.asScala.zipWithIndex.flatMap { case (block, idx) =>
               block.getColumns.asScala.map { column =>
                 (
                   footer.getFile.toString,
                   ParquetMetaDataUtil.getOrdinal(block).getOrElse(idx) + 1,
                   column.getPath.toSeq,
-                  maybeEncrypted(footer) { column.getCodec.toString },
-                  maybeEncrypted(footer) { column.getPrimitiveType.toString },
-                  maybeEncrypted(footer) { column.getEncodings.asScala.toSeq.map(_.toString).sorted },
+                  guard { column.getCodec.toString },
+                  guard { column.getPrimitiveType.toString },
+                  guard { column.getEncodings.asScala.toSeq.map(_.toString).sorted },
                   column.isEncrypted,
-                  maybeEncrypted(footer) { Option(column.getStatistics).map(_.minAsString) },
-                  maybeEncrypted(footer) { Option(column.getStatistics).map(_.maxAsString) },
-                  maybeEncrypted(footer) { column.getStartingPos },
-                  maybeEncrypted(footer) { column.getTotalSize },
-                  maybeEncrypted(footer) { column.getTotalUncompressedSize },
-                  maybeEncrypted(footer) { column.getValueCount },
-                  maybeEncrypted(footer) { Option(column.getStatistics).map(_.getNumNulls) },
+                  guard { Option(column.getStatistics).map(_.minAsString) },
+                  guard { Option(column.getStatistics).map(_.maxAsString) },
+                  guard { column.getStartingPos },
+                  guard { column.getTotalSize },
+                  guard { column.getTotalUncompressedSize },
+                  guard { column.getValueCount },
+                  guard { Option(column.getStatistics).map(_.getNumNulls) },
                 )
               }
             }
@@ -587,20 +590,6 @@ package object parquet {
       .filter { case (_, midBlock) => start <= midBlock && midBlock < start + length }
       .map(_._1)
       .toSeq
-  }
-
-  /**
-   * Method to guard access to Parquet file information that are not accessible from encrypted Parquet files (with
-   * plaintext footer) when no footer key is available. Returns None if value cannot be accessed due to encryption and
-   * insufficient decryption config.
-   */
-  private def maybeEncrypted[T](footer: Footer)(f: => T): Option[T] = {
-    // when we are configured to decrypt this file, we are safe to access f
-    Option(footer.getParquetMetadata.getFileMetaData.getFileDecryptor)
-      // otherwise, when we have an unencrypted file, we are also safe to access f
-      .orElse(Some(footer.getParquetMetadata.getFileMetaData.getEncryptionType.name()).filter(_ == "UNENCRYPTED"))
-      // access f
-      .map(_ => f)
   }
 
 }
