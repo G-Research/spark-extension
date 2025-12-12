@@ -145,3 +145,7 @@ class PackageTest(SparkTest):
                 with self.assertRaises(RuntimeError) as e:
                     func(self.spark.read)
                 self.assertEqual((EXPECTED_UNSUPPORTED_MESSAGE, ), e.exception.args)
+
+
+if __name__ == '__main__':
+    SparkTest.main(__file__)
