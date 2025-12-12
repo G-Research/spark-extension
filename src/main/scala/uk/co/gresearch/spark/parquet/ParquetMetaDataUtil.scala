@@ -43,33 +43,40 @@ private trait MethodGuard {
 
 /**
  * Guard access to possibly encrypted and inaccessible metadata of a footer.
- * If footer is encrypted while we have no decryption keys, metadata values are None.
- * If footer is known not to be encrypted, metadata values are Some.
- * If we don't know whether the footer is encrypted, we access some metadata that we could not read
- * if encrypted to determine the encryption state of the footer.
+ *   - If footer is encrypted while we have no decryption keys, metadata values are None.
+ *   - If footer is known not to be encrypted, metadata values are Some.
+ *   - If we don't know whether the footer is encrypted, we access some metadata that we could not read if encrypted to
+ *     determine the encryption state of the footer.
  */
 private case class FooterGuard(footer: Footer) {
   lazy val isSafe: Boolean = {
     // having a decryptor tells us this file is expected to be decryptable
     Option(footer.getParquetMetadata.getFileMetaData.getFileDecryptor)
       // otherwise, when we have an unencrypted file, we are also safe to access f
-      .orElse(ParquetMetaDataUtil.getEncryptionType(footer.getParquetMetadata.getFileMetaData)
-        .filter(_ == "UNENCRYPTED"))
+      .orElse(
+        ParquetMetaDataUtil
+          .getEncryptionType(footer.getParquetMetadata.getFileMetaData)
+          .filter(_ == "UNENCRYPTED")
+      )
       // turn to Some(true) if safe, None if unknown
       .map(_ => true)
       // otherwise, we access some metadata that if the footer is encrypted would fail
-      .orElse(Some(
-        Try(footer.getParquetMetadata.getBlocks.headOption.map(_.getTotalByteSize))
-          .toEither.swap.toOption
-          // no exception means safe, ignore exceptions other than ParquetCryptoRuntimeException
-          .exists(!_.isInstanceOf[ParquetCryptoRuntimeException])
-      ))
+      .orElse(
+        Some(
+          Try(footer.getParquetMetadata.getBlocks.headOption.map(_.getTotalByteSize))
+            // get hold of the possible exception
+            .toEither.swap.toOption
+            // no exception means safe, ignore exceptions other than ParquetCryptoRuntimeException
+            .exists(!_.isInstanceOf[ParquetCryptoRuntimeException])
+        )
+      )
       // now is Some(true) or Some(false)
       .get
   }
 
   private[parquet] def apply[T](f: => T): Option[T] = {
-    if (isSafe) { Some(f) } else { None }
+    if (isSafe) { Some(f) }
+    else { None }
   }
 }
 
