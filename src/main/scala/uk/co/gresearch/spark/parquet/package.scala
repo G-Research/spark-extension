@@ -419,7 +419,7 @@ package object parquet {
                   guard { column.getCodec.toString },
                   guard { column.getPrimitiveType.toString },
                   guard { column.getEncodings.asScala.toSeq.map(_.toString).sorted },
-                  column.isEncrypted,
+                  ParquetMetaDataUtil.isEncrypted(column),
                   guard { Option(column.getStatistics).map(_.minAsString) },
                   guard { Option(column.getStatistics).map(_.maxAsString) },
                   guard { column.getStartingPos },

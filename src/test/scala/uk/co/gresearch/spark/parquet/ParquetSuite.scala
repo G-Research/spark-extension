@@ -205,7 +205,7 @@ class ParquetSuite extends Suite with SparkTestSession with SparkVersion {
             StructField("codec", StringType, nullable = true),
             StructField("type", StringType, nullable = true),
             StructField("encodings", ArrayType(StringType), nullable = true),
-            StructField("encrypted", BooleanType, nullable = false),
+            StructField("encrypted", BooleanType, nullable = true),
             StructField("minValue", StringType, nullable = true),
             StructField("maxValue", StringType, nullable = true),
             StructField("columnStart", LongType, nullable = true),
@@ -366,6 +366,10 @@ class ParquetSuite extends Suite with SparkTestSession with SparkVersion {
         .collect()
     }
 
+    val hasIsEncrypted: Boolean = ParquetMetaDataUtil.isEncryptedIsSupported
+    val isEncrypted: Option[Boolean] = if (hasIsEncrypted) Some(true) else None
+    val isNotEncrypted: Option[Boolean] = if (hasIsEncrypted) Some(false) else None
+
     // we are reading the encrypted file with plaintext footer once without any decryption keys
     assert(
       collect(spark.read.parquetMetadata(encryptedFilePlaintextFooter)) === Seq(
@@ -420,6 +424,12 @@ class ParquetSuite extends Suite with SparkTestSession with SparkVersion {
     spark.sparkContext.hadoopConfiguration
       .set("parquet.encryption.key.list", "key:AAECAAECAAECAAECAAECAA==")
 
+    // either size or null, depending on the Spark version (see SplitFile.fileSize)
+    val hasSplitFileSize = (size: Long) =>
+      Some(SparkMajorVersion > 3 || SparkMinorVersion >= 3)
+        .filter(_ == true)
+        .map(_ => size)
+
     // reading the encrypted file with plaintext footer now reveals all metadata
     assert(
       collect(spark.read.parquetMetadata(encryptedFilePlaintextFooter)) === Seq(
@@ -442,14 +452,14 @@ class ParquetSuite extends Suite with SparkTestSession with SparkVersion {
     assert(
       collect(spark.read.parquetBlockColumns(encryptedFilePlaintextFooter)) === Seq(
       // format: off
-      Row("encrypted1.parquet", 1, Seq("id"), "SNAPPY", "required int64 id", Seq("BIT_PACKED", "PLAIN"), false, "0", "99", 4, 437, 826, 100, 0),
-      Row("encrypted1.parquet", 1, Seq("val"), "SNAPPY", "required float val", Seq("BIT_PACKED", "PLAIN"), true, "-0.0", "99.0", 441, 567, 532, 100, 0),
+      Row("encrypted1.parquet", 1, Seq("id"), "SNAPPY", "required int64 id", Seq("BIT_PACKED", "PLAIN"), isNotEncrypted.orNull, "0", "99", 4, 437, 826, 100, 0),
+      Row("encrypted1.parquet", 1, Seq("val"), "SNAPPY", "required float val", Seq("BIT_PACKED", "PLAIN"), isEncrypted.orNull, "-0.0", "99.0", 441, 567, 532, 100, 0),
       // format: on
       )
     )
     assert(
       collect(spark.read.parquetPartitions(encryptedFilePlaintextFooter)) === Seq(
-        Row(0, 0, 2705, 2705, 1, 1004, 1358, 100, 2, 200, 0, "encrypted1.parquet", 2705),
+        Row(0, 0, 2705, 2705, 1, 1004, 1358, 100, 2, 200, 0, "encrypted1.parquet", hasSplitFileSize(2705).orNull),
       )
     )
 
@@ -475,14 +485,14 @@ class ParquetSuite extends Suite with SparkTestSession with SparkVersion {
     assert(
       collect(spark.read.parquetBlockColumns(encryptedFileEncryptedFooter)) === Seq(
       // format: off
-      Row("encrypted2.parquet", 1, Seq("id"), "SNAPPY", "required int64 id", Seq("BIT_PACKED", "PLAIN"), false, "0", "99", 4, 437, 826, 100, 0),
-      Row("encrypted2.parquet", 1, Seq("val"), "SNAPPY", "required float val", Seq("BIT_PACKED", "PLAIN"), true, "-0.0", "99.0", 441, 567, 532, 100, 0),
+      Row("encrypted2.parquet", 1, Seq("id"), "SNAPPY", "required int64 id", Seq("BIT_PACKED", "PLAIN"), isNotEncrypted.orNull, "0", "99", 4, 437, 826, 100, 0),
+      Row("encrypted2.parquet", 1, Seq("val"), "SNAPPY", "required float val", Seq("BIT_PACKED", "PLAIN"), isEncrypted.orNull, "-0.0", "99.0", 441, 567, 532, 100, 0),
       // format: on
       )
     )
     assert(
       collect(spark.read.parquetPartitions(encryptedFileEncryptedFooter)) === Seq(
-        Row(0, 0, 2691, 2691, 1, 1004, 1358, 100, 2, 200, 0, "encrypted2.parquet", 2691),
+        Row(0, 0, 2691, 2691, 1, 1004, 1358, 100, 2, 200, 0, "encrypted2.parquet", hasSplitFileSize(2691).orNull),
       )
     )
   }

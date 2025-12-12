@@ -18,7 +18,7 @@ package uk.co.gresearch.spark.parquet
 
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException
 import org.apache.parquet.hadoop.Footer
-import org.apache.parquet.hadoop.metadata.{BlockMetaData, FileMetaData}
+import org.apache.parquet.hadoop.metadata.{BlockMetaData, ColumnChunkMetaData, FileMetaData}
 import org.apache.parquet.schema.PrimitiveType
 
 import scala.reflect.{ClassTag, classTag}
@@ -100,5 +100,12 @@ private[parquet] object ParquetMetaDataUtil extends MethodGuard {
   lazy val getOrdinal: BlockMetaData => Option[Int] =
     guard(getOrdinalIsSupported) { (block: BlockMetaData) =>
       block.getOrdinal
+    }
+
+  lazy val isEncryptedIsSupported: Boolean =
+    isSupported[ColumnChunkMetaData]("isEncrypted")
+  lazy val isEncrypted: ColumnChunkMetaData => Option[Boolean] =
+    guard(isEncryptedIsSupported) { (column: ColumnChunkMetaData) =>
+      column.isEncrypted
     }
 }
