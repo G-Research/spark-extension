@@ -150,6 +150,13 @@ runs:
       echo "::endgroup::"
     shell: bash
 
+  - name: Fetch Whl Artifact
+    if: inputs.python-version != ''
+    uses: actions/download-artifact@v4
+    with:
+      name: Whl (Spark ${{ inputs.spark-compat-version }} Scala ${{ inputs.scala-compat-version }})
+      path: .
+
   - name: Install Python dependencies
     if: inputs.python-version != ''
     run: |
@@ -158,7 +165,7 @@ runs:
       python -m venv .pytest-venv
       .pytest-venv/bin/python -m pip install --upgrade pip
       .pytest-venv/bin/pip install pypandoc
-      .pytest-venv/bin/pip install -e python/[test]
+      .pytest-venv/bin/pip install $(ls pyspark_extension-*.whl)[test]
       echo "::endgroup::"
 
       PYSPARK_HOME=$(.pytest-venv/bin/python -c "import os; import pyspark; print(os.path.dirname(pyspark.__file__))")

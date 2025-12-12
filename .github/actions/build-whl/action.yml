@@ -53,6 +53,14 @@ runs:
       java-version: ${{ inputs.java-compat-version }}
       distribution: 'zulu'
 
+  - name: Fetch Release Test Dependencies
+    run: |
+      # Fetch Release Test Dependencies
+      echo "::group::mvn dependency:get"
+      mvn dependency:get -Dtransitive=false -Dartifact=org.apache.parquet:parquet-hadoop:1.16.0:jar:tests
+      echo "::endgroup::"
+    shell: bash
+
   - name: Setup Python
     uses: actions/setup-python@v5
     with:

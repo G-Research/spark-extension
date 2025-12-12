@@ -43,6 +43,9 @@ then
     ln -s spark-$spark-bin-$hadoop spark-$spark-$scala_compat
 fi
 
+echo "Fetching Release Test Dependencies"
+mvn dependency:get -Dtransitive=false -Dartifact=org.apache.parquet:parquet-hadoop:1.16.0:jar:tests
+
 echo "Testing Scala"
 spark-$spark-$scala_compat/bin/spark-shell --packages uk.co.gresearch.spark:spark-extension_$scala_compat:$version --repositories https://oss.sonatype.org/content/groups/staging/ < test-release.scala
 
