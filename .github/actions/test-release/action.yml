@@ -113,13 +113,21 @@ runs:
       echo "::endgroup::"
     shell: bash
 
+  - name: Fetch Release Test Dependencies
+    run: |
+      # Fetch Release Test Dependencies
+      echo "::group::mvn dependency:get"
+      mvn dependency:get -Dtransitive=false -Dartifact=org.apache.parquet:parquet-hadoop:1.16.0:jar:tests
+      echo "::endgroup::"
+    shell: bash
+
   - name: Scala Release Test
     env:
       SPARK_HOME: ${{ env.SPARK_BIN_HOME }}
     run: |
       # Scala Release Test
       echo "::group::spark-shell"
-      $SPARK_BIN_HOME/bin/spark-shell --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION < test-release.scala
+      $SPARK_BIN_HOME/bin/spark-shell --packages uk.co.gresearch.spark:spark-extension_${{ inputs.scala-compat-version }}:$SPARK_EXTENSION_VERSION --jars ~/.m2/repository/org/apache/parquet/parquet-hadoop/1.16.0/parquet-hadoop-1.16.0-tests.jar < test-release.scala
       echo
       echo "::endgroup::"
     shell: bash
@@ -142,6 +150,13 @@ runs:
       echo "::endgroup::"
     shell: bash
 
+  - name: Fetch Whl Artifact
+    if: inputs.python-version != ''
+    uses: actions/download-artifact@v4
+    with:
+      name: Whl (Spark ${{ inputs.spark-compat-version }} Scala ${{ inputs.scala-compat-version }})
+      path: .
+
   - name: Install Python dependencies
     if: inputs.python-version != ''
     run: |
@@ -150,7 +165,7 @@ runs:
       python -m venv .pytest-venv
       .pytest-venv/bin/python -m pip install --upgrade pip
       .pytest-venv/bin/pip install pypandoc
-      .pytest-venv/bin/pip install -e python/[test]
+      .pytest-venv/bin/pip install $(ls pyspark_extension-*.whl)[test]
       echo "::endgroup::"
 
       PYSPARK_HOME=$(.pytest-venv/bin/python -c "import os; import pyspark; print(os.path.dirname(pyspark.__file__))")

@@ -16,8 +16,10 @@
 
 package uk.co.gresearch.spark.parquet
 
+import org.apache.spark.SparkException
 import org.apache.spark.sql.Row.unapplySeq
-import org.apache.spark.sql.functions.{regexp_replace, spark_partition_id}
+// array_contains and map_keys could be replaced with map_contains_key, but that is not available before Spark 3.4
+import org.apache.spark.sql.functions.{array_contains, lit, map_keys, regexp_replace, spark_partition_id, when}
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{Column, DataFrame, Row}
 import org.scalatest.tagobjects.Slow
@@ -34,8 +36,12 @@ class ParquetSuite extends Suite with SparkTestSession with SparkVersion {
   //   spark.sparkContext.hadoopConfiguration.setInt("parquet.block.size", 1024)
   //   spark.range(100).select($"id", rand().as("val")).repartitionByRange(1, $"id").write.parquet("test.parquet")
   //   spark.range(100, 300, 1).select($"id", rand().as("val")).repartitionByRange(1, $"id").write.mode(SaveMode.Append).parquet("test.parquet")eq((3, "three"), (4, "four"), (5, "five"), (6, "six"), (7, "seven")).toDF("id", "value").repartitionByRange(1, $"id").write.mode(SaveMode.Append).parquet("test.parquet")
+  //   spark.range(100).withColumn("val", $"id".cast("float")).write.option("parquet.encryption.footer.key", "key").option("parquet.encryption.plaintext.footer", "true").option("parquet.encryption.column.keys", "key:val").parquet("src/test/files/encrypted.parquet")
+  //   spark.range(100).withColumn("val", $"id".cast("float")).write.option("parquet.encryption.footer.key", "key").option("parquet.encryption.column.keys", "key:val").parquet("src/test/files/encrypted-column.parquet")
   val testFile = "src/test/files/test.parquet"
   val nestedFile = "src/test/files/nested.parquet"
+  val encryptedFilePlaintextFooter = "src/test/files/encrypted1.parquet"
+  val encryptedFileEncryptedFooter = "src/test/files/encrypted2.parquet"
 
   val parallelisms = Seq(None, Some(1), Some(2), Some(8))
 
@@ -44,7 +50,7 @@ class ParquetSuite extends Suite with SparkTestSession with SparkVersion {
       order: Seq[Column],
       expectedSchema: StructType,
       expectedRows: Seq[Row],
-      expectedParallelism: Option[Int],
+      expectedParallelism: Option[Int] = None,
       postProcess: DataFrame => DataFrame = identity
   ): Unit = {
     assert(actual.schema === expectedSchema)
@@ -68,8 +74,10 @@ class ParquetSuite extends Suite with SparkTestSession with SparkVersion {
     assert(replaced.collect() === expectedRows)
   }
 
-  val hasEncryption: Boolean = ParquetMetaDataUtil.getEncryptionTypeIsSupported
-  val UNENCRYPTED: String = if (hasEncryption) "UNENCRYPTED" else null
+  val hasEncryptionType: Boolean = ParquetMetaDataUtil.getEncryptionTypeIsSupported
+  val UNENCRYPTED: String = if (hasEncryptionType) "UNENCRYPTED" else null
+  val PLAINTEXT_FOOTER: String = if (hasEncryptionType) "PLAINTEXT_FOOTER" else null
+  val ENCRYPTED_FOOTER: String = if (hasEncryptionType) "ENCRYPTED_FOOTER" else null
 
   parallelisms.foreach { parallelism =>
     test(s"read parquet metadata (parallelism=${parallelism.map(_.toString).getOrElse("None")})") {
@@ -90,11 +98,11 @@ class ParquetSuite extends Suite with SparkTestSession with SparkVersion {
           Seq(
             StructField("filename", StringType, nullable = true),
             StructField("blocks", IntegerType, nullable = false),
-            StructField("compressedBytes", LongType, nullable = false),
-            StructField("uncompressedBytes", LongType, nullable = false),
+            StructField("compressedBytes", LongType, nullable = true),
+            StructField("uncompressedBytes", LongType, nullable = true),
             StructField("rows", LongType, nullable = false),
             StructField("columns", IntegerType, nullable = false),
-            StructField("values", LongType, nullable = false),
+            StructField("values", LongType, nullable = true),
             StructField("nulls", LongType, nullable = true),
             StructField("createdBy", StringType, nullable = true),
             StructField("schema", StringType, nullable = true),
@@ -163,11 +171,11 @@ class ParquetSuite extends Suite with SparkTestSession with SparkVersion {
             StructField("filename", StringType, nullable = true),
             StructField("block", IntegerType, nullable = false),
             StructField("blockStart", LongType, nullable = false),
-            StructField("compressedBytes", LongType, nullable = false),
+            StructField("compressedBytes", LongType, nullable = true),
             StructField("uncompressedBytes", LongType, nullable = false),
             StructField("rows", LongType, nullable = false),
             StructField("columns", IntegerType, nullable = false),
-            StructField("values", LongType, nullable = false),
+            StructField("values", LongType, nullable = true),
             StructField("nulls", LongType, nullable = true),
           )
         ),
@@ -197,23 +205,24 @@ class ParquetSuite extends Suite with SparkTestSession with SparkVersion {
             StructField("codec", StringType, nullable = true),
             StructField("type", StringType, nullable = true),
             StructField("encodings", ArrayType(StringType), nullable = true),
+            StructField("encrypted", BooleanType, nullable = true),
             StructField("minValue", StringType, nullable = true),
             StructField("maxValue", StringType, nullable = true),
-            StructField("columnStart", LongType, nullable = false),
-            StructField("compressedBytes", LongType, nullable = false),
-            StructField("uncompressedBytes", LongType, nullable = false),
-            StructField("values", LongType, nullable = false),
+            StructField("columnStart", LongType, nullable = true),
+            StructField("compressedBytes", LongType, nullable = true),
+            StructField("uncompressedBytes", LongType, nullable = true),
+            StructField("values", LongType, nullable = true),
             StructField("nulls", LongType, nullable = true),
           )
         ),
         // format: off
         Seq(
-          Row("file1.parquet", 1, "[id]", "SNAPPY", "required int64 id", "[BIT_PACKED, PLAIN]", "0", "99", 4, 437, 826, 100, 0),
-          Row("file1.parquet", 1, "[val]", "SNAPPY", "required double val", "[BIT_PACKED, PLAIN]", "0.005067503372006343", "0.9973357672164814", 441, 831, 826, 100, 0),
-          Row("file2.parquet", 1, "[id]", "SNAPPY", "required int64 id", "[BIT_PACKED, PLAIN]", "100", "199", 4, 438, 825, 100, 0),
-          Row("file2.parquet", 1, "[val]", "SNAPPY", "required double val", "[BIT_PACKED, PLAIN]", "0.010617521596503865", "0.999189783846449", 442, 831, 826, 100, 0),
-          Row("file2.parquet", 2, "[id]", "SNAPPY", "required int64 id", "[BIT_PACKED, PLAIN]", "200", "299", 1273, 440, 826, 100, 0),
-          Row("file2.parquet", 2, "[val]", "SNAPPY", "required double val", "[BIT_PACKED, PLAIN]", "0.011277044401634018", "0.970525681750662", 1713, 830, 825, 100, 0),
+          Row("file1.parquet", 1, "[id]", "SNAPPY", "required int64 id", "[BIT_PACKED, PLAIN]", false, "0", "99", 4, 437, 826, 100, 0),
+          Row("file1.parquet", 1, "[val]", "SNAPPY", "required double val", "[BIT_PACKED, PLAIN]", false, "0.005067503372006343", "0.9973357672164814", 441, 831, 826, 100, 0),
+          Row("file2.parquet", 1, "[id]", "SNAPPY", "required int64 id", "[BIT_PACKED, PLAIN]", false, "100", "199", 4, 438, 825, 100, 0),
+          Row("file2.parquet", 1, "[val]", "SNAPPY", "required double val", "[BIT_PACKED, PLAIN]", false, "0.010617521596503865", "0.999189783846449", 442, 831, 826, 100, 0),
+          Row("file2.parquet", 2, "[id]", "SNAPPY", "required int64 id", "[BIT_PACKED, PLAIN]", false, "200", "299", 1273, 440, 826, 100, 0),
+          Row("file2.parquet", 2, "[val]", "SNAPPY", "required double val", "[BIT_PACKED, PLAIN]", false, "0.011277044401634018", "0.970525681750662", 1713, 830, 825, 100, 0),
         ),
         // format: on
         parallelism,
@@ -339,5 +348,152 @@ class ParquetSuite extends Suite with SparkTestSession with SparkVersion {
         }
       }
     }
+  }
+
+  test("read encrypted parquets") {
+    // used to collect the result and make it comparable to expected rows
+    def collect(df: DataFrame): Array[Row] = {
+      val expectedKeyValues = array_contains(map_keys($"keyValues"), "org.apache.spark.version") &&
+        array_contains(map_keys($"keyValues"), "org.apache.spark.sql.parquet.row.metadata")
+      df.orderBy($"filename")
+        .withColumn("filename", regexp_replace($"filename", ".*/", ""))
+        .when(df.columns.contains("createdBy"))
+        .call(_.withColumn("createdBy", when($"createdBy".isNotNull, lit("…"))))
+        .when(df.columns.contains("schema"))
+        .call(_.withColumn("schema", when($"schema".isNotNull, lit("…"))))
+        .when(df.columns.contains("keyValues"))
+        .call(_.withColumn("keyValues", expectedKeyValues))
+        .collect()
+    }
+
+    val hasIsEncrypted: Boolean = ParquetMetaDataUtil.isEncryptedIsSupported
+    val isEncrypted: Option[Boolean] = if (hasIsEncrypted) Some(true) else None
+    val isNotEncrypted: Option[Boolean] = if (hasIsEncrypted) Some(false) else None
+
+    // we are reading the encrypted file with plaintext footer once without any decryption keys
+    assert(
+      collect(spark.read.parquetMetadata(encryptedFilePlaintextFooter)) === Seq(
+        Row("encrypted1.parquet", 1, null, null, 100, 2, null, null, "…", "…", PLAINTEXT_FOOTER, true),
+      )
+    )
+    assert(
+      collect(spark.read.parquetSchema(encryptedFilePlaintextFooter)) === Seq(
+      // format: off
+      Row("encrypted1.parquet", "id", Seq("id"), "REQUIRED", "INT64", 0, null, null, true, "INT64", "TYPE_DEFINED_ORDER", 0, 0),
+      Row("encrypted1.parquet", "val", Seq("val"), "REQUIRED", "FLOAT", 0, null, null, true, "FLOAT", "TYPE_DEFINED_ORDER", 0, 0),
+      // format: on
+      )
+    )
+    assert(
+      collect(spark.read.parquetBlocks(encryptedFilePlaintextFooter)) === Seq(
+        Row("encrypted1.parquet", 1, 4, null, 1358, 100, 2, null, null),
+      )
+    )
+    assert(
+      collect(spark.read.parquetBlockColumns(encryptedFilePlaintextFooter)) === Seq(
+        Row("encrypted1.parquet", 1, Seq("id"), null, null, null, false, null, null, null, null, null, null, null),
+        Row("encrypted1.parquet", 1, Seq("val"), null, null, null, true, null, null, null, null, null, null, null),
+      )
+    )
+    assertThrows[SparkException] {
+      collect(spark.read.parquetPartitions(encryptedFilePlaintextFooter))
+    }
+
+    // we cannot read the encrypted file with encrypted footer
+    assertThrows[SparkException] {
+      collect(spark.read.parquetMetadata(encryptedFileEncryptedFooter))
+    }
+    assertThrows[SparkException] {
+      collect(spark.read.parquetSchema(encryptedFileEncryptedFooter))
+    }
+    assertThrows[SparkException] {
+      collect(spark.read.parquetBlocks(encryptedFileEncryptedFooter))
+    }
+    assertThrows[SparkException] {
+      collect(spark.read.parquetBlockColumns(encryptedFileEncryptedFooter))
+    }
+    assertThrows[SparkException] {
+      collect(spark.read.parquetPartitions(encryptedFileEncryptedFooter))
+    }
+
+    // we can read all encrypted files with footer encryption key, column key not needed
+    spark.sparkContext.hadoopConfiguration
+      .set("parquet.crypto.factory.class", "org.apache.parquet.crypto.keytools.PropertiesDrivenCryptoFactory")
+    spark.sparkContext.hadoopConfiguration
+      .set("parquet.encryption.kms.client.class", "org.apache.parquet.crypto.keytools.mocks.InMemoryKMS")
+    spark.sparkContext.hadoopConfiguration
+      .set("parquet.encryption.key.list", "key:AAECAAECAAECAAECAAECAA==")
+
+    // either size or null, depending on the Spark version (see SplitFile.fileSize)
+    val hasSplitFileSize = (size: Long) =>
+      Some(SparkMajorVersion > 3 || SparkMinorVersion >= 3)
+        .filter(_ == true)
+        .map(_ => size)
+
+    // reading the encrypted file with plaintext footer now reveals all metadata
+    assert(
+      collect(spark.read.parquetMetadata(encryptedFilePlaintextFooter)) === Seq(
+        Row("encrypted1.parquet", 1, 1004, 1358, 100, 2, 200, 0, "…", "…", PLAINTEXT_FOOTER, true),
+      )
+    )
+    assert(
+      collect(spark.read.parquetSchema(encryptedFilePlaintextFooter)) === Seq(
+      // format: off
+      Row("encrypted1.parquet", "id", Seq("id"), "REQUIRED", "INT64", 0, null, null, true, "INT64", "TYPE_DEFINED_ORDER", 0, 0),
+      Row("encrypted1.parquet", "val", Seq("val"), "REQUIRED", "FLOAT", 0, null, null, true, "FLOAT", "TYPE_DEFINED_ORDER", 0, 0),
+      // format: on
+      )
+    )
+    assert(
+      collect(spark.read.parquetBlocks(encryptedFilePlaintextFooter)) === Seq(
+        Row("encrypted1.parquet", 1, 4, 1004, 1358, 100, 2, 200, 0),
+      )
+    )
+    assert(
+      collect(spark.read.parquetBlockColumns(encryptedFilePlaintextFooter)) === Seq(
+      // format: off
+      Row("encrypted1.parquet", 1, Seq("id"), "SNAPPY", "required int64 id", Seq("BIT_PACKED", "PLAIN"), isNotEncrypted.orNull, "0", "99", 4, 437, 826, 100, 0),
+      Row("encrypted1.parquet", 1, Seq("val"), "SNAPPY", "required float val", Seq("BIT_PACKED", "PLAIN"), isEncrypted.orNull, "-0.0", "99.0", 441, 567, 532, 100, 0),
+      // format: on
+      )
+    )
+    assert(
+      collect(spark.read.parquetPartitions(encryptedFilePlaintextFooter)) === Seq(
+        Row(0, 0, 2705, 2705, 1, 1004, 1358, 100, 2, 200, 0, "encrypted1.parquet", hasSplitFileSize(2705).orNull),
+      )
+    )
+
+    // we can now read the encrypted file with encrypted footer
+    assert(
+      collect(spark.read.parquetMetadata(encryptedFileEncryptedFooter)) === Seq(
+        Row("encrypted2.parquet", 1, 1004, 1358, 100, 2, 200, 0, "…", "…", ENCRYPTED_FOOTER, true),
+      )
+    )
+    assert(
+      collect(spark.read.parquetSchema(encryptedFileEncryptedFooter)) === Seq(
+      // format: off
+      Row("encrypted2.parquet", "id", Seq("id"), "REQUIRED", "INT64", 0, null, null, true, "INT64", "TYPE_DEFINED_ORDER", 0, 0),
+      Row("encrypted2.parquet", "val", Seq("val"), "REQUIRED", "FLOAT", 0, null, null, true, "FLOAT", "TYPE_DEFINED_ORDER", 0, 0),
+      // format: on
+      )
+    )
+    assert(
+      collect(spark.read.parquetBlocks(encryptedFileEncryptedFooter)) === Seq(
+        Row("encrypted2.parquet", 1, 4, 1004, 1358, 100, 2, 200, 0),
+      )
+    )
+    assert(
+      collect(spark.read.parquetBlockColumns(encryptedFileEncryptedFooter)) === Seq(
+      // format: off
+      Row("encrypted2.parquet", 1, Seq("id"), "SNAPPY", "required int64 id", Seq("BIT_PACKED", "PLAIN"), isNotEncrypted.orNull, "0", "99", 4, 437, 826, 100, 0),
+      Row("encrypted2.parquet", 1, Seq("val"), "SNAPPY", "required float val", Seq("BIT_PACKED", "PLAIN"), isEncrypted.orNull, "-0.0", "99.0", 441, 567, 532, 100, 0),
+      // format: on
+      )
+    )
+    assert(
+      collect(spark.read.parquetPartitions(encryptedFileEncryptedFooter)) === Seq(
+        Row(0, 0, 2691, 2691, 1, 1004, 1358, 100, 2, 200, 0, "encrypted2.parquet", hasSplitFileSize(2691).orNull),
+      )
+    )
   }
 }

@@ -55,20 +55,20 @@ spark.read.parquet_metadata("/path/to/parquet").show()
 
 The Dataframe provides the following per-file information:
 
-|column            |type  | description                                                                   |
-|:-----------------|:----:|:------------------------------------------------------------------------------|
-|filename          |string| The Parquet file name                                                         |
-|blocks            |int   | Number of blocks / RowGroups in the Parquet file                              |
-|compressedBytes   |long  | Number of compressed bytes of all blocks                                      |
-|uncompressedBytes |long  | Number of uncompressed bytes of all blocks                                    |
-|rows              |long  | Number of rows in the file                                                    |
-|columns           |int   | Number of columns in the file                                                 |
-|values            |long  | Number of values in the file                                                  |
-|nulls             |long  | Number of null values in the file                                             |
-|createdBy         |string| The createdBy string of the Parquet file, e.g. library used to write the file |
-|schema            |string| The schema                                                                    |
-|encryption        |string| The encryption (requires org.apache.parquet:parquet-hadoop:1.12.4 and above)  |
-|keyValues         |string-to-string map| Key-value data of the file                                      |
+|column            |type  | description                                                                    |
+|:-----------------|:----:|:-------------------------------------------------------------------------------|
+|filename          |string| The Parquet file name                                                          |
+|blocks            |int   | Number of blocks / RowGroups in the Parquet file                               |
+|compressedBytes   |long  | Number of compressed bytes of all blocks                                       |
+|uncompressedBytes |long  | Number of uncompressed bytes of all blocks                                     |
+|rows              |long  | Number of rows in the file                                                     |
+|columns           |int   | Number of columns in the file                                                  |
+|values            |long  | Number of values in the file                                                   |
+|nulls             |long  | Number of null values in the file                                              |
+|createdBy         |string| The createdBy string of the Parquet file, e.g. library used to write the file  |
+|schema            |string| The schema                                                                     |
+|encryption        |string| The encryption (requires `org.apache.parquet:parquet-hadoop:1.12.4` and above) |
+|keyValues         |string-to-string map| Key-value data of the file                                       |
 
 ## Parquet file schema
 
@@ -96,20 +96,20 @@ spark.read.parquet_schema("/path/to/parquet").show()
 
 The Dataframe provides the following per-file information:
 
-|column            |     type     | description                                                                     |
-|:-----------------|:------------:|:--------------------------------------------------------------------------------|
-|filename          |    string    | The Parquet file name                                                           |
-|columnName        |    string    | The column name                                                                 |
-|columnPath        | string array | The column path                                                                 |
-|repetition        |    string    | The repetition                                                                  |
-|type              |    string    | The data type                                                                   |
-|length            |     int      | The length of the type                                                          |
-|originalType      |   string     | The original type (requires org.apache.parquet:parquet-hadoop:1.11.0 and above) |
-|isPrimitive       |   boolean    | True if type is primitive                                                       |
-|primitiveType     |    string    | The primitive type                                                              |
-|primitiveOrder    |    string    | The order of the primitive type                                                 |
-|maxDefinitionLevel|     int      | The max definition level                                                        |
-|maxRepetitionLevel|     int      | The max repetition level                                                        |
+|column            |     type     | description                                                                       |
+|:-----------------|:------------:|:----------------------------------------------------------------------------------|
+|filename          |    string    | The Parquet file name                                                             |
+|columnName        |    string    | The column name                                                                   |
+|columnPath        | string array | The column path                                                                   |
+|repetition        |    string    | The repetition                                                                    |
+|type              |    string    | The data type                                                                     |
+|length            |     int      | The length of the type                                                            |
+|originalType      |   string     | The original type (requires `org.apache.parquet:parquet-hadoop:1.11.0` and above) |
+|isPrimitive       |   boolean    | True if type is primitive                                                         |
+|primitiveType     |    string    | The primitive type                                                                |
+|primitiveOrder    |    string    | The order of the primitive type                                                   |
+|maxDefinitionLevel|     int      | The max definition level                                                          |
+|maxRepetitionLevel|     int      | The max repetition level                                                          |
 
 ## Parquet block / RowGroup metadata
 
@@ -170,21 +170,22 @@ spark.read.parquet_block_columns("/path/to/parquet").show()
 +-------------+-----+------+------+-------------------+-------------------+--------------------+------------------+-----------+---------------+-----------------+------+-----+
 ```
 
-|column            |type         |description                                           |
-|:-----------------|:-----------:|:-----------------------------------------------------|
-|filename          |string       |The Parquet file name                                 |
-|block             |int          |Block / RowGroup number starting at 1                 |
-|column            |array<string>|Block / RowGroup column name                          |
-|codec             |string       |The coded used to compress the block column values    |
-|type              |string       |The data type of the block column                     |
-|encodings         |array<string>|Encodings of the block column                         |
-|minValue          |string       |Minimum value of this column in this block            |
-|maxValue          |string       |Maximum value of this column in this block            |
-|columnStart       |long         |Start position of the block column in the Parquet file|
-|compressedBytes   |long         |Number of compressed bytes of this block column       |
-|uncompressedBytes |long         |Number of uncompressed bytes of this block column     |
-|values            |long         |Number of values in this block column                 |
-|nulls             |long         |Number of null values in this block column            |
+| column            |     type      | description                                                                                       |
+|:------------------|:-------------:|:--------------------------------------------------------------------------------------------------|
+| filename          |    string     | The Parquet file name                                                                             |
+| block             |      int      | Block / RowGroup number starting at 1                                                             |
+| column            | array<string> | Block / RowGroup column name                                                                      |
+| codec             |    string     | The coded used to compress the block column values                                                |
+| type              |    string     | The data type of the block column                                                                 |
+| encodings         | array<string> | Encodings of the block column                                                                     |
+| isEncrypted       |    boolean    | Whether block column is encrypted (requires `org.apache.parquet:parquet-hadoop:1.12.3` and above) |
+| minValue          |    string     | Minimum value of this column in this block                                                        |
+| maxValue          |    string     | Maximum value of this column in this block                                                        |
+| columnStart       |     long      | Start position of the block column in the Parquet file                                            |
+| compressedBytes   |     long      | Number of compressed bytes of this block column                                                   |
+| uncompressedBytes |     long      | Number of uncompressed bytes of this block column                                                 |
+| values            |     long      | Number of values in this block column                                                             |
+| nulls             |     long      | Number of null values in this block column                                                        |
 
 ## Parquet partition metadata
 
@@ -254,6 +255,13 @@ spark.read.parquet_blocks("/path/to/parquet", parallelism=100)
 spark.read.parquet_block_columns("/path/to/parquet", parallelism=100)
 spark.read.parquet_partitions("/path/to/parquet", parallelism=100)
 ```
+
+## Encryption
+
+Reading [encrypted Parquet is supported](https://spark.apache.org/docs/latest/sql-data-sources-parquet.html#columnar-encryption).
+Files encrypted with [plaintext footer](https://github.com/apache/parquet-format/blob/master/Encryption.md#55-plaintext-footer-mode)
+can be read without any encryption keys, while encrypted Parquet metadata are then show as `NULL` values in the result Dataframe.
+Encrypted Parquet files with encrypted footer requires the footer encryption key only. No column encryption keys are needed.
 
 ## Known Issues
 

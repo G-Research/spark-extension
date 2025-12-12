@@ -21,6 +21,7 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.apache.parquet.hadoop.metadata.BlockMetaData
 import org.apache.parquet.hadoop.{Footer, ParquetFileReader}
+import org.apache.spark.SparkContext
 import org.apache.spark.sql._
 import org.apache.spark.sql.execution.datasources.FilePartition
 import uk.co.gresearch._
@@ -29,7 +30,8 @@ import scala.collection.JavaConverters.{collectionAsScalaIterableConverter, mapA
 import scala.collection.convert.ImplicitConversions.`iterable AsScalaIterable`
 
 package object parquet {
-  private lazy val conf = new Configuration()
+
+  private def conf: Configuration = SparkContext.getOrCreate().hadoopConfiguration
 
   /**
    * Implicit class to extend a Spark DataFrameReader.
@@ -104,20 +106,25 @@ package object parquet {
       files
         .flatMap { case (_, file) =>
           readFooters(file).map { footer =>
+            val guard = FooterGuard(footer)
             (
               footer.getFile.toString,
               footer.getParquetMetadata.getBlocks.size(),
-              footer.getParquetMetadata.getBlocks.asScala.map(_.getCompressedSize).sum,
-              footer.getParquetMetadata.getBlocks.asScala.map(_.getTotalByteSize).sum,
+              guard { footer.getParquetMetadata.getBlocks.asScala.map(_.getCompressedSize).sum },
+              guard { footer.getParquetMetadata.getBlocks.asScala.map(_.getTotalByteSize).sum },
               footer.getParquetMetadata.getBlocks.asScala.map(_.getRowCount).sum,
               footer.getParquetMetadata.getFileMetaData.getSchema.getColumns.size(),
-              footer.getParquetMetadata.getBlocks.asScala.map(_.getColumns.map(_.getValueCount).sum).sum,
+              guard {
+                footer.getParquetMetadata.getBlocks.asScala.map(_.getColumns.map(_.getValueCount).sum).sum
+              },
               // when all columns have statistics, count the null values
-              Option(
-                footer.getParquetMetadata.getBlocks.asScala.flatMap(_.getColumns.map(c => Option(c.getStatistics)))
-              )
-                .filter(_.forall(_.isDefined))
-                .map(_.map(_.get.getNumNulls).sum),
+              guard {
+                Option(
+                  footer.getParquetMetadata.getBlocks.asScala.flatMap(_.getColumns.map(c => Option(c.getStatistics)))
+                )
+                  .filter(_.forall(_.isDefined))
+                  .map(_.map(_.get.getNumNulls).sum)
+              },
               footer.getParquetMetadata.getFileMetaData.getCreatedBy,
               footer.getParquetMetadata.getFileMetaData.getSchema.toString,
               ParquetMetaDataUtil.getEncryptionType(footer.getParquetMetadata.getFileMetaData),
@@ -301,20 +308,23 @@ package object parquet {
       files
         .flatMap { case (_, file) =>
           readFooters(file).flatMap { footer =>
+            val guard = FooterGuard(footer)
             footer.getParquetMetadata.getBlocks.asScala.zipWithIndex.map { case (block, idx) =>
               (
                 footer.getFile.toString,
                 ParquetMetaDataUtil.getOrdinal(block).getOrElse(idx) + 1,
                 block.getStartingPos,
-                block.getCompressedSize,
+                guard { block.getCompressedSize },
                 block.getTotalByteSize,
                 block.getRowCount,
                 block.getColumns.asScala.size,
-                block.getColumns.asScala.map(_.getValueCount).sum,
+                guard { block.getColumns.asScala.map(_.getValueCount).sum },
                 // when all columns have statistics, count the null values
-                Option(block.getColumns.asScala.map(c => Option(c.getStatistics)))
-                  .filter(_.forall(_.isDefined))
-                  .map(_.map(_.get.getNumNulls).sum),
+                guard {
+                  Option(block.getColumns.asScala.map(c => Option(c.getStatistics)))
+                    .filter(_.forall(_.isDefined))
+                    .map(_.map(_.get.getNumNulls).sum)
+                },
               )
             }
           }
@@ -399,22 +409,24 @@ package object parquet {
       files
         .flatMap { case (_, file) =>
           readFooters(file).flatMap { footer =>
+            val guard = FooterGuard(footer)
             footer.getParquetMetadata.getBlocks.asScala.zipWithIndex.flatMap { case (block, idx) =>
               block.getColumns.asScala.map { column =>
                 (
                   footer.getFile.toString,
                   ParquetMetaDataUtil.getOrdinal(block).getOrElse(idx) + 1,
                   column.getPath.toSeq,
-                  column.getCodec.toString,
-                  column.getPrimitiveType.toString,
-                  column.getEncodings.asScala.toSeq.map(_.toString).sorted,
-                  Option(column.getStatistics).map(_.minAsString),
-                  Option(column.getStatistics).map(_.maxAsString),
-                  column.getStartingPos,
-                  column.getTotalSize,
-                  column.getTotalUncompressedSize,
-                  column.getValueCount,
-                  Option(column.getStatistics).map(_.getNumNulls),
+                  guard { column.getCodec.toString },
+                  guard { column.getPrimitiveType.toString },
+                  guard { column.getEncodings.asScala.toSeq.map(_.toString).sorted },
+                  ParquetMetaDataUtil.isEncrypted(column),
+                  guard { Option(column.getStatistics).map(_.minAsString) },
+                  guard { Option(column.getStatistics).map(_.maxAsString) },
+                  guard { column.getStartingPos },
+                  guard { column.getTotalSize },
+                  guard { column.getTotalUncompressedSize },
+                  guard { column.getValueCount },
+                  guard { Option(column.getStatistics).map(_.getNumNulls) },
                 )
               }
             }
@@ -427,6 +439,7 @@ package object parquet {
           "codec",
           "type",
           "encodings",
+          "encrypted",
           "minValue",
           "maxValue",
           "columnStart",
