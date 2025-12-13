@@ -3,6 +3,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+# [UNRELEASED] - YYYY-MM-DD
+
+### Added
+- Support encrypted parquet files (#324)
+
+### Changed
+- Remove support for Spark 3.0 and Spark 3.1 (#332)
+- Make all undocumented unintended public API parts private (#331)
+- Reading Parquet metadata can use Parquet Hadoop version different to version coming with Spark (#330)
+
 ## [2.14.2] - 2025-07-21
 
 ### Changed
