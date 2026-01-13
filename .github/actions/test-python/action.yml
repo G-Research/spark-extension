@@ -52,6 +52,13 @@ runs:
       echo "SPARK_EXTENSION_VERSION=$SPARK_EXTENSION_VERSION" | tee -a "$GITHUB_ENV"
     shell: bash
 
+  - name: Make this work with PySpark preview versions
+    if: contains(inputs.spark-version, 'preview')
+    run: |
+      sed -i -e 's/\({spark_compat_version}.0\)"/\1.dev1"/' python/setup.py
+      git diff python/setup.py
+    shell: bash
+
   - name: Restore Spark Binaries cache
     if: github.event_name != 'schedule' && ( startsWith(inputs.spark-version, '3.') && inputs.scala-compat-version == '2.12' || startsWith(inputs.spark-version, '4.') ) && ! contains(inputs.spark-version, '-SNAPSHOT')
     uses: actions/cache/restore@v4
@@ -195,7 +202,8 @@ runs:
       # Python Unit Tests (Spark Connect)
 
       echo "::group::pip install"
-      .pytest-venv/bin/pip install "pyspark[connect]~=${{ inputs.spark-compat-version }}.0"
+      # .dev1 allows this to work with preview versions
+      .pytest-venv/bin/pip install "pyspark[connect]~=${{ inputs.spark-compat-version }}.0.dev1"
       echo "::endgroup::"
 
       .pytest-venv/bin/python -m pytest python/test --junit-xml test-results-connect/pytest-$(date +%s.%N)-$RANDOM.xml
