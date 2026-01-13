@@ -18,26 +18,45 @@ jobs:
             scala-compat-version: '2.12'
             scala-version: '2.12.15'
             java-compat-version: '8'
+            python-version: '3.9'
           - spark-compat-version: '3.3'
             spark-version: '3.3.4'
             scala-compat-version: '2.12'
             scala-version: '2.12.15'
             java-compat-version: '8'
+            python-version: '3.9'
           - spark-compat-version: '3.4'
             spark-version: '3.4.4'
             scala-compat-version: '2.12'
             scala-version: '2.12.17'
             java-compat-version: '8'
+            python-version: '3.9'
           - spark-compat-version: '3.5'
-            spark-version: '3.5.6'
+            spark-version: '3.5.7'
             scala-compat-version: '2.12'
             scala-version: '2.12.18'
             java-compat-version: '8'
+            python-version: '3.9'
           - spark-compat-version: '4.0'
-            spark-version: '4.0.0'
+            spark-version: '4.0.1'
             scala-compat-version: '2.13'
             scala-version: '2.13.16'
             java-compat-version: '17'
+            python-version: '3.9'
+          - spark-version: '4.1.1'
+            spark-compat-version: '4.1'
+            scala-compat-version: '2.13'
+            scala-version: '2.13.17'
+            java-compat-version: '17'
+            hadoop-version: '3'
+            python-version: '3.10'
+          - spark-version: '4.2.0-preview1'
+            spark-compat-version: '4.2'
+            scala-compat-version: '2.13'
+            scala-version: '2.13.18'
+            java-compat-version: '17'
+            hadoop-version: '3'
+            python-version: '3.10'
 
     steps:
       - name: Checkout
@@ -51,4 +70,4 @@ jobs:
           spark-compat-version: ${{ matrix.spark-compat-version }}
           scala-compat-version: ${{ matrix.scala-compat-version }}
           java-compat-version: ${{ matrix.java-compat-version }}
-          python-version: "3.9"
+          python-version: ${{ matrix.python-version }}

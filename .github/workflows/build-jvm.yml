@@ -67,6 +67,18 @@ jobs:
             scala-version: '2.13.16'
             java-compat-version: '17'
             hadoop-version: '3'
+          - spark-version: '4.1.1'
+            spark-compat-version: '4.1'
+            scala-compat-version: '2.13'
+            scala-version: '2.13.17'
+            java-compat-version: '17'
+            hadoop-version: '3'
+          - spark-version: '4.2.0-preview1'
+            spark-compat-version: '4.2'
+            scala-compat-version: '2.13'
+            scala-version: '2.13.18'
+            java-compat-version: '17'
+            hadoop-version: '3'
 
     steps:
       - name: Checkout
