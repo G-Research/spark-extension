@@ -17,8 +17,9 @@ on:
               {"params": {"spark-version": "3.2.4", "scala-version": "2.13.5", "java-compat-version": "8"}},
               {"params": {"spark-version": "3.3.4", "scala-version": "2.13.8", "java-compat-version": "8"}},
               {"params": {"spark-version": "3.4.4", "scala-version": "2.13.8", "java-compat-version": "8"}},
-              {"params": {"spark-version": "3.5.6", "scala-version": "2.13.8", "java-compat-version": "8"}},
-              {"params": {"spark-version": "4.0.0", "scala-version": "2.13.16", "java-compat-version": "17"}}
+              {"params": {"spark-version": "3.5.8", "scala-version": "2.13.8", "java-compat-version": "8"}},
+              {"params": {"spark-version": "4.0.1", "scala-version": "2.13.16", "java-compat-version": "17"}}
+              {"params": {"spark-version": "4.1.1", "scala-version": "2.13.17", "java-compat-version": "17"}}
             ]
           }
 

@@ -37,6 +37,13 @@ runs:
       git diff
     shell: bash
 
+  - name: Make this work with PySpark preview versions
+    if: contains(inputs.spark-version, 'preview')
+    run: |
+      sed -i -e 's/f"\(pyspark~=.*\)"/f"\1.dev1"/' -e 's/f"\({spark_compat_version}.0\)"/"${{ inputs.spark-version }}"/g' python/setup.py
+      git diff python/setup.py
+    shell: bash
+
   - name: Restore Maven packages cache
     if: github.event_name != 'schedule'
     uses: actions/cache/restore@v4
@@ -87,7 +94,8 @@ runs:
       # Test whl
       echo "::group::test-release.py"
       twine check python/dist/*
-      pip install python/dist/*.whl "pyspark~=${{ inputs.spark-compat-version }}.0"
+      # .dev1 allows this to work with preview versions
+      pip install python/dist/*.whl "pyspark~=${{ inputs.spark-compat-version }}.0.dev1"
       python test-release.py
       echo "::endgroup::"
     shell: bash
