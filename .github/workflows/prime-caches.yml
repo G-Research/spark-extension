@@ -31,7 +31,7 @@ jobs:
           - spark-compat-version: '3.5'
             scala-compat-version: '2.12'
             scala-version: '2.12.18'
-            spark-patch-version: '7'
+            spark-patch-version: '8'
             hadoop-version: '3'
 
           - spark-compat-version: '3.2'
@@ -52,7 +52,7 @@ jobs:
           - spark-compat-version: '3.5'
             scala-compat-version: '2.13'
             scala-version: '2.13.8'
-            spark-patch-version: '7'
+            spark-patch-version: '8'
             hadoop-version: '3'
           - spark-compat-version: '4.0'
             scala-compat-version: '2.13'
@@ -94,7 +94,7 @@ jobs:
           - spark-compat-version: '3.5'
             scala-compat-version: '2.12'
             scala-version: '2.12.18'
-            spark-patch-version: '8'
+            spark-patch-version: '9'
             spark-snapshot-version: true
             hadoop-version: '3'
 
@@ -119,7 +119,7 @@ jobs:
           - spark-compat-version: '3.5'
             scala-compat-version: '2.13'
             scala-version: '2.13.8'
-            spark-patch-version: '8'
+            spark-patch-version: '9'
             spark-snapshot-version: true
             hadoop-version: '3'
           - spark-compat-version: '4.0'

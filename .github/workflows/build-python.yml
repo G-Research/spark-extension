@@ -32,7 +32,7 @@ jobs:
             java-compat-version: '8'
             python-version: '3.9'
           - spark-compat-version: '3.5'
-            spark-version: '3.5.7'
+            spark-version: '3.5.8'
             scala-compat-version: '2.12'
             scala-version: '2.12.18'
             java-compat-version: '8'
