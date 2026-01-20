@@ -26,5 +26,5 @@ do
   fi
 done > "$base"/workflows/prime-caches.yml.tmp
 
-grep spark-version "$base"/workflows/*.yml "$base"/workflows/prime-caches.yml.tmp | cut -d : -f 2- | sed -e "s/^[ -]*//" -e "s/'//g" | grep "^spark-version" | grep -v "matrix" | sort | uniq
+grep spark-version "$base"/workflows/*.yml "$base"/workflows/prime-caches.yml.tmp | cut -d : -f 2- | sed -e "s/^[ -]*//" -e "s/'//g" -e 's/{"params": {"//g' -e 's/"//g' -e "s/,.*//" | grep "^spark-version" | grep -v "matrix" | sort | uniq
 
