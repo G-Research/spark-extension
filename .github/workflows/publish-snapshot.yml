@@ -54,7 +54,7 @@ jobs:
           - params: {"spark-version": "3.2.4", "scala-version": "2.12.15", "scala-compat-version": "2.12", "java-compat-version": "8"}
           - params: {"spark-version": "3.3.4", "scala-version": "2.12.15", "scala-compat-version": "2.12", "java-compat-version": "8"}
           - params: {"spark-version": "3.4.4", "scala-version": "2.12.17", "scala-compat-version": "2.12", "java-compat-version": "8"}
-          - params: {"spark-version": "3.5.6", "scala-version": "2.12.18", "scala-compat-version": "2.12", "java-compat-version": "8"}
+          - params: {"spark-version": "3.5.8", "scala-version": "2.12.18", "scala-compat-version": "2.12", "java-compat-version": "8"}
           - params: {"spark-version": "3.2.4", "scala-version": "2.13.5", "scala-compat-version": "2.13", "java-compat-version": "8"}
           - params: {"spark-version": "3.3.4", "scala-version": "2.13.8", "scala-compat-version": "2.13", "java-compat-version": "8"}
           - params: {"spark-version": "3.4.4", "scala-version": "2.13.8", "scala-compat-version": "2.13", "java-compat-version": "8"}

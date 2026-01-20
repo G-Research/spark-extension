@@ -13,7 +13,7 @@ on:
               {"params": {"spark-version": "3.2.4", "scala-version": "2.12.15", "java-compat-version": "8"}},
               {"params": {"spark-version": "3.3.4", "scala-version": "2.12.15", "java-compat-version": "8"}},
               {"params": {"spark-version": "3.4.4", "scala-version": "2.12.17", "java-compat-version": "8"}},
-              {"params": {"spark-version": "3.5.6", "scala-version": "2.12.18", "java-compat-version": "8"}},
+              {"params": {"spark-version": "3.5.8", "scala-version": "2.12.18", "java-compat-version": "8"}},
               {"params": {"spark-version": "3.2.4", "scala-version": "2.13.5", "java-compat-version": "8"}},
               {"params": {"spark-version": "3.3.4", "scala-version": "2.13.8", "java-compat-version": "8"}},
               {"params": {"spark-version": "3.4.4", "scala-version": "2.13.8", "java-compat-version": "8"}},
