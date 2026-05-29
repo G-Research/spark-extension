@@ -108,8 +108,6 @@ runs:
         python/dist/*.whl
 
   - name: Build whl with mvn
-    env:
-      JDK_JAVA_OPTIONS: --add-exports java.base/sun.nio.ch=ALL-UNNAMED --add-exports java.base/sun.util.calendar=ALL-UNNAMED
     run: |
       # Build whl with mvn
       rm -rf target python/dist python/pyspark_extension.egg-info pyspark/jars/*.jar

@@ -421,6 +421,11 @@
             <configuration>
               <environmentVariables>
                 <CI_INTEGRATION_TEST>true</CI_INTEGRATION_TEST>
+                <JDK_JAVA_OPTIONS>
+                  -XX:+IgnoreUnrecognizedVMOptions
+                  --add-exports java.base/sun.nio.ch=ALL-UNNAMED
+                  --add-exports java.base/sun.util.calendar=ALL-UNNAMED
+                </JDK_JAVA_OPTIONS>
               </environmentVariables>
             </configuration>
           </execution>
