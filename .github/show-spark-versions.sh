@@ -2,7 +2,7 @@
 
 base=$(cd "$(dirname "$0")"; pwd)
 
-grep -- "-version" "$base"/workflows/prime-caches.yml | sed -e "s/ -//g" -e "s/ //g" -e "s/'//g" | grep -v -e "matrix" -e "]" | while read line
+grep -- "-version" "$base"/workflows/prime-caches.yml "$base"/workflows/test-jvm.yml | sed -e "s/ -//g" -e "s/ //g" -e "s/'//g" | grep -v -e "matrix" -e "]" | while read line
 do
   IFS=":" read var compat_version <<< "$line"
   if [[ "$var" == "spark-compat-version" ]]
@@ -24,7 +24,7 @@ do
       fi
     done
   fi
-done > "$base"/workflows/prime-caches.yml.tmp
+done > "$base"/workflows/other-workflows.yml.tmp
 
-grep spark-version "$base"/workflows/*.yml "$base"/workflows/prime-caches.yml.tmp | cut -d : -f 2- | sed -e "s/^[ -]*//" -e "s/'//g" -e 's/{"params": {"//g' -e 's/params: {//g' -e 's/"//g' -e "s/,.*//" | grep "^spark-version" | grep -v "matrix" | sort | uniq
+grep spark-version "$base"/workflows/*.yml "$base"/workflows/other-workflows.yml.tmp | cut -d : -f 2- | sed -e "s/^[ -]*//" -e "s/'//g" -e 's/{"params": {"//g' -e 's/params: {//g' -e 's/"//g' -e "s/,.*//" | grep "^spark-version" | grep -v "matrix" | sort | uniq
 
