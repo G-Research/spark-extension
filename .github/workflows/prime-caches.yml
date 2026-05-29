@@ -63,13 +63,13 @@ jobs:
           - spark-compat-version: '4.1'
             scala-compat-version: '2.13'
             scala-version: '2.13.17'
-            spark-patch-version: '1'
+            spark-patch-version: '2'
             java-compat-version: '17'
             hadoop-version: '3'
           - spark-compat-version: '4.2'
             scala-compat-version: '2.13'
             scala-version: '2.13.18'
-            spark-patch-version: '0-preview3'
+            spark-patch-version: '0-preview5'
             java-compat-version: '17'
             hadoop-version: '3'
 
@@ -131,7 +131,7 @@ jobs:
           - spark-compat-version: '4.1'
             scala-compat-version: '2.13'
             scala-version: '2.13.17'
-            spark-patch-version: '2'
+            spark-patch-version: '3'
             spark-snapshot-version: true
             hadoop-version: '3'
           - spark-compat-version: '4.2'
@@ -143,7 +143,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
       - name: Prime caches
         uses: ./.github/actions/prime-caches
