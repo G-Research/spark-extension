@@ -36,7 +36,7 @@ jobs:
       is-snapshot: ${{ steps.versions.outputs.is-snapshot }}
     steps:
       - name: Checkout release tag
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
       - name: Get versions
         id: versions
@@ -92,7 +92,7 @@ jobs:
 
     steps:
       - name: Checkout release tag
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
       - name: Set up JDK and publish to Maven Central
         uses: actions/setup-java@3a4f6e1af504cf6a31855fa899c6aa5355ba6c12  # v4.7.0
@@ -110,7 +110,7 @@ jobs:
 
       - name: Restore Maven packages cache
         id: cache-maven
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
           path: ~/.m2/repository
           key: ${{ runner.os }}-mvn-build-${{ matrix.params.spark-version }}-${{ matrix.params.scala-version }}-${{ hashFiles('pom.xml') }}
@@ -147,7 +147,7 @@ jobs:
 
     steps:
       - name: Checkout release tag
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
       - name: Set up JDK
         uses: actions/setup-java@3a4f6e1af504cf6a31855fa899c6aa5355ba6c12  # v4.7.0
@@ -155,13 +155,13 @@ jobs:
           java-version: ${{ matrix.params.java-compat-version }}
           distribution: 'corretto'
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Restore Maven packages cache
         id: cache-maven
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
           path: ~/.m2/repository
           key: ${{ runner.os }}-mvn-build-${{ matrix.params.spark-version }}-${{ matrix.params.scala-version }}-${{ hashFiles('pom.xml') }}
@@ -183,7 +183,7 @@ jobs:
           ./build-whl.sh
 
       - name: Publish package distributions to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b
         if: steps.prepare-pypi-package.outcome == 'success'
         with:
           packages-dir: python/dist
