@@ -95,7 +95,7 @@ jobs:
           - spark-compat-version: '4.1'
             scala-compat-version: '2.13'
             scala-version: '2.13.17'
-            spark-version: '4.1.1'
+            spark-version: '4.1.2'
 
     steps:
       - name: Checkout
