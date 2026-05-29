@@ -140,6 +140,12 @@ jobs:
             spark-patch-version: '0'
             spark-snapshot-version: true
             hadoop-version: '3'
+          - spark-compat-version: '5.0'
+            scala-compat-version: '2.13'
+            scala-version: '2.13.18'
+            spark-patch-version: '0'
+            spark-snapshot-version: true
+            hadoop-version: '3'
 
     steps:
       - name: Checkout
