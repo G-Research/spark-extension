@@ -18,7 +18,7 @@ jobs:
       is-snapshot: ${{ steps.versions.outputs.is-snapshot }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 0
 
@@ -45,7 +45,7 @@ jobs:
 
     steps:
       - name: Create GitHub App token
-        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349
+        uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 # v3.0.0
         id: app-token
         with:
           app-id: ${{ vars.APP_ID }}
@@ -60,7 +60,7 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
 
       - name: Checkout code
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           token: ${{ steps.app-token.outputs.token }}
           fetch-depth: 0
@@ -164,7 +164,7 @@ jobs:
 
     steps:
       - name: Checkout release tag
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           ref: ${{ needs.get-version.outputs.release-tag }}
 
@@ -181,7 +181,7 @@ jobs:
           echo "release_notes_path=release-notes.txt" >> $GITHUB_OUTPUT
 
       - name: Publish GitHub release
-        uses: ncipollo/release-action@2c591bcc8ecdcd2db72b97d6147f871fcd833ba5
+        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1.21.0
         id: github-release
         with:
           name: ${{ steps.release-notes.outputs.release_name }}
