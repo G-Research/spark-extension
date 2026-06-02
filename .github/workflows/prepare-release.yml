@@ -181,7 +181,7 @@ jobs:
           echo "release_notes_path=release-notes.txt" >> $GITHUB_OUTPUT
 
       - name: Publish GitHub release
-        uses: ncipollo/release-action@2c591bcc8ecdcd2db72b97d6147f871fcd833ba5
+        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1.21.0
         id: github-release
         with:
           name: ${{ steps.release-notes.outputs.release_name }}
