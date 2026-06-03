@@ -465,7 +465,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-report-plugin</artifactId>
-        <version>3.5.6</version>
+        <version>3.5.6</version> <!-- 25ea054860a5c1e5932b360d8aa0a31944c2b841 (surefire-3.5.6) -->
       </plugin>
     </plugins>
   </reporting>
