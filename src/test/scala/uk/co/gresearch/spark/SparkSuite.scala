@@ -680,10 +680,16 @@ class SparkSuite extends Suite with SparkTestSession with SparkSuiteHelper {
             "[DATATYPE_MISMATCH.UNEXPECTED_INPUT_TYPE] Cannot resolve \"unix_micros(ts)\" due to data type mismatch: Parameter 1 requires the \"TIMESTAMP\" type, however \"ts\" has the type \"BIGINT\"."
           )
         )
-      } else { // SparkMajorVersion > 3
+      } else if (SparkMajorVersion == 4 && SparkMinorVersion < 3) { // Spark >= 4.3
         assert(
           message.startsWith(
             "[DATATYPE_MISMATCH.UNEXPECTED_INPUT_TYPE] Cannot resolve \"unix_micros(ts)\" due to data type mismatch: The first parameter requires the \"TIMESTAMP\" type, however \"ts\" has the type \"BIGINT\"."
+          )
+        )
+      } else { // SparkMajorVersion > 3
+        assert(
+          message.startsWith(
+            "[DATATYPE_MISMATCH.UNEXPECTED_INPUT_TYPE] Cannot resolve \"unix_micros(ts)\" due to data type mismatch: The first parameter requires the (\"(TIMESTAMP OR TIMESTAMP WITHOUT TIME ZONE)\" or \"(TIMESTAMP_LTZ(P) OR TIMESTAMP_NTZ(P) WITH P IN [7, 9])\") type, however \"ts\" has the type \"BIGINT\"."
           )
         )
       }
