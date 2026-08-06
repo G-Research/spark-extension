@@ -2,7 +2,7 @@
 
 base=$(cd "$(dirname "$0")"; pwd)
 
-grep -- "-version" "$base"/workflows/prime-caches.yml "$base"/workflows/test-jvm.yml | sed -e "s/ -//g" -e "s/ //g" -e "s/'//g" | grep -v -e "matrix" -e "]" | while read line
+grep -- "-version" "$base"/workflows/prime-caches.yml "$base"/workflows/test-jvm.yml | sed -e "s/ -//g" -e "s/ //g" -e "s/'//g" | grep -v -e "matrix" -e "]" | cut -d ":" -f 2- | while read line
 do
   IFS=":" read var compat_version <<< "$line"
   if [[ "$var" == "spark-compat-version" ]]
