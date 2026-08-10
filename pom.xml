@@ -154,7 +154,7 @@
     <dependency>
       <groupId>org.scalatestplus</groupId>
       <artifactId>scalatestplus-junit_${scala.compat.version}</artifactId>
-      <version>1.0.0-M2</version>
+      <version>1.0.0-SNAP9</version>
       <scope>test</scope>
     </dependency>
 
